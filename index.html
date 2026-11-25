@@ -30,7 +30,7 @@
   /* ── 상단 바 ── */
   .topbar{
     position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;
-    padding:10px 14px;background:rgba(8,10,16,.82);backdrop-filter:blur(14px);
+    padding:10px 14px;background:#0b0e16;
     border-bottom:1px solid var(--line-soft);
   }
   .brand{display:flex;align-items:center;gap:9px;min-width:0;flex:0 1 auto;overflow:hidden}
@@ -47,8 +47,8 @@
     background:rgba(46,224,106,.10);border:1px solid rgba(46,224,106,.32);
     padding:4px 9px;border-radius:999px;white-space:nowrap;
   }
-  .live .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(46,224,106,.6);animation:pulse 1.8s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,224,106,.55)}70%{box-shadow:0 0 0 7px rgba(46,224,106,0)}100%{box-shadow:0 0 0 0 rgba(46,224,106,0)}}
+  .live .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
   .clock{font-variant-numeric:tabular-nums;font-size:12px;color:var(--mut);min-width:44px;text-align:right}
   .iconbtn{
     width:32px;height:32px;flex:0 0 auto;border-radius:9px;border:1px solid var(--line);
@@ -220,8 +220,8 @@
   .btn2:hover{border-color:#3b4560;color:#fff}
   .btn2.green{border-color:rgba(46,224,106,.42);background:rgba(46,224,106,.10);color:#b6fccb}
   .btn2.purple{border-color:rgba(124,108,246,.45);background:rgba(124,108,246,.12);color:#d3ccff}
-  .btn2.glow{box-shadow:0 0 16px rgba(46,224,106,.22);animation:breath 2s ease-in-out infinite}
-  @keyframes breath{50%{box-shadow:0 0 22px rgba(46,224,106,.42)}}
+  .btn2.glow{box-shadow:0 0 14px rgba(46,224,106,.24)}
+  @keyframes breath{50%{opacity:.85}}
   .cc-progress{margin-left:auto;font-size:10.5px;color:var(--mut)}
   .cc-progress b{color:var(--green)}
 
@@ -246,7 +246,7 @@
   /* ── 모달 ── */
   .modal{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;padding:16px}
   .modal.show{display:flex}
-  .modal .veil{position:absolute;inset:0;background:rgba(3,5,9,.72);backdrop-filter:blur(4px)}
+  .modal .veil{position:absolute;inset:0;background:rgba(3,5,9,.82)}
   .sheet{
     position:relative;width:100%;max-width:430px;background:#0e1219;border:1px solid var(--line);
     border-radius:18px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.6);max-height:86vh;overflow:auto;
@@ -289,7 +289,7 @@
   .vbtn.quiet{color:#ffc4c7;border-color:rgba(242,84,91,.60);background:rgba(242,84,91,.16);box-shadow:0 0 12px rgba(242,84,91,.18)}
   .vbtn.quiet:hover{color:#fff;border-color:var(--red)}
   .vbtn.resume{display:none;color:#b6fccb;border-color:rgba(46,224,106,.60);background:rgba(46,224,106,.16)}
-  body.is-quiet .vbtn.resume{display:inline-flex;animation:breath 1.8s ease-in-out infinite}
+  body.is-quiet .vbtn.resume{display:inline-flex}
   body.is-quiet .vbtn.quiet{opacity:.42}
 
   .inputfield{position:relative;flex:1;min-width:0;display:flex}
@@ -302,8 +302,8 @@
     white-space:nowrap;transition:.15s;
   }
   .micbtn:hover{border-color:#3b4560;color:#fff}
-  .micbtn.on{background:rgba(242,84,91,.20);border-color:rgba(242,84,91,.65);color:#ffc4c7;animation:pulseRed 1.5s infinite}
-  @keyframes pulseRed{0%{box-shadow:0 0 0 0 rgba(242,84,91,.42)}70%{box-shadow:0 0 0 7px rgba(242,84,91,0)}100%{box-shadow:0 0 0 0 rgba(242,84,91,0)}}
+  .micbtn.on{background:rgba(242,84,91,.20);border-color:rgba(242,84,91,.65);color:#ffc4c7}
+  @keyframes pulseRed{0%,100%{opacity:1}50%{opacity:.65}}
   .inputfield.listening #topic{border-color:rgba(242,84,91,.6);box-shadow:0 0 0 3px rgba(242,84,91,.12)}
 
   .tile.quiet{border-color:rgba(242,84,91,.40);background:linear-gradient(175deg,#1d1418,#12121a)}
