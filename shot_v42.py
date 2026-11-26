@@ -1,4 +1,4 @@
-"""v4.2 최종 보고용 스크린샷 — 화상 6분할 / 글로 보기 (모바일 390x844)"""
+"""v4.2.1 최종 보고용 스크린샷 — 화상 6분할 / 글로 보기 (모바일 390x844)"""
 from playwright.sync_api import sync_playwright
 EXE='/workspace/work/chrome/chrome-headless-shell-linux64/chrome-headless-shell'
 URL='file:///workspace/work/meeting-room/index.v4.html'

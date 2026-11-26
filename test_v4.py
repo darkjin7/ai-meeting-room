@@ -1,7 +1,10 @@
-"""v4.2 검증 — 화상 6분할 ↔ 글로 보기 전환 · 발언 떨림 제거 · 랜덤 치고 들어오기
+"""v4.2.1 검증 — 화상 자막 높이 고정·글로 보기 자동 스크롤 복원 (v4.2 검증에 추가)
 - 안건 목록(✅ 준비 완료 / ⏳ 준비 중) → 4라운드 심화 토론 → 결론 확정 → 역할 분담 (v4.1 유지)
 - 🎥 화상 6분할 ↔ 📝 글로 보기 토글이 되고, 모바일(390x844) 한 화면에 6타일이 스크롤 없이 꽉 차는지
-- 발언 전환 시 카드 높이 변화 0 · scrollIntoView(smooth) 없음 (iOS 떨림 원인 제거)
+- v4.2.1) 화상 모드 자막 바 높이 68px 고정 — 1줄/2줄 자막이 바뀌어도 6분할 grid top 불변
+- v4.2.1) 화상 모드에서는 캐릭터 바운스 transform·점 웨이브 애니메이션 없음(정적), 자동 스크롤 0
+- v4.2.1) 📝 글로 보기에서만 발언 카드로 smooth 자동 스크롤(focusTile) 복원
+- 발언 전환 시 카드 높이 변화 0 (iOS 떨림 원인 제거)
 - 발언 순서가 고정 [0,1,2,3,4,5]가 아니라 라운드마다 섞이는지
 - 데스크톱/모바일(390x844) 화면 + 스크린샷
 """
@@ -342,16 +345,22 @@ def main():
         bar_ov = mp.evaluate("()=>{const b=document.getElementById('roundBar');return b.scrollWidth-b.clientWidth}")
         assert bar_ov <= 1, '라운드 바 내부 가로 스크롤: %d' % bar_ov
 
-        # 말하는 카드 강조(테두리·배경만) + 자동 스크롤 없음 + 카드 높이 불변
+        # 말하는 카드 강조(테두리·배경만) + 카드 높이 불변 + 📝 글로 보기 자동 스크롤 복원 (v4.2.1)
         base_h = tile_heights(mp)
         mp.evaluate("()=>{ window.__siv = []; }")
+        mp.evaluate("()=>window.scrollTo(0, document.documentElement.scrollHeight)")   # 발언 카드가 화면 밖에 있도록 아래로 내려 둔다
+        mp.wait_for_timeout(200)
         mp.click('#nextRoundBtn')
         mp.wait_for_function("() => !!document.querySelector('.tile.speaking')", timeout=8000)
-        base_y = mp.evaluate("()=>window.scrollY")   # 버튼 클릭으로 인한 스크롤은 제외, 발언 중 스크롤만 본다
         sp = mp.evaluate("""()=>{const t=document.querySelector('.tile.speaking');if(!t)return null;const s=getComputedStyle(t);return {border:s.borderTopColor, shadow:s.boxShadow, bg:s.backgroundImage, id:t.dataset.id}}""")
         assert sp and sp['border'].replace(' ','') == 'rgb(46,224,106)', '말하는 카드 테두리 강조 없음: %s' % (sp and sp['border'])
         assert sp['shadow'] == 'none', '발언 카드에 boxShadow 변화가 남아 있음: %s' % sp['shadow']
         assert 'rgb' in sp['bg'], '말하는 카드 배경 강조 없음'
+        # 글로 보기에서는 발언자가 바뀌면 그 카드로 부드럽게 이동해서 화면 안에 들어와야 한다
+        mp.wait_for_function("""()=>{const t=document.querySelector('.tile.speaking');if(!t)return false;const r=t.getBoundingClientRect();return r.top >= -2 && r.bottom <= innerHeight + 2}""", timeout=6000)
+        sm = [b for b in mp.evaluate("()=>window.__siv") if b == 'smooth']
+        assert sm, '글로 보기인데 발언 카드 자동 스크롤(smooth)이 없음: %s' % mp.evaluate("()=>window.__siv")
+        sv = mp.evaluate("""()=>{const t=document.querySelector('.tile.speaking');const r=t.getBoundingClientRect();return {id:t.dataset.id, top:Math.round(r.top), bot:Math.round(r.bottom), vh:innerHeight}}""")
         hs = []
         while True:
             hs.append(tile_heights(mp))
@@ -359,10 +368,7 @@ def main():
             mp.wait_for_timeout(70)
         bad = [h for h in hs if h != base_h]
         assert not bad, '발언 전환 중 카드 높이가 변함(iOS 떨림): %s' % bad[:2]
-        sm = [b for b in mp.evaluate("()=>window.__siv") if b == 'smooth']
-        assert not sm, 'scrollIntoView(smooth)가 호출됨: %s' % mp.evaluate("()=>window.__siv")
-        assert mp.evaluate("()=>window.scrollY") == base_y, '발언 중 페이지가 저절로 스크롤됨'
-        print('OK 발언 떨림 없음 — 카드 높이 %s 일정 · smooth scroll 0회 · 페이지 고정' % base_h[:2])
+        print('OK 발언 떨림 없음 — 카드 높이 %s 일정 · 글로 보기 자동 스크롤 smooth %d회 · 발언 카드 화면 안(%s)' % (base_h[:2], len(sm), sv['id']))
 
         for n in (2, 3):
             mp.click('#nextRoundBtn')
@@ -403,21 +409,67 @@ def main():
         # 화상 모드 타일 상태는 화상통화처럼 '듣는 중 / 발언 중'
         vstates = set(mp.eval_on_selector_all('.tile .vstate','e=>e.map(x=>x.textContent)'))
         assert vstates <= {'듣는 중','발언 중','배정','대기','조용'}, '화상 타일 상태 문구 이상: %s' % vstates
-        # 발언 중 캐릭터 모션 + 옆 캐릭터 리액션 (토스트가 사라진 뒤)
+        # v4.2.1 — 화상 모드에서는 캐릭터 바운스·점 웨이브 모션이 없다(정적 상태 + 테두리·배경색만)
         mp.wait_for_timeout(2500)
+        mp.evaluate("()=>{ window.__siv = []; }")
         mp.evaluate("()=>{ window.__mr4.playRound(2); }")
         mp.wait_for_function("()=>!!document.querySelector('.tile.speaking')", timeout=8000)
-        vsp = mp.evaluate("""()=>{const t=document.querySelector('.tile.speaking');const b=t.querySelector('.vbob');return {id:t.dataset.id, anim:getComputedStyle(b).animationName, vw:getComputedStyle(t.querySelector('.vw')).display}}""")
-        assert vsp['anim'] == 'vbob', '발언 캐릭터 바운스 모션 없음: ' + vsp['anim']
+        vsp = mp.evaluate("""()=>{const t=document.querySelector('.tile.speaking');const b=t.querySelector('.vbob');const w=t.querySelector('.vw');const i=w.querySelector('i');const bs=getComputedStyle(b), is=getComputedStyle(i);
+            return {id:t.dataset.id, anim:bs.animationName, tf:bs.transform, wc:bs.willChange, tr:bs.transitionDuration, vw:getComputedStyle(w).display, dot:is.animationName, dotH:is.height}}""")
+        assert vsp['anim'] == 'none', '화상 발언 캐릭터에 바운스 애니메이션이 남아 있음: ' + vsp['anim']
+        assert vsp['tf'] == 'none', '발언 캐릭터에 transform이 걸려 있음: ' + vsp['tf']
+        assert vsp['wc'] == 'auto', '발언 캐릭터에 will-change(컴포짓 레이어)가 남아 있음: ' + vsp['wc']
+        assert vsp['tr'].split(',')[0].strip() in ('0s',), '발언 캐릭터 transition이 남아 있음: ' + vsp['tr']
         assert vsp['vw'] == 'flex', '발언 캐릭터 웨이브 없음'
+        assert vsp['dot'] == 'none', '점 웨이브 애니메이션이 남아 있음: ' + vsp['dot']
         react_on = mp.evaluate("()=>Array.from(document.querySelectorAll('.tile .react.on')).map(x=>x.textContent)")
         assert len(react_on) >= 1, '옆 캐릭터 리액션 배지가 없음'
         sub_txt = mp.inner_text('#vsub')
         assert '라운드' in sub_txt and len(sub_txt) > 10, '자막 바에 발언이 안 나옴: ' + sub_txt[:60]
         mp.wait_for_timeout(180)
         mp.screenshot(path=DL+'meeting_v42_mobile_video6.png', full_page=False)
+
+        # 자막 바 높이 고정(68px) — 1줄↔2줄 자막이 바뀌어도 위 6분할 grid가 1px도 밀리지 않는다
+        cap_h, stage_t, tx_h, ys, scrolls = [], [], [], [], []
+        while mp.evaluate("()=>window.__mr4.state.busy"):
+            s = mp.evaluate("""()=>{const v=document.getElementById('vsub');const tx=document.getElementById('vsTx');const st=document.getElementById('stage');
+                return {h:Math.round(v.getBoundingClientRect().height), t:Math.round(st.getBoundingClientRect().top), b:Math.round(st.getBoundingClientRect().bottom),
+                        tx:Math.round(tx.scrollHeight), y:Math.round(window.scrollY), vt:Math.round(v.getBoundingClientRect().top)}}""")
+            cap_h.append(s['h']); stage_t.append(s['t']); tx_h.append(s['tx']); ys.append(s['y'])
+            scrolls.append(s['b'] - s['vt'])
+            mp.wait_for_timeout(60)
         mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=30000)
-        print('OK 화상 6분할 — 390x844 한 화면 2x3 · 스크롤 없음 · 캐릭터 %s 발언 · 리액션 %s' % (vsp['id'], react_on))
+        assert cap_h and all(h == 68 for h in cap_h), '화상 모드 자막 바 높이가 변함: %s' % sorted(set(cap_h))
+        assert len(set(stage_t)) == 1, '자막 줄 수에 따라 6분할 grid가 밀림: %s' % sorted(set(stage_t))
+        assert max(scrolls) <= 1, '자막 바와 6분할 사이가 벌어짐: %s' % max(scrolls)
+        assert set(ys) == {0}, '화상 모드에서 페이지가 스크롤됨: %s' % sorted(set(ys))
+        # 자막을 1줄/2줄/3줄로 갈아 끼워도 자막 바·6분할 top이 1px도 안 변한다
+        cap_fix = []
+        for who, tag, txt in [
+            ('claude', '1라운드', '짧게.'),
+            ('gemini', '1라운드', '한 줄짜리 자막입니다. 높이는 그대로여야 합니다.'),
+            ('hark', '2라운드 · → Gemini에게', '두 줄로 접히는 긴 자막입니다. 두 번째 줄까지 들어가고도 자막 바 높이는 68px 그대로여야 합니다. 카드가 밀리면 안 됩니다.'),
+            ('cue', '3라운드', '아주 긴 자막. ' * 12),
+        ]:
+            mp.evaluate("(a)=>window.__mr4.sub(a[0], a[1], a[2])", [who, tag, txt])
+            mp.wait_for_timeout(120)
+            m = mp.evaluate("""()=>{const v=document.getElementById('vsub');const tx=document.getElementById('vsTx');const st=document.getElementById('stage');const cb=document.getElementById('stage1Bar');
+                return {h:Math.round(v.getBoundingClientRect().height), st:Math.round(st.getBoundingClientRect().top),
+                        sb:Math.round(st.getBoundingClientRect().bottom), vt:Math.round(v.getBoundingClientRect().top),
+                        txh:Math.round(tx.getBoundingClientRect().height), cb:Math.round(cb.getBoundingClientRect().top)}}""")
+            cap_fix.append(m)
+        assert all(m['h'] == 68 for m in cap_fix), '자막 길이에 따라 자막 바 높이가 변함: %s' % [m['h'] for m in cap_fix]
+        assert all(m['txh'] == 38 for m in cap_fix), '자막 본문 높이가 변함: %s' % [m['txh'] for m in cap_fix]
+        assert len(set((m['st'], m['sb'], m['vt'], m['cb']) for m in cap_fix)) == 1, '자막 길이에 따라 6분할 grid가 밀림: %s' % [(m['st'], m['sb'], m['vt'], m['cb']) for m in cap_fix]
+        mp.evaluate("()=>window.__mr4.sub(null, '', '', true)")
+        print('OK 자막 바 68px 고정 — 1줄/2줄/3줄·아주 긴 자막 4종 모두 높이 %s · grid top %s 불변(재생 중 %d샘플도 동일)' % ([m['h'] for m in cap_fix], cap_fix[0]['st'], len(cap_h)))
+        smv = [b for b in mp.evaluate("()=>window.__siv") if b == 'smooth']
+        assert not smv, '화상 모드에서 scrollIntoView(smooth)가 호출됨: %s' % mp.evaluate("()=>window.__siv")
+        # focusTile을 직접 불러도 화상 모드에서는 스크롤하지 않는다
+        mp.evaluate("()=>{ window.__siv = []; }")
+        mp.evaluate("()=>window.__mr4.focusTile('gemini')")
+        assert mp.evaluate("()=>window.__siv") == [], '화상 모드에서 focusTile이 스크롤을 시도함: %s' % mp.evaluate("()=>window.__siv")
+        print('OK 화상 6분할 — 390x844 한 화면 2x3 · 스크롤 없음 · 캐릭터 %s 발언 · 리액션 %s · 모션 0 · 자막 바 %dpx 고정(%d샘플·자막높이 %s)' % (vsp['id'], react_on, cap_h[0], len(cap_h), sorted(set(tx_h))))
 
         # 다시 글로 보기
         mp.click('#viewTextBtn'); mp.wait_for_timeout(450)
@@ -450,7 +502,7 @@ def main():
         mp.evaluate("document.getElementById('rolePanel').scrollIntoView({block:'start'})")
         mp.wait_for_timeout(400)
         mp.screenshot(path=DL+'meeting_v41_mobile_roles.png')
-        print('OK 모바일 390x844 · 1열 큰 카드(%.0fpx, 줄간격 %.2f) · 말하는 카드 테두리 강조·자동스크롤 없음 · 게스트 조언' % (fs, lh))
+        print('OK 모바일 390x844 · 1열 큰 카드(%.0fpx, 줄간격 %.2f) · 말하는 카드 테두리 강조·자막 바 68px 고정 · 게스트 조언' % (fs, lh))
         b.close()
 
     if errs:

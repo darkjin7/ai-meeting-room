@@ -1,5 +1,25 @@
 # 배포 메모 — 다크진 AI 비서실 · 6분할 회의실
 
+## v4.2.1 (2026-11-26 밤) — 화상 자막 높이 고정 · 글로 보기 자동 스크롤 복원
+- 성진님 실기기 테스트 피드백 2건 반영.
+
+### 바뀐 것
+1. **🎥 화상 6분할 떨림 완전 제거**
+   - 자막 바(`#vsub`) 높이를 **68px로 못 박음** (`height/min-height/max-height:68px` + `overflow:hidden`, `box-sizing:border-box`). 안쪽 `.vs-top` 15px · `.vs-tx` 40px(모바일 38px)도 고정 — 자막이 1줄↔2줄↔3줄로 바뀌어도 위 6분할 grid가 1px도 밀리지 않는다.
+   - 화상 모드(`body.view-video`)에서 캐릭터 바운스 `transform` 애니메이션(`@keyframes vbob`) 삭제 — `animation:none;transform:none;will-change:auto;transition:none`. 발언 표시는 테두리·배경색만.
+   - 점 웨이브(`.vw i`) 애니메이션 삭제 → 정적 막대 높이만 다르게(6/10/7/10/5px). 옆 캐릭터 리액션 배지도 transform 없이 opacity만.
+2. **📝 글로 보기 자동 스크롤 복원 (화상 모드에서는 금지)**
+   - `focusTile()`을 되살려 `state.view === 'text'`일 때만 `scrollIntoView({behavior:'smooth', block:'nearest'})`. 화상 모드에서는 즉시 return(스크롤 0). 이미 화면 안에 있는 카드는 스크롤하지 않는다(불필요한 흔들림 방지). `prefers-reduced-motion`이면 `auto`.
+   - `speakLine()`에서 발언자 카드로 `focusTile(id)` 호출 — 자료 낭독·라운드 발언·오너 코멘트 모두 적용.
+
+### 검증 (`test_v4.py` → ALL PASS, 2026-11-26)
+- 화상 모드 자막 바: 재생 중 샘플 · 자막 1줄/2줄/3줄/아주 긴 글 4종 모두 **68px**, `.vs-tx` 38px, grid top/자막 바 top/컨트롤 바 top 불변
+- 화상 모드 모션: `.vbob` animationName `none` · transform `none` · will-change `auto` · 웨이브 점 animation `none`
+- 화상 모드 스크롤: 재생 중 `scrollIntoView(smooth)` 0회 · `scrollY` 항상 0 · `focusTile()` 직접 호출도 스크롤 0
+- 글로 보기: 발언자 카드로 smooth 자동 스크롤 발생 + 발언 카드가 뷰포트 안에 들어옴(카드 높이는 여전히 불변)
+- 스크린샷: `downloads/meeting_v42_mobile_video6.png`, `downloads/meeting_v421_desk_video_caption.png`
+
+---
 ## v4.2 (2026-11-26) — 화상 6분할 ↔ 글로 보기 · 랜덤 치고 들어오기 · iOS 떨림 제거
 - 성진님 피드백: "제미나이 cue 뮤즈 발언 때 화면 떨림이 있음. 하나씩 보여서 가독성은 좋아. 하지만 우리가 생각했던 회의 느낌은 아니야. 순서대로 발표 보다는 램덤으로 치고 들어오는 느낌이 좋겠어. 가독성이 좋아 글로 보는 회의 이게 좋겠구 6분할 화면 꽉 채운 화면에 캐락만 보이는 화면을 왔다갔다 보고 싶운대로 보게 해줘"
 

@@ -685,6 +685,7 @@
     setTileState(id, "speaking", opts.label || "낭독 중");
     state.lastLine = {id:id, tag:opts.sub || "", text:text || ""};
     setSubtitle(id, opts.sub || "", text || "");
+    focusTile(id);   // 📝 글로 보기에서만 발언 카드로 부드럽게 이동 (화상 모드는 scroll 0)
     flashReactions(id);
     const talking = (state.voiceOn && text) ? speakText(id, text, token, cutRec) : Promise.resolve();
     await Promise.race([talking, cutP]);
@@ -1099,10 +1100,19 @@
   }
 
   function focusTile(id){
-    /* v4.2 — 자동 스크롤을 쓰지 않는다.
-       scrollIntoView(smooth)는 iOS Safari에서 발언이 바뀔 때마다 화면을 흔드는 주원인이었다.
-       보고 싶은 카드는 성진님이 직접 스크롤해서 본다. */
-    return;
+    /* v4.2.1 — 자동 스크롤은 📝 글로 보기에서만. 🎥 화상 6분할 모드에서는 절대 실행하지 않는다.
+       화면 밖으로 나간 카드만 부드럽게 끌어온다(이미 보이면 스크롤 자체를 하지 않아 흔들리지 않는다). */
+    if(state.view !== "text") return;
+    if(document.body.classList.contains("view-video")) return;
+    const r = tileRefs[id];
+    if(!r || !r.tile) return;
+    const t = r.tile;
+    const rect = t.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if(rect.top >= 4 && rect.bottom <= vh - 4) return;
+    let smooth = true;
+    try{ smooth = !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }catch(e){}
+    t.scrollIntoView({behavior: smooth ? "smooth" : "auto", block: "nearest"});
   }
 
   async function playRound(n){
@@ -1722,6 +1732,10 @@
   window.__mr4 = {
     state: state,
     setView: setView,
+    focusTile: focusTile,
+    view: () => state.view,
+    subtitle: () => { const t=document.getElementById("vsTx"), b=document.getElementById("vsub"); return {text:(t&&t.textContent)||"", h: b? Math.round(b.getBoundingClientRect().height):0}; },
+    sub: setSubtitle,   // 검증용: 자막을 직접 갈아 끼워 높이 고정 확인
     shuffleOrder: shuffleOrder,
     orderLog: () => state.orderLog,
     lastOrder: () => state.lastOrder.slice(),
