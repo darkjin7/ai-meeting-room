@@ -156,7 +156,7 @@
   .guestbar .gt{font-size:10.5px;font-weight:800;color:#c8c0ff}
   .guestbar .gw{display:flex;gap:10px;flex-wrap:wrap;margin-top:5px}
   .guestbar .gi{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#cfd5e5}
-  .guestbar .gie{font-size:12px}
+  .guestbar .gie{width:18px;height:18px;border-radius:50%;overflow:hidden;flex:0 0 auto;display:grid;place-items:center;font-size:12px;background:#0d1119;border:1px solid var(--line);line-height:1}
   .guestbar .gin{font-weight:800}
   .guestbar .gir{font-size:9.5px;color:#8f97ab}
   .guestbar .gh{margin-top:5px;font-size:9.5px;color:#6a7286;line-height:1.45}
@@ -165,7 +165,7 @@
   .gcard{background:#0b0e15;border:1px solid var(--line-soft);border-radius:10px;padding:9px;margin-bottom:7px}
   .gcard:last-child{margin-bottom:0}
   .gch{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .gce{font-size:15px;line-height:1}
+  .gce{width:26px;height:26px;border-radius:50%;overflow:hidden;flex:0 0 auto;display:grid;place-items:center;font-size:15px;line-height:1;background:#0d1119;border:1px solid var(--line)}
   .gcn{min-width:0}
   .gcnm{font-size:11.5px;font-weight:800;color:#e6eaf4}
   .gcr{font-size:9.5px;color:#8f97ab}
@@ -245,8 +245,16 @@
   .thead{display:flex;align-items:center;gap:8px;padding:9px 9px 6px}
   .avatar{
     width:30px;height:30px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;font-size:15px;
-    background:#0d1119;border:1px solid var(--line);
+    background:#0d1119;border:1px solid var(--line);overflow:hidden;
   }
+  /* ── v4.3 캐릭터 썸네일(img) ──
+     크기는 전부 CSS 로 못 박고 object-fit:cover 로 채운다. 이미지가 늦게 와도 카드 높이 불변. */
+  img.face{
+    display:block;width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;
+    border-radius:inherit;background:#0b0f17;
+  }
+  .face-fallback{display:grid;place-items:center;font-size:12px;line-height:1;color:#cfd5e5}
+  .avatar.face-fallback{font-size:15px}
   .who{min-width:0;flex:1}
   .who .nm{font-size:12px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .who .rl{font-size:9.5px;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -381,7 +389,7 @@
   .concl-text{font-size:12.5px;color:#dfe4f0;background:#0a0d14;border:1px solid var(--line-soft);border-radius:10px;padding:10px 11px;line-height:1.6;white-space:pre-line}
   .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
   .ac{display:flex;gap:8px;background:#0a0d14;border:1px solid var(--line-soft);border-radius:10px;padding:8px 9px}
-  .ac .em{font-size:13px;line-height:1.2}
+  .ac .em{width:22px;height:22px;border-radius:50%;overflow:hidden;flex:0 0 auto;display:grid;place-items:center;font-size:13px;line-height:1.2;background:#0d1119;border:1px solid var(--line-soft)}
   .ac .nm{font-size:10.5px;font-weight:800;color:#cfd5e5}
   .ac .tx{font-size:10.5px;color:#9aa3b8;line-height:1.45;margin-top:1px}
   .final{display:none;margin-top:9px;border:1px solid rgba(46,224,106,.30);background:rgba(46,224,106,.06);border-radius:10px;padding:9px 10px;font-size:11.5px;line-height:1.55;color:#c9f3d6}
@@ -716,9 +724,11 @@
     width:clamp(56px,16vh,150px);height:clamp(56px,16vh,150px);border-radius:50%;
     display:grid;place-items:center;line-height:1;font-size:clamp(26px,7vh,74px);
     background:radial-gradient(circle at 50% 36%,#1b2233,#0d1119 72%);
-    border:1px solid var(--line);
+    border:1px solid var(--line);overflow:hidden;
     will-change:transform;transform-origin:50% 80%;
   }
+  /* v4.3 — 6분할 얼굴은 실제 캐릭터 이미지(256x256 webp)를 원형 프레임에 꽉 채운다 */
+  body.view-video .vbob img.face{border-radius:50%;width:100%;height:100%;object-fit:cover}
   body.view-video .tile.speaking .vbob{
     border-color:var(--green);
     background:radial-gradient(circle at 50% 36%,#1b3527,#0e1a14 72%);

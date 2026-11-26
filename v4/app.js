@@ -6,17 +6,54 @@
   const LIB = window.AGENDA_LIB || {agendas:[], byId:{}};
   const AIS = ["pickle","gemini","cue","hark","chatgpt","claude"];
   const GUEST_POOL = ["meta_muse","keyring"];
+  /* v4.3 — 비서실 8인 SD 캐릭터 아바타. img 는 256x256 webp(저장소 `avatars/`), 실패하면 emoji 로 대체된다. */
   const PEOPLE = [
-    {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6"},
-    {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4"},
-    {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8"},
-    {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c"},
-    {id:"chatgpt", name:"ChatGPT",   emoji:"🛠️", role:"구조 설계·DB·자동화",     color:"#10a37f"},
-    {id:"claude",  name:"Claude",    emoji:"✍️", role:"글쓰기·기획 검토",        color:"#d97757"},
-    {id:"meta_muse",name:"Meta Muse",emoji:"🎨", role:"B롤 영상·이미지",        color:"#e879f9"},
-    {id:"keyring", name:"Keyring",   emoji:"🔑", role:"신규 합류 · 참관",        color:"#a3e635"}
+    {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6", img:"./avatars/pickle.webp"},
+    {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4", img:"./avatars/gemini.webp"},
+    {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8", img:"./avatars/cue.webp"},
+    {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c", img:"./avatars/hark.webp"},
+    {id:"chatgpt", name:"ChatGPT",   emoji:"🛠️", role:"구조 설계·DB·자동화",     color:"#10a37f", img:"./avatars/chatgpt.webp"},
+    {id:"claude",  name:"Claude",    emoji:"✍️", role:"글쓰기·기획 검토",        color:"#d97757", img:"./avatars/claude.webp"},
+    {id:"meta_muse",name:"Meta Muse",emoji:"🎨", role:"B롤 영상·이미지",        color:"#e879f9", img:"./avatars/meta_muse.webp"},
+    {id:"keyring", name:"Keyring",   emoji:"🔑", role:"신규 합류 · 참관",        color:"#a3e635", img:"./avatars/keyring.webp"}
   ];
   const byId = id => PEOPLE.find(p => p.id === id) || (id === "owner" ? {id:"owner", name:"오너", emoji:"👑", color:"#f5c04a"} : null);
+
+  /* ── v4.3 캐릭터 썸네일 ──
+     모든 자리에서 크기는 CSS 로 고정하고 img 에 width/height/object-fit 을 명시한다.
+     이미지가 늦게 와도(또는 실패해도) 카드 높이가 1px도 변하지 않는다. */
+  function faceImg(p, cls){
+    const img = document.createElement("img");
+    img.className = "face" + (cls ? " " + cls : "");
+    img.alt = (p && p.name) || "";
+    img.width = 256; img.height = 256;
+    img.loading = "eager"; img.decoding = "async"; img.draggable = false;
+    if(p && p.img) img.src = p.img;
+    return img;
+  }
+  /* holder 안을 캐릭터 썸네일로 채운다. 로드 실패 시 이모지로 조용히 대체 */
+  function faceInto(holder, p){
+    holder.textContent = "";
+    if(!p || !p.img){ holder.textContent = (p && p.emoji) || "•"; return holder; }
+    const img = faceImg(p);
+    img.addEventListener("error", function(){
+      holder.classList.add("face-fallback");
+      holder.textContent = p.emoji || "•";
+    });
+    holder.appendChild(img);
+    return holder;
+  }
+  function faceBox(p, tag, cls){
+    const h = document.createElement(tag || "div");
+    h.className = cls || "facebox";
+    return faceInto(h, p);
+  }
+  /* 게스트는 agendas.js 안에 {id,name,emoji,role,advice} 로 적혀 있다 — PEOPLE 의 사진을 붙인다 */
+  function guestPerson(g){
+    if(!g) return {};
+    const p = g.id ? byId(g.id) : null;
+    return p ? Object.assign({}, p, {name: g.name || p.name, role: g.role || p.role, emoji: g.emoji || p.emoji}) : g;
+  }
 
   /* 주전 6인은 안건마다 바뀔 수 있다 (참관 게스트 2인은 타일 없이 조언만) */
   function partList(){
@@ -437,7 +474,8 @@
       t.dataset.id = p.id;
 
       const head = el("div","thead");
-      const av = el("div","avatar", p.emoji);
+      const av = el("div","avatar");
+      faceInto(av, p);
       av.style.borderColor = p.color + "55";
       const who = el("div","who");
       who.append(el("div","nm", p.name), el("div","rl", p.role));
@@ -461,7 +499,8 @@
 
       /* v4.2 화상 6분할용 얼굴 — 캐릭터 + 이름 + 상태/웨이브 (긴 본문 없음) */
       const vs = el("div","vstage");
-      const vbob = el("div","vbob", p.emoji);
+      const vbob = el("div","vbob");
+      faceInto(vbob, p);
       const vnm = el("div","vnm", p.name);
       const vmeta = el("div","vmeta");
       const vst = el("span","vstate","대기");
@@ -1055,7 +1094,7 @@
     const w = el("div","gw");
     gs.forEach(g=>{
       const i = el("div","gi");
-      i.append(el("span","gie", g.emoji || "👀"));
+      i.append(faceBox(guestPerson(g), "span", "gie"));
       i.append(el("span","gin", g.name));
       if(g.role) i.append(el("span","gir", g.role));
       w.append(i);
@@ -1077,7 +1116,7 @@
       const ad = g.advice || {};
       const card = el("div","gcard");
       const head = el("div","gch");
-      head.append(el("span","gce", g.emoji || "👀"));
+      head.append(faceBox(guestPerson(g), "span", "gce"));
       const nm = el("div","gcn");
       nm.append(el("div","gcnm", g.name));
       if(g.role) nm.append(el("div","gcr", g.role));
@@ -1329,7 +1368,7 @@
       const card = el("div","ac"); card.dataset.id = id;
       const body = el("div");
       body.append(el("div","nm", p.name), el("div","tx", roles[id] || "역할 미정"));
-      card.append(el("div","em", p.emoji), body);
+      card.append(faceBox(p, "div", "em"), body);
       list.append(card);
       renderBubble(id, "맡은 일", roles[id] || "역할 미정", {role:"2단계 · 역할 분담", showBtn:false});
       setTileState(id,"assigned","배정");

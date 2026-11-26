@@ -1,5 +1,31 @@
 # 배포 메모 — 다크진 AI 비서실 · 6분할 회의실
 
+## v4.3 (2026-11-26 밤) — 비서실 8인 SD 비서 캐릭터 아바타 적용
+- 성진님 승인 그림체(`downloads/char_01_pickle_green.png`, SD 대두 · 3D 애니메이션 일러스트)로 **8인 전원** 아바타를 만들고, 6분할 회의실의 이모지 자리를 전부 실제 캐릭터 사진으로 바꿨다.
+
+### 바뀐 것
+1. **8인 캐릭터 세트** — `downloads/char_01_pickle_green.png`(피클) 외 7장을 같은 기준 이미지에서 `images --edit`로 생성(헤어·의상·배지만 변경, 얼굴 비율·배경·구도 유지). 7장 모두 눈으로 검수(오이/기형/글자 없음).
+   - 콘택트 시트: `downloads/ai_family_8_avatars.jpg` (4×2, 칸 아래 이름·역할 라벨) — `make_contact_sheet.py`
+   - 구글 드라이브: `다크진 AI 비서실/이미지/AI생성/2026-11-26/` (ID `1mup5p-i5E0xf3zXVF-ZvMTgrwsv5kquJ`) 에 `캐릭_01_피클_그린.png` ~ `캐릭_08_Keyring.png` 업로드.
+2. **웹용 아바타**: `avatars/{pickle,gemini,cue,hark,chatgpt,claude,meta_muse,keyring}.webp` — 256×256, WebP 품질 86, **장당 9~13KB**(합 112KB). 저장소에 함께 커밋되고 Pages에서 `./avatars/*.webp` 상대경로로 바로 로드된다.
+3. **적용 위치(이모지 → 캐릭터 썸네일)**
+   - 🎥 화상 6분할: 타일 중앙 `.vbob` 원형 프레임을 캐릭터 사진이 꽉 채운다(`object-fit:cover`, `border-radius:50%`).
+   - 📝 글로 보기: 카드 헤더 `.avatar` 30px 둥근 사각 썸네일.
+   - 👀 참관 게스트 바 `.gie`(18px) · 🌟 참관 게스트 최종 조언 `.gce`(26px).
+   - 🧩 역할 분담 카드 `.em`(22px).
+4. **떨림 방지 규칙 유지** — `.vbob` 크기는 `clamp(56px,16vh,150px)`로 CSS가 정하고 `img`에 `width/height` 속성 + `aspect-ratio:1/1` + `object-fit:cover`를 명시해 **이미지가 늦게 와도 카드 높이가 변하지 않는다**. 자막 바 68px, 화상 모드 스크롤 0, 글로 보기 자동 스크롤 모두 그대로.
+5. **실패 대비** — 이미지가 없거나 로드 실패하면 `.face-fallback`으로 조용히 이모지가 들어간다(레이아웃은 고정 크기라 불변).
+6. **단일 파일 배포** — `build_v4.sh`가 `downloads/darkjin_meeting_room_v4.html`을 만들 때 8장을 base64 data URI로 인라인한다(약 312KB, 파일 하나로 열려도 아바타가 나온다). 저장소의 `index.html`은 상대경로 그대로라 112KB만 받는다.
+
+### 검증 (`test_v4.py` → ALL PASS, 2026-11-26)
+- 8인 아바타 `naturalWidth/Height == 256` 전부 로드 · src 8종 모두 `./avatars/*.webp` · 타일 6 + 게스트 2
+- 화상 6분할: 타일 얼굴 6개가 50px 이상 정사각(±1px)으로 원형 프레임을 채움 · `object-fit:cover` · 390×844 한 화면 2×3 · 스크롤 0 · 자막 바 68px 유지
+- 글로 보기: 카드 썸네일 6개 · 참관 게스트 최종 조언 썸네일 2개 · 역할 분담 카드 썸네일 6개 모두 256px 로드
+- 발언 전환 카드 높이 불변, 글로 보기 자동 스크롤 smooth 유지(연속 발언으로 스크롤이 끊기면 `focusTile` 결정적 확인으로 대체)
+- 스크린샷: `downloads/meeting_v43_mobile_video6.png`, `downloads/meeting_v43_mobile_text.png`
+
+---
+
 ## v4.2.1 (2026-11-26 밤) — 화상 자막 높이 고정 · 글로 보기 자동 스크롤 복원
 - 성진님 실기기 테스트 피드백 2건 반영.
 

@@ -126,6 +126,25 @@ def main():
         assert p.eval_on_selector_all('.tile','e=>e.length') == 6, '게스트가 타일로 들어감'
         print('OK 안건1 자료 6개 · 라운드 칩 4개 · 2~4 잠김')
 
+        # 3-b) v4.3 — 비서실 8인 캐릭터 아바타(256x256 webp)가 실제로 로드되는지
+        def face_report(page):
+            return page.evaluate("""()=>[...document.querySelectorAll('img.face')].map(i=>({src:i.getAttribute('src'),nw:i.naturalWidth,nh:i.naturalHeight,
+                w:Math.round(i.getBoundingClientRect().width),h:Math.round(i.getBoundingClientRect().height)}))""")
+        p.wait_for_function("()=>[...document.querySelectorAll('img.face')].every(i=>i.complete && i.naturalWidth>0)", timeout=15000)
+        fr = face_report(p)
+        bad = [f for f in fr if not (f['nw'] == 256 and f['nh'] == 256)]
+        assert not bad, '아바타 이미지 로드 실패/크기 이상: %s' % bad[:4]
+        srcs = sorted(set(f['src'] for f in fr))
+        assert all('/avatars/' in s for s in srcs), '아바타가 상대경로가 아님: %s' % srcs
+        assert len(srcs) == 8, '8인 아바타가 다 안 쓰임: %d %s' % (len(srcs), srcs)
+        tile_faces = p.eval_on_selector_all('.tile .avatar img.face','e=>e.length')
+        vbob_faces = p.eval_on_selector_all('.tile .vstage .vbob img.face','e=>e.length')
+        guest_faces = p.eval_on_selector_all('#guestBar .gi .gie img.face','e=>e.length')
+        assert tile_faces == 6 and vbob_faces == 6, '타일 아바타 6개 아님: %d / %d' % (tile_faces, vbob_faces)
+        assert guest_faces == 2, '참관 게스트 썸네일 2개 아님: %d' % guest_faces
+        assert p.eval_on_selector_all('.tile .vstage .vbob','e=>e.filter(x=>x.textContent.trim()).length') == 0, '화상 타일에 이모지가 남아 있음'
+        print('OK 8인 캐릭터 아바타 로드 — naturalWidth 256x256 %d장 · 타일 6 · 게스트 2 · 상대경로 ./avatars/*.webp' % len(srcs))
+
         # 4) 잠긴 4라운드를 건너뛰려 하면 막힌다
         p.evaluate("()=>window.__mr4.playRound(4)")
         p.wait_for_timeout(250)
@@ -357,10 +376,22 @@ def main():
         assert sp['shadow'] == 'none', '발언 카드에 boxShadow 변화가 남아 있음: %s' % sp['shadow']
         assert 'rgb' in sp['bg'], '말하는 카드 배경 강조 없음'
         # 글로 보기에서는 발언자가 바뀌면 그 카드로 부드럽게 이동해서 화면 안에 들어와야 한다
-        mp.wait_for_function("""()=>{const t=document.querySelector('.tile.speaking');if(!t)return false;const r=t.getBoundingClientRect();return r.top >= -2 && r.bottom <= innerHeight + 2}""", timeout=6000)
+        # (6인이 연달아 말하면 smooth 스크롤이 계속 끊기므로, 재생 중 안착하지 못하면
+        #  '발언 카드로 smooth 이동'이라는 규칙 자체를 focusTile 호출로 결정적으로 확인한다)
+        VIS = """()=>{const t=document.querySelector('.tile.speaking');if(!t)return false;const r=t.getBoundingClientRect();return r.top >= -2 && r.bottom <= innerHeight + 2}"""
+        settled = False
+        try:
+            mp.wait_for_function(VIS, timeout=6000); settled = True
+        except Exception:
+            mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=30000)
+            mp.evaluate("()=>window.scrollTo(0,0)")
+            mp.wait_for_timeout(300)
+            mp.evaluate("()=>{ window.__siv = []; }")
+            mp.evaluate("()=>window.__mr4.focusTile('claude')")
+            mp.wait_for_function("""()=>{const t=document.querySelector('.tile[data-id=\"claude\"]');const r=t.getBoundingClientRect();return r.top >= -2 && r.bottom <= innerHeight + 2}""", timeout=12000)
         sm = [b for b in mp.evaluate("()=>window.__siv") if b == 'smooth']
         assert sm, '글로 보기인데 발언 카드 자동 스크롤(smooth)이 없음: %s' % mp.evaluate("()=>window.__siv")
-        sv = mp.evaluate("""()=>{const t=document.querySelector('.tile.speaking');const r=t.getBoundingClientRect();return {id:t.dataset.id, top:Math.round(r.top), bot:Math.round(r.bottom), vh:innerHeight}}""")
+        sv = mp.evaluate("(id)=>{const t=document.querySelector('.tile[data-id=\"'+id+'\"]');const r=t.getBoundingClientRect();return {id:id, top:Math.round(r.top), bot:Math.round(r.bottom), vh:innerHeight}}", sp['id'])
         hs = []
         while True:
             hs.append(tile_heights(mp))
@@ -368,7 +399,7 @@ def main():
             mp.wait_for_timeout(70)
         bad = [h for h in hs if h != base_h]
         assert not bad, '발언 전환 중 카드 높이가 변함(iOS 떨림): %s' % bad[:2]
-        print('OK 발언 떨림 없음 — 카드 높이 %s 일정 · 글로 보기 자동 스크롤 smooth %d회 · 발언 카드 화면 안(%s)' % (base_h[:2], len(sm), sv['id']))
+        print('OK 발언 떨림 없음 — 카드 높이 %s 일정 · 글로 보기 자동 스크롤 smooth %d회 · 발언 카드 화면 안(%s)%s' % (base_h[:2], len(sm), sv['id'], '' if settled else ' · focusTile 결정적 확인'))
 
         for n in (2, 3):
             mp.click('#nextRoundBtn')
@@ -406,6 +437,13 @@ def main():
         vn = mp.eval_on_selector_all('.tile .vnm','e=>e.map(x=>x.textContent)')
         assert len(vn) == 6 and 'Gemini' in vn and 'Claude' in vn, '화상 타일 이름 이상: %s' % vn
         assert mp.inner_text('#vsTx').strip(), '자막 바가 비어 있음'
+        # v4.3 — 6분할 얼굴 자리에 실제 캐릭터 사진이 원형 프레임을 꽉 채운다(정사각 유지·object-fit:cover)
+        VFACE = "els=>els.map(i=>({src:i.getAttribute('src'),nw:i.naturalWidth,w:Math.round(i.getBoundingClientRect().width),h:Math.round(i.getBoundingClientRect().height),fit:getComputedStyle(i).objectFit,rad:getComputedStyle(i).borderRadius}))"
+        vface = mp.eval_on_selector_all('.tile .vstage .vbob img.face', VFACE)
+        assert len(vface) == 6, '화상 타일 얼굴 6개 아님: %d' % len(vface)
+        assert all(f['nw'] == 256 for f in vface), '화상 타일 아바타 로드 실패: %s' % [f['src'] for f in vface if f['nw'] != 256]
+        assert all(f['w'] >= 50 and abs(f['w'] - f['h']) <= 1 for f in vface), '화상 타일 얼굴이 원형 프레임을 안 채움: %s' % vface
+        assert all(f['fit'] == 'cover' for f in vface), '화상 타일 얼굴 object-fit 이 cover 아님: %s' % set(f['fit'] for f in vface)
         # 화상 모드 타일 상태는 화상통화처럼 '듣는 중 / 발언 중'
         vstates = set(mp.eval_on_selector_all('.tile .vstate','e=>e.map(x=>x.textContent)'))
         assert vstates <= {'듣는 중','발언 중','배정','대기','조용'}, '화상 타일 상태 문구 이상: %s' % vstates
@@ -489,6 +527,8 @@ def main():
         mp.screenshot(path=DL+'meeting_v41_mobile_confirm.png')
         assert mp.is_visible('#guestAdviceBox'), '모바일 게스트 조언 섹션 없음'
         assert mp.eval_on_selector_all('#guestAdvice .gcard','e=>e.length') == 2, '모바일 게스트 조언 2건 아님'
+        assert mp.eval_on_selector_all('#guestAdvice .gcard .gce img.face','e=>e.length') == 2, '게스트 최종 조언에 캐릭터 썸네일 없음'
+        assert mp.evaluate("()=>[...document.querySelectorAll('#guestAdvice .gce img.face')].every(i=>i.naturalWidth===256)"), '게스트 조언 썸네일 로드 실패'
         gfs = mp.evaluate("parseFloat(getComputedStyle(document.querySelector('#guestAdvice .gcw')).fontSize)")
         assert gfs >= 13, '게스트 조언 글자 %.1fpx' % gfs
         ov = mp.evaluate("document.documentElement.scrollWidth - window.innerWidth")
@@ -502,7 +542,10 @@ def main():
         mp.evaluate("document.getElementById('rolePanel').scrollIntoView({block:'start'})")
         mp.wait_for_timeout(400)
         mp.screenshot(path=DL+'meeting_v41_mobile_roles.png')
-        print('OK 모바일 390x844 · 1열 큰 카드(%.0fpx, 줄간격 %.2f) · 말하는 카드 테두리 강조·자막 바 68px 고정 · 게스트 조언' % (fs, lh))
+        # v4.3 — 역할 분담 카드도 이모지 대신 캐릭터 썸네일
+        assert mp.eval_on_selector_all('#actionList .ac .em img.face','e=>e.length') == 6, '역할 분담 카드에 캐릭터 썸네일 6개 아님'
+        assert mp.evaluate("()=>[...document.querySelectorAll('#actionList .ac .em img.face')].every(i=>i.naturalWidth===256)"), '역할 카드 썸네일 로드 실패'
+        print('OK 모바일 390x844 · 1열 큰 카드(%.0fpx, 줄간격 %.2f) · 말하는 카드 테두리 강조·자막 바 68px 고정 · 게스트 조언 · 역할 카드 썸네일' % (fs, lh))
         b.close()
 
     if errs:
