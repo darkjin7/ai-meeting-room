@@ -42,6 +42,8 @@
   const K_SEEN  = "darkjin_mr4_seen_ready";
   const K_NOTIFY= "darkjin_mr4_notify";
   const K_PLAN  = "darkjin_mr4_plans";
+  const K_VIEW  = "darkjin_mr42_view";
+  const REACTIONS = ["😄","👍","😲","👏","🔥","🤔"];
 
   const LS = {
     get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
@@ -71,7 +73,12 @@
     timerId:null,
     activeCut:null,
     activeSpeaker:null,
-    matId:null
+    matId:null,
+    view:"text",        // text(글로 보기) | video(화상 6분할)
+    lastLine:null,       // 화상 모드 자막에 남길 마지막 대사 {id, tag, text}
+    lastOrder:[],        // 방금 재생한 라운드의 랜덤 발언 순서
+    orders:{},           // 라운드별 마지막 발언 순서
+    orderLog:[]          // 재생 때마다 쌓이는 순서 기록 (검증·복기용)
   };
 
   const $ = s => document.querySelector(s);
@@ -278,6 +285,7 @@
       r.state.classList.remove("s-speaking","s-ready","s-done");
       r.state.classList.add("s-quiet");
       r.state.textContent = "조용";
+      if(r.vstate) r.vstate.textContent = "조용";
     });
     document.body.classList.add("is-quiet");
     if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
@@ -450,9 +458,22 @@
       foot.append(wave, roleTag, matbtn);
 
       const qv = el("div","qveil");
-      t.append(head, wrap, foot, qv);
+
+      /* v4.2 화상 6분할용 얼굴 — 캐릭터 + 이름 + 상태/웨이브 (긴 본문 없음) */
+      const vs = el("div","vstage");
+      const vbob = el("div","vbob", p.emoji);
+      const vnm = el("div","vnm", p.name);
+      const vmeta = el("div","vmeta");
+      const vst = el("span","vstate","대기");
+      const vw = el("div","vw");
+      for(let i=0;i<5;i++) vw.append(el("i"));
+      vmeta.append(vst, vw);
+      vs.append(vbob, vnm, vmeta);
+      const react = el("div","react");
+
+      t.append(head, wrap, foot, vs, react, qv);
       stage.append(t);
-      tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave};
+      tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave, vstate:vst, vbob, react, reactT:null};
     });
   }
 
@@ -465,6 +486,16 @@
     if(kind==="assigned"){ r.tile.classList.add("assigned"); r.state.classList.add("s-done"); }
     if(kind==="quiet"){ r.state.classList.add("s-quiet"); }
     r.state.textContent = label || (kind==="speaking"?"발언 중":kind==="ready"?"자료 준비":kind==="assigned"?"배정":kind==="quiet"?"조용":"대기");
+    if(r.vstate) r.vstate.textContent = videoLabel(r);
+  }
+  /* 화상 6분할 타일의 상태 문구 — 화상통화처럼 "듣는 중 / 발언 중"으로 보여 준다 */
+  function videoLabel(r){
+    if(!r) return "대기";
+    if(r.tile.classList.contains("quiet")) return "조용";
+    if(r.tile.classList.contains("speaking")) return "발언 중";
+    if(state.phase === "roles") return "배정";
+    if(!state.agenda) return "대기";
+    return "듣는 중";
   }
 
   function renderBubble(id, tag, text, opts){
@@ -477,6 +508,73 @@
     r.bubble.append(el("span","msum", text));
     r.bubble.scrollTop = 0;
     if(opts.showBtn) r.matbtn.classList.remove("ghost");
+  }
+
+  /* ═══════════════════ 화상 6분할 ↔ 글로 보기 (v4.2) ═══════════════════ */
+  function setView(v, opts){
+    opts = opts || {};
+    v = (v === "video") ? "video" : "text";
+    if(v === "video" && !state.agenda){
+      if(!opts.silent) toast("안건을 먼저 골라 주세요 · 화상 화면은 회의 중에 열립니다");
+      v = "text";
+    }
+    state.view = v;
+    LS.set(K_VIEW, v);
+    document.body.classList.toggle("view-video", v === "video");
+    const vb = document.getElementById("viewVideoBtn");
+    const tb = document.getElementById("viewTextBtn");
+    if(vb) vb.classList.toggle("on", v === "video");
+    if(tb) tb.classList.toggle("on", v === "text");
+    if(v === "video"){
+      if(state.lastLine) setSubtitle(state.lastLine.id, state.lastLine.tag, state.lastLine.text);
+      else setSubtitle(null, "", "", true);
+      window.scrollTo(0,0);
+    }
+    if(!opts.silent) toast(v === "video" ? "🎥 화상 6분할 — 캐릭터 화면으로 봅니다" : "📝 글로 보기 — 1열 큰 글씨로 봅니다");
+    return v;
+  }
+  function setSubtitle(id, tag, text, empty){
+    const who = document.getElementById("vsWho");
+    const tg = document.getElementById("vsTag");
+    const tx = document.getElementById("vsTx");
+    const box = document.getElementById("vsub");
+    if(!who || !tx) return;
+    const p = id ? byId(id) : null;
+    who.textContent = p ? (p.emoji ? p.emoji + " " : "") + p.name : "🎙 회의실";
+    who.style.color = p && p.color ? p.color : "";
+    if(tg){ tg.textContent = tag || ""; tg.style.display = tag ? "" : "none"; }
+    tx.textContent = text || (empty ? "발언이 시작되면 여기에 한 줄로 나옵니다." : "");
+    if(box) box.classList.toggle("empty", !text);
+  }
+  /* 발언자가 말할 때 옆 캐릭터에 리액션 배지를 띄운다 (레이아웃 영향 없음 — absolute) */
+  function flashReactions(speakerId){
+    const others = partList().filter(id=> id !== speakerId && tileRefs[id]);
+    if(!others.length) return;
+    shuffleOrder(others);
+    const picks = others.slice(0, 1 + Math.floor(Math.random() * 2));
+    picks.forEach(id=>{
+      const r = tileRefs[id]; if(!r || !r.react) return;
+      const emoji = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+      r.react.textContent = emoji;
+      r.react.classList.add("on");
+      clearTimeout(r.reactT);
+      r.reactT = setTimeout(()=> r.react.classList.remove("on"), 1500 + Math.random() * 1100);
+    });
+  }
+  /* 발언 순서 섞기 — 고정 1~6번 순서를 쓰지 않는다 (같은 라운드를 다시 틀어도 매번 달라진다) */
+  function shuffleOrder(src){
+    const a = src.slice();
+    if(a.length < 2) return a;
+    for(let tries=0; tries<4; tries++){
+      for(let i=a.length-1; i>0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      let same = true;
+      for(let i=0;i<a.length;i++){ if(a[i] !== src[i]){ same = false; break; } }
+      if(!same) return a;
+    }
+    return a;
   }
 
   /* ═══════════════════ 기록 (논의 / 회의록) ═══════════════════ */
@@ -585,7 +683,9 @@
     const cutP = new Promise(res=>{ cutRec.fire = ()=>{ if(!cutRec.fired){ cutRec.fired = true; res(); } }; });
     state.activeSpeaker = id;
     setTileState(id, "speaking", opts.label || "낭독 중");
-    focusTile(id);
+    state.lastLine = {id:id, tag:opts.sub || "", text:text || ""};
+    setSubtitle(id, opts.sub || "", text || "");
+    flashReactions(id);
     const talking = (state.voiceOn && text) ? speakText(id, text, token, cutRec) : Promise.resolve();
     await Promise.race([talking, cutP]);
     state.activeCut = null;
@@ -806,9 +906,15 @@
     addSystem('안건 열람 — "' + a.title + '" (자료 ' + pc + '/' + pc + ' · ' + (a.preparedAt||"") + ")");
     addSystem("라운드 " + goal + "개 준비됨 · 1라운드 자료 발표부터 차례로 진행하세요 (결론은 언제든 고를 수 있습니다)");
 
+    state.lastLine = null; state.lastOrder = []; state.orders = {};
+    setSubtitle(null, "", "", true);
+    setView(LS.get(K_VIEW) === "video" ? "video" : "text", {silent:true});
+
     toast("🗂️ 안건 열었습니다 · 주전 " + pc + "인 자료와 " + goal + "라운드 토론이 준비되어 있습니다");
-    const sh = document.getElementById("stageHd");
-    if(sh) sh.scrollIntoView({block:"start"});
+    if(state.view !== "video"){
+      const sh = document.getElementById("stageHd");
+      if(sh) sh.scrollIntoView({block:"start"});
+    }
   }
 
   function renderMaterials(){
@@ -993,11 +1099,10 @@
   }
 
   function focusTile(id){
-    if(window.innerWidth > 768) return;
-    const r = tileRefs[id]; if(!r) return;
-    const rect = r.tile.getBoundingClientRect();
-    if(rect.top >= 62 && rect.bottom <= window.innerHeight - 128) return;
-    try{ r.tile.scrollIntoView({block:"center", behavior:"smooth"}); }catch(e){ try{ r.tile.scrollIntoView(); }catch(e2){} }
+    /* v4.2 — 자동 스크롤을 쓰지 않는다.
+       scrollIntoView(smooth)는 iOS Safari에서 발언이 바뀔 때마다 화면을 흔드는 주원인이었다.
+       보고 싶은 카드는 성진님이 직접 스크롤해서 본다. */
+    return;
   }
 
   async function playRound(n){
@@ -1011,7 +1116,14 @@
     state.phase = n === 1 ? "materials" : "discussion";
     setStep(n === 1 ? 1 : 2);
     const plist = partList();
-    const order = ((rd.order && rd.order.length) ? rd.order : plist).filter(id=> plist.indexOf(id) >= 0);
+    /* v4.2 — 고정 1~6번 순서를 버리고 매번 랜덤으로 섞는다.
+       "순서대로 발표"가 아니라 "랜덤으로 치고 들어오는" 회의 느낌. 같은 라운드를 다시 들어도 순서가 달라진다. */
+    const baseOrder = ((rd.order && rd.order.length) ? rd.order : plist).filter(id=> plist.indexOf(id) >= 0);
+    const order = shuffleOrder(baseOrder);
+    state.lastOrder = order.slice();
+    state.orders[rd.n] = order.slice();
+    state.orderLog.push({round:rd.n, at:Date.now(), order:order.slice()});
+    if(state.orderLog.length > 40) state.orderLog.shift();
     const headLbl = (rd.emoji||"") + " " + rd.n + "라운드 · " + rd.tag;
     setStageHead(rd.n + "라운드", (rd.desc || rd.tag), headLbl + " 0 / " + order.length, n > 1);
     addSystem((rd.emoji||"") + " " + rd.n + "라운드 " + rd.tag + " — " + (rd.desc || ""));
@@ -1024,9 +1136,10 @@
       const line = lineFor(id, rd);
       if(!line) continue;
       const who = line.to ? byId(line.to) : null;
-      const tag = rd.n + "라운드 · " + (who ? "→ " + who.name : rd.tag);
+      const tag = rd.n + "라운드 · " + (who ? "→ " + who.name + "에게" : rd.tag);
+      const sub = who ? "🔥 " + rd.n + "라운드 · " + who.name + "에게 치고 들어오기" : (rd.n + "라운드 · " + rd.tag);
       renderBubble(id, tag, line.text, {showBtn:true});
-      await speakLine(id, line.text, {label: rd.tag + " 중"});
+      await speakLine(id, line.text, {label: rd.tag + " 중", sub: sub});
       if(token !== state.runToken) break;
       const key = rd.n + ":" + id;
       if(!state.talked[key]){
@@ -1119,6 +1232,7 @@
   /* ═══════════════════ 결론 확정 ═══════════════════ */
   function openConfirm(){
     if(!state.agenda) return;
+    setView("text", {silent:true});   // 결론·역할은 문서 화면이라 글로 보기로 전환한다
     state.phase = "confirm";
     setStep(3);
     setLive("결론 확정 대기", "owner");
@@ -1155,7 +1269,7 @@
     }
     document.getElementById("confirmPanel").classList.add("show");
     addSystem("결론 확정 단계 — 오너가 후보를 고르고 역할 분담이 생성됩니다");
-    document.getElementById("confirmPanel").scrollIntoView({block:"center", behavior:"smooth"});
+    document.getElementById("confirmPanel").scrollIntoView({block:"center"});
   }
 
   function backToTalk(){
@@ -1165,11 +1279,12 @@
     document.getElementById("stage1Bar").style.display = "";
     setLive("논의 중", "");
     toast("↩️ 논의로 돌아왔습니다");
-    window.scrollTo({top:0, behavior:"smooth"});
+    window.scrollTo(0,0);
   }
 
   function confirmRoles(){
     if(!state.agenda) return;
+    setView("text", {silent:true});   // 역할 분담표도 문서 화면이다
     if(!state.option){
       toast("결론 후보를 하나 골라 주세요");
       document.querySelectorAll("#optList .opt").forEach(x=>{
@@ -1233,6 +1348,10 @@
   function newMeeting(){
     state.runToken++;
     state.phase = "idle";
+    setView("text", {silent:true});
+    state.lastLine = null;
+    state.lastOrder = [];
+    setSubtitle(null, "", "", true);
     state.agenda = null; state.option = null; state.ownerDir = "";
     state.notes = []; state.round = 0; state.roundSet = {}; state.talked = {};
     document.body.classList.remove("meeting-on");
@@ -1254,7 +1373,7 @@
     setLive("준비실", "");
     renderPrep();
     renderRoundBar();
-    window.scrollTo({top:0, behavior:"smooth"});
+    window.scrollTo(0,0);
     toast("준비실로 돌아왔습니다");
   }
 
@@ -1459,6 +1578,9 @@
     if(!open) document.getElementById("agList").scrollIntoView({block:"nearest"});
   });
   document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  /* v4.2 보기 전환 — 회의 중 언제든 원터치로 왔다 갔다 */
+  document.getElementById("viewVideoBtn").addEventListener("click", ()=>{ unlockVoice(); setView("video"); });
+  document.getElementById("viewTextBtn").addEventListener("click", ()=>{ unlockVoice(); setView("text"); });
   document.querySelectorAll("[data-close]").forEach(n=> n.addEventListener("click", ()=>{
     if(n.closest("#matModal")) document.getElementById("matModal").classList.remove("show");
     else if(n.closest("#planModal")) closePlan();
@@ -1564,6 +1686,7 @@
     if(e.key === "Escape"){ closeSettings(); closePlan(); document.getElementById("matModal").classList.remove("show"); }
     const tag = (e.target && e.target.tagName) || "";
     if((e.key === "q" || e.key === "Q") && !/input|textarea/i.test(tag)){ if(state.paused) resumeAll(); else quietAll(); }
+    if((e.key === "v" || e.key === "V") && !/input|textarea/i.test(tag)){ setView(state.view === "video" ? "text" : "video"); }
   });
 
   /* ═══════════════════ 시작 ═══════════════════ */
@@ -1571,6 +1694,7 @@
   setStep(0);
   setStageHead("준비","안건 목록에서 고르면 6인 자료와 4라운드 토론이 시작됩니다","자료 0 / 6",false);
   setVoice(state.voiceOn, true);
+  setView(LS.get(K_VIEW) === "video" ? "video" : "text", {silent:true});
   refreshVoices();
   if(synthOK){ try{ window.speechSynthesis.onvoiceschanged = refreshVoices; }catch(e){} }
   setIMicUI(false);
@@ -1597,6 +1721,10 @@
   // 테스트용 훅
   window.__mr4 = {
     state: state,
+    setView: setView,
+    shuffleOrder: shuffleOrder,
+    orderLog: () => state.orderLog,
+    lastOrder: () => state.lastOrder.slice(),
     agendaIds: () => (LIB.agendas||[]).map(a=>a.id),
     openAgenda: openAgenda,
     playRound: playRound,

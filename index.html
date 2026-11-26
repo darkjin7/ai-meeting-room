@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.1 — 안건 목록 · 4라운드 심화 토론</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.2 — 화상 6분할 ↔ 글로 보기 · 랜덤 치고 들어오기</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -41,6 +41,7 @@
     background:linear-gradient(145deg,#20263a,#12151f);border:1px solid var(--line);flex:0 0 auto;
   }
   .brand h1{font-size:14px;margin:0;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand h1 .h1short{display:none}
   .brand .sub{font-size:10.5px;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .spacer{flex:1}
   .live{
@@ -633,8 +634,139 @@
   }
   @media (min-width:769px){
     .stage{grid-auto-rows:minmax(178px,auto)}
-    .bubble{max-height:168px}
+    .bubble{height:150px;max-height:none;flex:0 0 auto}
     .ctlbar .btn3.wide{flex:1 1 240px}
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     v4.2 — ① iOS 발언 떨림 제거  ② 화상 6분할 ↔ 글로 보기 전환
+     ③ 랜덤·치고 들어오기 순서(순서 UI 없음, app.js 셔플)
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* ── ① 떨림 제거: 발언 상태는 border-color와 미세 배경만, transition 없음 ──
+     (레이아웃·boxShadow·border 두께 변화 금지 → iOS Safari 화면 흔들림 원인 제거) */
+  body .tile{transition:none}
+  body .tile.speaking{
+    border-color:var(--green);
+    box-shadow:none;
+    background:linear-gradient(175deg,#16241c,#121a18);
+    transition:none;
+  }
+  body .tile.matready{box-shadow:none}
+  body .tile.assigned{box-shadow:none}
+  /* 본문은 높이를 고정한다 — 라운드가 바뀌어 글자 길이가 달라져도 카드 높이가 변하지 않는다 */
+  .bubble{flex:0 0 auto;overflow-y:auto}
+
+  /* ── ② 보기 전환 토글 (회의 중에만) ── */
+  body.meeting-on .topbar{flex-wrap:wrap}
+  .viewbar{display:none;flex:1 1 100%;align-items:center;gap:6px;margin-top:1px}
+  body.meeting-on .viewbar{display:flex}
+  .vswitch{display:flex;gap:4px;padding:3px;background:#0d111a;border:1px solid var(--line);border-radius:11px;flex:1 1 auto;min-width:0}
+  .vsw{
+    flex:1 1 0;min-width:0;border:0;background:transparent;color:#8b93a7;font-family:inherit;
+    font-weight:800;font-size:11px;padding:7px 6px;border-radius:8px;cursor:pointer;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .vsw:active{transform:translateY(1px)}
+  .vsw.on{background:rgba(46,224,106,.14);color:#b6fccb;box-shadow:inset 0 0 0 1px rgba(46,224,106,.45)}
+  .vsw#viewVideoBtn.on{background:rgba(124,108,246,.18);color:#d3ccff;box-shadow:inset 0 0 0 1px rgba(124,108,246,.5)}
+
+  /* ── 화상 6분할 타일: 캐릭터 + 이름 + 상태 + 웨이브 + 리액션 ── */
+  .tile .vstage{display:none}
+  .tile .react{
+    display:none;position:absolute;top:6px;right:6px;z-index:4;font-size:20px;line-height:1;
+    opacity:0;transform:scale(.7);transition:opacity .12s linear,transform .12s linear;pointer-events:none;
+  }
+  .tile .react.on{opacity:1;transform:scale(1)}
+  body.view-video .tile .react{display:block}
+  .vnm{font-size:11.5px;font-weight:800;letter-spacing:-.2px;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vmeta{display:flex;align-items:center;gap:5px;font-size:9px;color:#8b93a7;white-space:nowrap}
+  body.view-video .tile.speaking .vmeta{color:#a9fbc4}
+  .vw{display:none;align-items:flex-end;gap:2px;height:10px}
+  body.view-video .tile.speaking .vw{display:flex}
+  .vw i{width:2.5px;background:var(--green);border-radius:2px;height:3px;animation:wv .9s ease-in-out infinite}
+  .vw i:nth-child(2){animation-delay:.10s}.vw i:nth-child(3){animation-delay:.22s}
+  .vw i:nth-child(4){animation-delay:.34s}.vw i:nth-child(5){animation-delay:.46s}
+  @keyframes vbob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.05)}}
+
+  /* ── 화상 6분할 모드: 화면을 꽉 채우고 스크롤이 없다 ── */
+  body.view-video{height:100vh;height:100dvh;overflow:hidden}
+  body.view-video .wrap{
+    height:100vh;height:100dvh;max-width:none;display:flex;flex-direction:column;
+    padding:0 0 calc(58px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden;
+  }
+  body.view-video .prep,body.view-video .banner,body.view-video .talk,body.view-video .minutes,
+  body.view-video .refnote,body.view-video .guestbar,body.view-video .panel,body.view-video .conclusion{display:none}
+  body.view-video .topbar{position:static;flex:0 0 auto}
+  body.view-video .stagehd{flex:0 0 auto;padding:3px 12px 0;min-height:0}
+  body.view-video .stagehd .descr{display:none}
+  body.view-video .stage{
+    flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:6px 10px;overflow:hidden;
+  }
+  body.view-video .tile{min-height:0;background:linear-gradient(175deg,#141924,#0f131b)}
+  body.view-video .tile.speaking{background:linear-gradient(175deg,#16281f,#101a16);border-color:var(--green)}
+  body.view-video .tile .thead,body.view-video .tile .stagewrap,body.view-video .tile .tfoot{display:none}
+  body.view-video .tile .vstage{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    flex:1 1 auto;min-height:0;padding:6px 4px;
+  }
+  body.view-video .vbob{
+    width:clamp(56px,16vh,150px);height:clamp(56px,16vh,150px);border-radius:50%;
+    display:grid;place-items:center;line-height:1;font-size:clamp(26px,7vh,74px);
+    background:radial-gradient(circle at 50% 36%,#1b2233,#0d1119 72%);
+    border:1px solid var(--line);
+    will-change:transform;transform-origin:50% 80%;
+  }
+  body.view-video .tile.speaking .vbob{
+    border-color:var(--green);
+    background:radial-gradient(circle at 50% 36%,#1b3527,#0e1a14 72%);
+  }
+  body.view-video .tile.speaking .vbob{animation:vbob .78s ease-in-out infinite}
+  body.view-video .ctlbar{flex:0 0 auto;flex-wrap:wrap;padding:3px 8px 2px;gap:5px}
+  body.view-video .ctlbar .roundbar{flex:1 1 100%}
+  body.view-video .ctlbar .btn3{flex:1 1 0;min-height:34px;padding:6px 8px;font-size:11px;border-radius:9px}
+  body.view-video .obchips{display:none}
+  body.view-video .toast{top:calc(64px + env(safe-area-inset-top));bottom:auto}
+  body.view-video .tile .qveil{z-index:3}
+
+  /* ── 화상 모드 자막 바 ── */
+  .vsub{display:none;flex:0 0 auto;padding:7px 12px 6px;background:rgba(10,13,20,.96);border-top:1px solid var(--line-soft)}
+  body.view-video .vsub{display:block}
+  .vsub .vs-top{display:flex;align-items:center;gap:6px;margin-bottom:2px;min-height:15px}
+  .vsub .vs-who{font-size:11px;font-weight:800;white-space:nowrap}
+  .vsub .vs-tag{font-size:9px;font-weight:800;color:#ffd58a;border:1px solid rgba(245,192,74,.4);background:rgba(245,192,74,.10);padding:0 5px;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vsub .vs-tx{
+    font-size:14.5px;line-height:1.45;color:#e9eefb;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+  }
+  .vsub.empty .vs-tx{color:#626b80}
+
+  @media (max-width:768px){
+    body.meeting-on .topbar{flex-wrap:wrap}
+    body.meeting-on .brand h1{max-width:none}
+    .brand h1 .h1full{display:none}
+    .brand h1 .h1short{display:inline}
+    body.meeting-on .stagehd{scroll-margin-top:96px}
+  }
+
+  @media (max-width:768px){
+    body.view-video .brandtx{display:none}   /* 화상 화면에서는 로고만 — 토글 폭을 비운다 */
+    body.view-video .wrap{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+    body.view-video .topbar{padding:6px 10px;gap:6px}
+    body.view-video .stagehd{padding:2px 10px 0}
+    body.view-video .stage{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:6px;padding:4px 6px}
+    body.view-video .vbob{width:clamp(50px,13vh,86px);height:clamp(50px,13vh,86px);font-size:clamp(24px,6vh,44px)}
+    body.view-video .vnm{font-size:11px}
+    body.view-video .ctlbar{padding:2px 6px 1px;gap:4px}
+    body.view-video .ctlbar .btn3{font-size:10.5px;padding:5px 6px;min-height:32px;border-radius:8px}
+    body.view-video .ctlbar .rchip{font-size:10px;padding:5px 7px}
+    body.view-video .vsub{padding:6px 10px 5px}
+    body.view-video .vsub .vs-tx{font-size:13.5px}
+    .vsw{font-size:10.5px;padding:6px 4px}
+    /* 1열 큰 카드의 본문 높이 고정 — 라운드가 바뀌어도 카드 높이가 변하지 않는다 */
+    body:not(.view-video) .bubble{height:230px;max-height:none;flex:0 0 auto}
+    body:not(.view-video) .tile{min-height:0}
   }
 </style>
 </head>
@@ -644,8 +776,8 @@
   <header class="topbar">
     <div class="brand">
       <div class="logo">🖥️</div>
-      <div>
-        <h1>다크진 AI 비서실 · 6분할 회의실</h1>
+      <div class="brandtx">
+        <h1><span class="h1full">다크진 AI 비서실 · 6분할 회의실</span><span class="h1short">다크진 AI 비서실</span></h1>
         <div class="sub">안건 목록 → 다중 라운드 심화 토론 → 결론 확정 → 역할 분담</div>
       </div>
     </div>
@@ -659,6 +791,13 @@
         <span class="q-off">▶️ <span class="lg">다시 </span><span class="qtxt">계속</span></span>
       </button>
       <button class="iconbtn" id="settingsBtn" title="설정">⚙︎</button>
+    </div>
+    <!-- v4.2 보기 전환: 화상 6분할 ↔ 글로 보기 (회의 중 언제든 원터치) -->
+    <div class="viewbar" id="viewBar">
+      <div class="vswitch" role="group" aria-label="화면 보기 전환">
+        <button class="vsw" id="viewVideoBtn" data-view="video" title="화면을 꽉 채운 캐릭터 6분할 화상 화면">🎥 화상 6분할</button>
+        <button class="vsw on" id="viewTextBtn" data-view="text" title="1열 큰 글씨로 읽는 회의">📝 글로 보기</button>
+      </div>
     </div>
   </header>
 
@@ -711,6 +850,12 @@
   <main class="stage" id="stage"></main>
 
   <div class="guestbar" id="guestBar"></div>
+
+  <!-- v4.2 화상 6분할 전용 자막 바 (지금 말하는 AI의 한 줄만) -->
+  <div class="vsub empty" id="vsub" aria-live="polite">
+    <div class="vs-top"><span class="vs-who" id="vsWho">🎙 회의실</span><span class="vs-tag" id="vsTag"></span></div>
+    <div class="vs-tx" id="vsTx">발언이 시작되면 여기에 한 줄로 나옵니다.</div>
+  </div>
 
   <div class="ctlbar" id="stage1Bar" style="display:none">
     <div class="roundbar" id="roundBar"></div>
@@ -883,10 +1028,17 @@
 <div class="toast" id="toast"></div>
 <script>
 /* ══════════════════════════════════════════════════════════════════
-   다크진 AI 비서실 · 6분할 회의실 v4.1 — 사전 준비 자료 라이브러리
+   다크진 AI 비서실 · 6분할 회의실 v4.2 — 사전 준비 자료 라이브러리
    ──────────────────────────────────────────────────────────────────
    이 파일이 회의 자료의 유일한 원본이다. 웹앱은 여기 적힌 것만 보여 준다.
    (뻔한 대본을 지어내지 않는다 — 자료가 없으면 '⏳ 준비 중'으로 남는다.)
+
+   v4.2 — 발언 순서는 이 파일에 적지 않는다.
+   피클 → Gemini → Cue → Hark → ChatGPT → Claude 같은 고정 순서를 버리고,
+   app.js가 라운드마다 6인을 랜덤으로 섞어 재생한다(같은 라운드를 다시 틀어도 순서가 달라진다).
+   그래서 rounds[].lines 의 대사는 '앞 사람 다음에 이어지는 말'이 아니라
+   '다른 AI의 주장에 바로 치고 들어오는 말'로 쓰는 것이 맞다 (to 로 대상을 지목).
+   rounds[].order 는 쓰지 않는다(넣어도 app.js가 다시 섞는다).
 
    새 안건을 추가하는 법 (피클이 자료를 모은 뒤):
    1) 아래 AGENDAS 배열에 객체 하나를 추가한다.
@@ -1358,8 +1510,8 @@ window.AGENDA_LIB = (function(){
   AGENDAS.forEach(function(a){ byId[a.id] = a; });
 
   return {
-    version: "v4.1",
-    updatedAt: "2026-11-26 22:10",
+    version: "v4.2",
+    updatedAt: "2026-11-26 22:40",
     agendas: AGENDAS,
     byId: byId,
     planned: PLANNED
@@ -1409,6 +1561,8 @@ window.AGENDA_LIB = (function(){
   const K_SEEN  = "darkjin_mr4_seen_ready";
   const K_NOTIFY= "darkjin_mr4_notify";
   const K_PLAN  = "darkjin_mr4_plans";
+  const K_VIEW  = "darkjin_mr42_view";
+  const REACTIONS = ["😄","👍","😲","👏","🔥","🤔"];
 
   const LS = {
     get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
@@ -1438,7 +1592,12 @@ window.AGENDA_LIB = (function(){
     timerId:null,
     activeCut:null,
     activeSpeaker:null,
-    matId:null
+    matId:null,
+    view:"text",        // text(글로 보기) | video(화상 6분할)
+    lastLine:null,       // 화상 모드 자막에 남길 마지막 대사 {id, tag, text}
+    lastOrder:[],        // 방금 재생한 라운드의 랜덤 발언 순서
+    orders:{},           // 라운드별 마지막 발언 순서
+    orderLog:[]          // 재생 때마다 쌓이는 순서 기록 (검증·복기용)
   };
 
   const $ = s => document.querySelector(s);
@@ -1645,6 +1804,7 @@ window.AGENDA_LIB = (function(){
       r.state.classList.remove("s-speaking","s-ready","s-done");
       r.state.classList.add("s-quiet");
       r.state.textContent = "조용";
+      if(r.vstate) r.vstate.textContent = "조용";
     });
     document.body.classList.add("is-quiet");
     if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
@@ -1817,9 +1977,22 @@ window.AGENDA_LIB = (function(){
       foot.append(wave, roleTag, matbtn);
 
       const qv = el("div","qveil");
-      t.append(head, wrap, foot, qv);
+
+      /* v4.2 화상 6분할용 얼굴 — 캐릭터 + 이름 + 상태/웨이브 (긴 본문 없음) */
+      const vs = el("div","vstage");
+      const vbob = el("div","vbob", p.emoji);
+      const vnm = el("div","vnm", p.name);
+      const vmeta = el("div","vmeta");
+      const vst = el("span","vstate","대기");
+      const vw = el("div","vw");
+      for(let i=0;i<5;i++) vw.append(el("i"));
+      vmeta.append(vst, vw);
+      vs.append(vbob, vnm, vmeta);
+      const react = el("div","react");
+
+      t.append(head, wrap, foot, vs, react, qv);
       stage.append(t);
-      tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave};
+      tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave, vstate:vst, vbob, react, reactT:null};
     });
   }
 
@@ -1832,6 +2005,16 @@ window.AGENDA_LIB = (function(){
     if(kind==="assigned"){ r.tile.classList.add("assigned"); r.state.classList.add("s-done"); }
     if(kind==="quiet"){ r.state.classList.add("s-quiet"); }
     r.state.textContent = label || (kind==="speaking"?"발언 중":kind==="ready"?"자료 준비":kind==="assigned"?"배정":kind==="quiet"?"조용":"대기");
+    if(r.vstate) r.vstate.textContent = videoLabel(r);
+  }
+  /* 화상 6분할 타일의 상태 문구 — 화상통화처럼 "듣는 중 / 발언 중"으로 보여 준다 */
+  function videoLabel(r){
+    if(!r) return "대기";
+    if(r.tile.classList.contains("quiet")) return "조용";
+    if(r.tile.classList.contains("speaking")) return "발언 중";
+    if(state.phase === "roles") return "배정";
+    if(!state.agenda) return "대기";
+    return "듣는 중";
   }
 
   function renderBubble(id, tag, text, opts){
@@ -1844,6 +2027,73 @@ window.AGENDA_LIB = (function(){
     r.bubble.append(el("span","msum", text));
     r.bubble.scrollTop = 0;
     if(opts.showBtn) r.matbtn.classList.remove("ghost");
+  }
+
+  /* ═══════════════════ 화상 6분할 ↔ 글로 보기 (v4.2) ═══════════════════ */
+  function setView(v, opts){
+    opts = opts || {};
+    v = (v === "video") ? "video" : "text";
+    if(v === "video" && !state.agenda){
+      if(!opts.silent) toast("안건을 먼저 골라 주세요 · 화상 화면은 회의 중에 열립니다");
+      v = "text";
+    }
+    state.view = v;
+    LS.set(K_VIEW, v);
+    document.body.classList.toggle("view-video", v === "video");
+    const vb = document.getElementById("viewVideoBtn");
+    const tb = document.getElementById("viewTextBtn");
+    if(vb) vb.classList.toggle("on", v === "video");
+    if(tb) tb.classList.toggle("on", v === "text");
+    if(v === "video"){
+      if(state.lastLine) setSubtitle(state.lastLine.id, state.lastLine.tag, state.lastLine.text);
+      else setSubtitle(null, "", "", true);
+      window.scrollTo(0,0);
+    }
+    if(!opts.silent) toast(v === "video" ? "🎥 화상 6분할 — 캐릭터 화면으로 봅니다" : "📝 글로 보기 — 1열 큰 글씨로 봅니다");
+    return v;
+  }
+  function setSubtitle(id, tag, text, empty){
+    const who = document.getElementById("vsWho");
+    const tg = document.getElementById("vsTag");
+    const tx = document.getElementById("vsTx");
+    const box = document.getElementById("vsub");
+    if(!who || !tx) return;
+    const p = id ? byId(id) : null;
+    who.textContent = p ? (p.emoji ? p.emoji + " " : "") + p.name : "🎙 회의실";
+    who.style.color = p && p.color ? p.color : "";
+    if(tg){ tg.textContent = tag || ""; tg.style.display = tag ? "" : "none"; }
+    tx.textContent = text || (empty ? "발언이 시작되면 여기에 한 줄로 나옵니다." : "");
+    if(box) box.classList.toggle("empty", !text);
+  }
+  /* 발언자가 말할 때 옆 캐릭터에 리액션 배지를 띄운다 (레이아웃 영향 없음 — absolute) */
+  function flashReactions(speakerId){
+    const others = partList().filter(id=> id !== speakerId && tileRefs[id]);
+    if(!others.length) return;
+    shuffleOrder(others);
+    const picks = others.slice(0, 1 + Math.floor(Math.random() * 2));
+    picks.forEach(id=>{
+      const r = tileRefs[id]; if(!r || !r.react) return;
+      const emoji = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+      r.react.textContent = emoji;
+      r.react.classList.add("on");
+      clearTimeout(r.reactT);
+      r.reactT = setTimeout(()=> r.react.classList.remove("on"), 1500 + Math.random() * 1100);
+    });
+  }
+  /* 발언 순서 섞기 — 고정 1~6번 순서를 쓰지 않는다 (같은 라운드를 다시 틀어도 매번 달라진다) */
+  function shuffleOrder(src){
+    const a = src.slice();
+    if(a.length < 2) return a;
+    for(let tries=0; tries<4; tries++){
+      for(let i=a.length-1; i>0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      let same = true;
+      for(let i=0;i<a.length;i++){ if(a[i] !== src[i]){ same = false; break; } }
+      if(!same) return a;
+    }
+    return a;
   }
 
   /* ═══════════════════ 기록 (논의 / 회의록) ═══════════════════ */
@@ -1952,7 +2202,9 @@ window.AGENDA_LIB = (function(){
     const cutP = new Promise(res=>{ cutRec.fire = ()=>{ if(!cutRec.fired){ cutRec.fired = true; res(); } }; });
     state.activeSpeaker = id;
     setTileState(id, "speaking", opts.label || "낭독 중");
-    focusTile(id);
+    state.lastLine = {id:id, tag:opts.sub || "", text:text || ""};
+    setSubtitle(id, opts.sub || "", text || "");
+    flashReactions(id);
     const talking = (state.voiceOn && text) ? speakText(id, text, token, cutRec) : Promise.resolve();
     await Promise.race([talking, cutP]);
     state.activeCut = null;
@@ -2173,9 +2425,15 @@ window.AGENDA_LIB = (function(){
     addSystem('안건 열람 — "' + a.title + '" (자료 ' + pc + '/' + pc + ' · ' + (a.preparedAt||"") + ")");
     addSystem("라운드 " + goal + "개 준비됨 · 1라운드 자료 발표부터 차례로 진행하세요 (결론은 언제든 고를 수 있습니다)");
 
+    state.lastLine = null; state.lastOrder = []; state.orders = {};
+    setSubtitle(null, "", "", true);
+    setView(LS.get(K_VIEW) === "video" ? "video" : "text", {silent:true});
+
     toast("🗂️ 안건 열었습니다 · 주전 " + pc + "인 자료와 " + goal + "라운드 토론이 준비되어 있습니다");
-    const sh = document.getElementById("stageHd");
-    if(sh) sh.scrollIntoView({block:"start"});
+    if(state.view !== "video"){
+      const sh = document.getElementById("stageHd");
+      if(sh) sh.scrollIntoView({block:"start"});
+    }
   }
 
   function renderMaterials(){
@@ -2360,11 +2618,10 @@ window.AGENDA_LIB = (function(){
   }
 
   function focusTile(id){
-    if(window.innerWidth > 768) return;
-    const r = tileRefs[id]; if(!r) return;
-    const rect = r.tile.getBoundingClientRect();
-    if(rect.top >= 62 && rect.bottom <= window.innerHeight - 128) return;
-    try{ r.tile.scrollIntoView({block:"center", behavior:"smooth"}); }catch(e){ try{ r.tile.scrollIntoView(); }catch(e2){} }
+    /* v4.2 — 자동 스크롤을 쓰지 않는다.
+       scrollIntoView(smooth)는 iOS Safari에서 발언이 바뀔 때마다 화면을 흔드는 주원인이었다.
+       보고 싶은 카드는 성진님이 직접 스크롤해서 본다. */
+    return;
   }
 
   async function playRound(n){
@@ -2378,7 +2635,14 @@ window.AGENDA_LIB = (function(){
     state.phase = n === 1 ? "materials" : "discussion";
     setStep(n === 1 ? 1 : 2);
     const plist = partList();
-    const order = ((rd.order && rd.order.length) ? rd.order : plist).filter(id=> plist.indexOf(id) >= 0);
+    /* v4.2 — 고정 1~6번 순서를 버리고 매번 랜덤으로 섞는다.
+       "순서대로 발표"가 아니라 "랜덤으로 치고 들어오는" 회의 느낌. 같은 라운드를 다시 들어도 순서가 달라진다. */
+    const baseOrder = ((rd.order && rd.order.length) ? rd.order : plist).filter(id=> plist.indexOf(id) >= 0);
+    const order = shuffleOrder(baseOrder);
+    state.lastOrder = order.slice();
+    state.orders[rd.n] = order.slice();
+    state.orderLog.push({round:rd.n, at:Date.now(), order:order.slice()});
+    if(state.orderLog.length > 40) state.orderLog.shift();
     const headLbl = (rd.emoji||"") + " " + rd.n + "라운드 · " + rd.tag;
     setStageHead(rd.n + "라운드", (rd.desc || rd.tag), headLbl + " 0 / " + order.length, n > 1);
     addSystem((rd.emoji||"") + " " + rd.n + "라운드 " + rd.tag + " — " + (rd.desc || ""));
@@ -2391,9 +2655,10 @@ window.AGENDA_LIB = (function(){
       const line = lineFor(id, rd);
       if(!line) continue;
       const who = line.to ? byId(line.to) : null;
-      const tag = rd.n + "라운드 · " + (who ? "→ " + who.name : rd.tag);
+      const tag = rd.n + "라운드 · " + (who ? "→ " + who.name + "에게" : rd.tag);
+      const sub = who ? "🔥 " + rd.n + "라운드 · " + who.name + "에게 치고 들어오기" : (rd.n + "라운드 · " + rd.tag);
       renderBubble(id, tag, line.text, {showBtn:true});
-      await speakLine(id, line.text, {label: rd.tag + " 중"});
+      await speakLine(id, line.text, {label: rd.tag + " 중", sub: sub});
       if(token !== state.runToken) break;
       const key = rd.n + ":" + id;
       if(!state.talked[key]){
@@ -2486,6 +2751,7 @@ window.AGENDA_LIB = (function(){
   /* ═══════════════════ 결론 확정 ═══════════════════ */
   function openConfirm(){
     if(!state.agenda) return;
+    setView("text", {silent:true});   // 결론·역할은 문서 화면이라 글로 보기로 전환한다
     state.phase = "confirm";
     setStep(3);
     setLive("결론 확정 대기", "owner");
@@ -2522,7 +2788,7 @@ window.AGENDA_LIB = (function(){
     }
     document.getElementById("confirmPanel").classList.add("show");
     addSystem("결론 확정 단계 — 오너가 후보를 고르고 역할 분담이 생성됩니다");
-    document.getElementById("confirmPanel").scrollIntoView({block:"center", behavior:"smooth"});
+    document.getElementById("confirmPanel").scrollIntoView({block:"center"});
   }
 
   function backToTalk(){
@@ -2532,11 +2798,12 @@ window.AGENDA_LIB = (function(){
     document.getElementById("stage1Bar").style.display = "";
     setLive("논의 중", "");
     toast("↩️ 논의로 돌아왔습니다");
-    window.scrollTo({top:0, behavior:"smooth"});
+    window.scrollTo(0,0);
   }
 
   function confirmRoles(){
     if(!state.agenda) return;
+    setView("text", {silent:true});   // 역할 분담표도 문서 화면이다
     if(!state.option){
       toast("결론 후보를 하나 골라 주세요");
       document.querySelectorAll("#optList .opt").forEach(x=>{
@@ -2600,6 +2867,10 @@ window.AGENDA_LIB = (function(){
   function newMeeting(){
     state.runToken++;
     state.phase = "idle";
+    setView("text", {silent:true});
+    state.lastLine = null;
+    state.lastOrder = [];
+    setSubtitle(null, "", "", true);
     state.agenda = null; state.option = null; state.ownerDir = "";
     state.notes = []; state.round = 0; state.roundSet = {}; state.talked = {};
     document.body.classList.remove("meeting-on");
@@ -2621,7 +2892,7 @@ window.AGENDA_LIB = (function(){
     setLive("준비실", "");
     renderPrep();
     renderRoundBar();
-    window.scrollTo({top:0, behavior:"smooth"});
+    window.scrollTo(0,0);
     toast("준비실로 돌아왔습니다");
   }
 
@@ -2826,6 +3097,9 @@ window.AGENDA_LIB = (function(){
     if(!open) document.getElementById("agList").scrollIntoView({block:"nearest"});
   });
   document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  /* v4.2 보기 전환 — 회의 중 언제든 원터치로 왔다 갔다 */
+  document.getElementById("viewVideoBtn").addEventListener("click", ()=>{ unlockVoice(); setView("video"); });
+  document.getElementById("viewTextBtn").addEventListener("click", ()=>{ unlockVoice(); setView("text"); });
   document.querySelectorAll("[data-close]").forEach(n=> n.addEventListener("click", ()=>{
     if(n.closest("#matModal")) document.getElementById("matModal").classList.remove("show");
     else if(n.closest("#planModal")) closePlan();
@@ -2931,6 +3205,7 @@ window.AGENDA_LIB = (function(){
     if(e.key === "Escape"){ closeSettings(); closePlan(); document.getElementById("matModal").classList.remove("show"); }
     const tag = (e.target && e.target.tagName) || "";
     if((e.key === "q" || e.key === "Q") && !/input|textarea/i.test(tag)){ if(state.paused) resumeAll(); else quietAll(); }
+    if((e.key === "v" || e.key === "V") && !/input|textarea/i.test(tag)){ setView(state.view === "video" ? "text" : "video"); }
   });
 
   /* ═══════════════════ 시작 ═══════════════════ */
@@ -2938,6 +3213,7 @@ window.AGENDA_LIB = (function(){
   setStep(0);
   setStageHead("준비","안건 목록에서 고르면 6인 자료와 4라운드 토론이 시작됩니다","자료 0 / 6",false);
   setVoice(state.voiceOn, true);
+  setView(LS.get(K_VIEW) === "video" ? "video" : "text", {silent:true});
   refreshVoices();
   if(synthOK){ try{ window.speechSynthesis.onvoiceschanged = refreshVoices; }catch(e){} }
   setIMicUI(false);
@@ -2964,6 +3240,10 @@ window.AGENDA_LIB = (function(){
   // 테스트용 훅
   window.__mr4 = {
     state: state,
+    setView: setView,
+    shuffleOrder: shuffleOrder,
+    orderLog: () => state.orderLog,
+    lastOrder: () => state.lastOrder.slice(),
     agendaIds: () => (LIB.agendas||[]).map(a=>a.id),
     openAgenda: openAgenda,
     playRound: playRound,

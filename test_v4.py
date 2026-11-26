@@ -1,7 +1,8 @@
-"""v4.1 검증 — 안건 목록(✅ 준비 완료 / ⏳ 준비 중) → 4라운드 심화 토론 → 결론 확정 → 역할 분담
-- 안건 1·2 전환 시 6인 자료와 라운드 발언이 완전히 달라지는지
-- 라운드가 1→2→3→4로 이어지고, 각 라운드 발언이 서로 다른지 (반박 1회로 끝나지 않는지)
-- ⏳ 예정 안건은 예약만 되고 회의에 들어갈 수 없는지 (가짜 답변 방지)
+"""v4.2 검증 — 화상 6분할 ↔ 글로 보기 전환 · 발언 떨림 제거 · 랜덤 치고 들어오기
+- 안건 목록(✅ 준비 완료 / ⏳ 준비 중) → 4라운드 심화 토론 → 결론 확정 → 역할 분담 (v4.1 유지)
+- 🎥 화상 6분할 ↔ 📝 글로 보기 토글이 되고, 모바일(390x844) 한 화면에 6타일이 스크롤 없이 꽉 차는지
+- 발언 전환 시 카드 높이 변화 0 · scrollIntoView(smooth) 없음 (iOS 떨림 원인 제거)
+- 발언 순서가 고정 [0,1,2,3,4,5]가 아니라 라운드마다 섞이는지
 - 데스크톱/모바일(390x844) 화면 + 스크린샷
 """
 import json, sys
@@ -29,6 +30,10 @@ MOCK = r"""
   Object.defineProperty(window,'speechSynthesis',{value:synth,configurable:true});
   class MockSR { constructor(){ window.__sr=this; } start(){} stop(){ if(this.onend) this.onend(); } abort(){ if(this.onend) this.onend(); } }
   window.SpeechRecognition=MockSR; window.webkitSpeechRecognition=MockSR;
+  // v4.2 — scrollIntoView(smooth) 호출 감시 (iOS 떨림 원인 제거 확인용)
+  window.__siv=[];
+  const __siv = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function(o){ window.__siv.push((o&&o.behavior)||"auto"); return __siv.apply(this, arguments); };
 })();
 """
 
@@ -50,6 +55,9 @@ def play(p, n, timeout=30000):
     p.click('#nextRoundBtn')
     p.wait_for_function("(n) => window.__mr4.state.round >= n && window.__mr4.state.busy === false", arg=n, timeout=timeout)
     p.wait_for_timeout(120)
+
+def tile_heights(p):
+    return p.eval_on_selector_all('.tile','e=>e.map(x=>Math.round(x.getBoundingClientRect().height))')
 
 def chips(p):
     return p.eval_on_selector_all('#roundBar .rchip', "els=>els.map(e=>({t:e.textContent, d:e.disabled}))")
@@ -172,6 +180,19 @@ def main():
         print('OK 4라운드 최종 정리 · 기록 24건 · 누적 열람')
         p.wait_for_timeout(2200)
         p.screenshot(path=DL+'meeting_v41_desktop_round4.png')
+
+        # 7-b) v4.2 — 발언 순서가 고정 1~6번이 아니라 매번 섞인다 (다시 틀어도 매번 다르게)
+        ids_all = ['pickle','gemini','cue','hark','chatgpt','claude']
+        orders = [p.evaluate("()=>window.__mr4.lastOrder()")]
+        for _ in range(4):
+            p.evaluate("(n)=>window.__mr4.playRound(n)", 3)
+            orders.append(p.evaluate("()=>window.__mr4.lastOrder()"))
+        for o in orders:
+            assert sorted(o) == sorted(ids_all), '발언 순서가 6인 전체가 아님: %s' % o
+        assert any(o != ids_all for o in orders), '발언 순서가 고정 6인 순서 그대로: %s' % orders
+        assert len(set(tuple(o) for o in orders)) >= 2, '다시 틀어도 순서가 그대로: %s' % orders
+        assert p.evaluate("()=>window.__mr4.orderLog().length") >= 5, '순서 기록이 없음'
+        print('OK 랜덤 발언 순서 — 재생 5회 중 %d가지 순서 · 고정 순서 아님' % len(set(tuple(o) for o in orders)))
 
         # 8) 오너 코멘트 → 6인 반응 (라운드 중에도 유지)
         p.fill('#interjectInput','이번 주는 제목 실험만 하자')
@@ -321,15 +342,27 @@ def main():
         bar_ov = mp.evaluate("()=>{const b=document.getElementById('roundBar');return b.scrollWidth-b.clientWidth}")
         assert bar_ov <= 1, '라운드 바 내부 가로 스크롤: %d' % bar_ov
 
-        # 말하는 카드 강조 + 자동 스크롤
+        # 말하는 카드 강조(테두리·배경만) + 자동 스크롤 없음 + 카드 높이 불변
+        base_h = tile_heights(mp)
+        mp.evaluate("()=>{ window.__siv = []; }")
         mp.click('#nextRoundBtn')
         mp.wait_for_function("() => !!document.querySelector('.tile.speaking')", timeout=8000)
-        sp = mp.evaluate("()=>{const t=document.querySelector('.tile.speaking');if(!t)return null;const s=getComputedStyle(t);return {shadow:s.boxShadow, bg:s.backgroundImage, id:t.dataset.id}}")
-        assert sp and sp['shadow'] and sp['shadow'] != 'none', '말하는 카드 강조 없음'
+        base_y = mp.evaluate("()=>window.scrollY")   # 버튼 클릭으로 인한 스크롤은 제외, 발언 중 스크롤만 본다
+        sp = mp.evaluate("""()=>{const t=document.querySelector('.tile.speaking');if(!t)return null;const s=getComputedStyle(t);return {border:s.borderTopColor, shadow:s.boxShadow, bg:s.backgroundImage, id:t.dataset.id}}""")
+        assert sp and sp['border'].replace(' ','') == 'rgb(46,224,106)', '말하는 카드 테두리 강조 없음: %s' % (sp and sp['border'])
+        assert sp['shadow'] == 'none', '발언 카드에 boxShadow 변화가 남아 있음: %s' % sp['shadow']
         assert 'rgb' in sp['bg'], '말하는 카드 배경 강조 없음'
-        mp.wait_for_function("(n) => window.__mr4.state.round >= n && window.__mr4.state.busy === false", arg=1, timeout=30000)
-        scrolled = mp.evaluate("()=>window.scrollY")
-        assert scrolled > 0, '말하는 카드로 자동 스크롤되지 않음: %d' % scrolled
+        hs = []
+        while True:
+            hs.append(tile_heights(mp))
+            if not mp.evaluate("()=>window.__mr4.state.busy"): break
+            mp.wait_for_timeout(70)
+        bad = [h for h in hs if h != base_h]
+        assert not bad, '발언 전환 중 카드 높이가 변함(iOS 떨림): %s' % bad[:2]
+        sm = [b for b in mp.evaluate("()=>window.__siv") if b == 'smooth']
+        assert not sm, 'scrollIntoView(smooth)가 호출됨: %s' % mp.evaluate("()=>window.__siv")
+        assert mp.evaluate("()=>window.scrollY") == base_y, '발언 중 페이지가 저절로 스크롤됨'
+        print('OK 발언 떨림 없음 — 카드 높이 %s 일정 · smooth scroll 0회 · 페이지 고정' % base_h[:2])
 
         for n in (2, 3):
             mp.click('#nextRoundBtn')
@@ -342,6 +375,62 @@ def main():
         mp.screenshot(path=DL+'meeting_v41_mobile_rounds.png')
         mp.screenshot(path=WORK+'v41_mobile_rounds.png')
         mp.screenshot(path=DL+'meeting_v41_mobile_rounds_full.png', full_page=True)
+
+        # ═════════ v4.2 — 🎥 화상 6분할 ↔ 📝 글로 보기 ═════════
+        assert mp.is_visible('#viewBar'), '보기 전환 토글이 없음'
+        assert mp.inner_text('#viewTextBtn').strip().endswith('글로 보기'), '글로 보기 버튼 문구 이상'
+        mp.click('#viewVideoBtn'); mp.wait_for_timeout(450)
+        assert mp.evaluate("()=>document.body.classList.contains('view-video')"), '화상 6분할 모드 클래스 없음'
+        assert mp.is_visible('#vsub'), '화상 모드 자막 바 없음'
+        assert not mp.is_visible('.talk'), '화상 모드에 논의 기록이 남아 있음'
+        cols = mp.evaluate("getComputedStyle(document.getElementById('stage')).gridTemplateColumns")
+        rows = mp.evaluate("getComputedStyle(document.getElementById('stage')).gridTemplateRows")
+        assert len(cols.split()) == 2, '모바일 화상 모드 2열 아님: ' + cols
+        assert len(rows.split()) == 3, '모바일 화상 모드 3행 아님: ' + rows
+        ih = mp.evaluate("()=>window.innerHeight"); iw = mp.evaluate("()=>window.innerWidth")
+        rects = mp.eval_on_selector_all('.tile', """els=>els.map(e=>{const r=e.getBoundingClientRect();return {t:Math.round(r.top),b:Math.round(r.bottom),l:Math.round(r.left),rr:Math.round(r.right),h:Math.round(r.height)}})""")
+        assert len(rects) == 6, '화상 모드 타일 6개 아님: %d' % len(rects)
+        assert all(r['t'] >= -1 and r['b'] <= ih+1 and r['l'] >= -1 and r['rr'] <= iw+1 for r in rects), '화상 모드에서 타일이 화면 밖: %s (뷰포트 %dx%d)' % (rects, iw, ih)
+        assert all(r['h'] >= 90 for r in rects), '화상 타일이 너무 납작함: %s' % [r['h'] for r in rects]
+        sh = mp.evaluate("()=>document.documentElement.scrollHeight")
+        assert sh <= ih + 2, '화상 모드에서 세로 스크롤이 생김: %d > %d' % (sh, ih)
+        # 타일엔 긴 본문 대신 캐릭터·이름·상태만, 한 줄 자막은 전용 바 1곳에
+        assert mp.evaluate("()=>{const w=document.querySelector('.tile .stagewrap');return Math.round(w.getBoundingClientRect().height)}") == 0, '화상 모드에 본문 글이 남아 있음'
+        assert mp.evaluate("()=>{const v=document.querySelector('.tile .vstage');return Math.round(v.getBoundingClientRect().height)}") > 40, '화상 모드 캐릭터 영역 없음'
+        vn = mp.eval_on_selector_all('.tile .vnm','e=>e.map(x=>x.textContent)')
+        assert len(vn) == 6 and 'Gemini' in vn and 'Claude' in vn, '화상 타일 이름 이상: %s' % vn
+        assert mp.inner_text('#vsTx').strip(), '자막 바가 비어 있음'
+        # 화상 모드 타일 상태는 화상통화처럼 '듣는 중 / 발언 중'
+        vstates = set(mp.eval_on_selector_all('.tile .vstate','e=>e.map(x=>x.textContent)'))
+        assert vstates <= {'듣는 중','발언 중','배정','대기','조용'}, '화상 타일 상태 문구 이상: %s' % vstates
+        # 발언 중 캐릭터 모션 + 옆 캐릭터 리액션 (토스트가 사라진 뒤)
+        mp.wait_for_timeout(2500)
+        mp.evaluate("()=>{ window.__mr4.playRound(2); }")
+        mp.wait_for_function("()=>!!document.querySelector('.tile.speaking')", timeout=8000)
+        vsp = mp.evaluate("""()=>{const t=document.querySelector('.tile.speaking');const b=t.querySelector('.vbob');return {id:t.dataset.id, anim:getComputedStyle(b).animationName, vw:getComputedStyle(t.querySelector('.vw')).display}}""")
+        assert vsp['anim'] == 'vbob', '발언 캐릭터 바운스 모션 없음: ' + vsp['anim']
+        assert vsp['vw'] == 'flex', '발언 캐릭터 웨이브 없음'
+        react_on = mp.evaluate("()=>Array.from(document.querySelectorAll('.tile .react.on')).map(x=>x.textContent)")
+        assert len(react_on) >= 1, '옆 캐릭터 리액션 배지가 없음'
+        sub_txt = mp.inner_text('#vsub')
+        assert '라운드' in sub_txt and len(sub_txt) > 10, '자막 바에 발언이 안 나옴: ' + sub_txt[:60]
+        mp.wait_for_timeout(180)
+        mp.screenshot(path=DL+'meeting_v42_mobile_video6.png', full_page=False)
+        mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=30000)
+        print('OK 화상 6분할 — 390x844 한 화면 2x3 · 스크롤 없음 · 캐릭터 %s 발언 · 리액션 %s' % (vsp['id'], react_on))
+
+        # 다시 글로 보기
+        mp.click('#viewTextBtn'); mp.wait_for_timeout(450)
+        assert not mp.evaluate("()=>document.body.classList.contains('view-video')"), '글로 보기로 안 돌아옴'
+        assert mp.is_visible('.talk'), '글로 보기에서 논의 기록이 안 보임'
+        cols2 = mp.evaluate("getComputedStyle(document.getElementById('stage')).gridTemplateColumns")
+        assert len(cols2.split()) == 1, '글로 보기 1열 아님: ' + cols2
+        assert mp.evaluate("()=>{const b=document.querySelector('.tile .bubble');return Math.round(b.getBoundingClientRect().height)}") > 100, '글로 보기인데 본문이 숨겨져 있음'
+        mp.wait_for_timeout(2500)
+        mp.evaluate("document.getElementById('stageHd').scrollIntoView({block:'start'})")
+        mp.wait_for_timeout(400)
+        mp.screenshot(path=DL+'meeting_v42_mobile_text.png', full_page=False)
+        print('OK 글로 보기 복귀 — 1열 큰 카드(%.1fpx) · 본문 복원' % mp.evaluate("parseFloat(getComputedStyle(document.querySelector('.tile .bubble')).fontSize)"))
 
         # 결론 선택 → 참관 게스트 최종 조언
         mp.click('#toConfirmBtn'); mp.wait_for_timeout(500)
@@ -361,7 +450,7 @@ def main():
         mp.evaluate("document.getElementById('rolePanel').scrollIntoView({block:'start'})")
         mp.wait_for_timeout(400)
         mp.screenshot(path=DL+'meeting_v41_mobile_roles.png')
-        print('OK 모바일 390x844 · 1열 큰 카드(%.0fpx, 줄간격 %.2f) · 말하는 카드 강조·자동스크롤 · 게스트 조언' % (fs, lh))
+        print('OK 모바일 390x844 · 1열 큰 카드(%.0fpx, 줄간격 %.2f) · 말하는 카드 테두리 강조·자동스크롤 없음 · 게스트 조언' % (fs, lh))
         b.close()
 
     if errs:
