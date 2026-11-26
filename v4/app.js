@@ -5,15 +5,35 @@
   /* ═══════════════════ 기본 정의 ═══════════════════ */
   const LIB = window.AGENDA_LIB || {agendas:[], byId:{}};
   const AIS = ["pickle","gemini","cue","hark","chatgpt","claude"];
+  const GUEST_POOL = ["meta_muse","keyring"];
   const PEOPLE = [
     {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6"},
     {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4"},
     {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8"},
     {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c"},
     {id:"chatgpt", name:"ChatGPT",   emoji:"🛠️", role:"구조 설계·DB·자동화",     color:"#10a37f"},
-    {id:"claude",  name:"Claude",    emoji:"✍️", role:"글쓰기·기획 검토",        color:"#d97757"}
+    {id:"claude",  name:"Claude",    emoji:"✍️", role:"글쓰기·기획 검토",        color:"#d97757"},
+    {id:"meta_muse",name:"Meta Muse",emoji:"🎨", role:"B롤 영상·이미지",        color:"#e879f9"},
+    {id:"keyring", name:"Keyring",   emoji:"🔑", role:"신규 합류 · 참관",        color:"#a3e635"}
   ];
   const byId = id => PEOPLE.find(p => p.id === id) || (id === "owner" ? {id:"owner", name:"오너", emoji:"👑", color:"#f5c04a"} : null);
+
+  /* 주전 6인은 안건마다 바뀔 수 있다 (참관 게스트 2인은 타일 없이 조언만) */
+  function partList(){
+    const a = state.agenda;
+    if(a && a.participants && a.participants.length) return a.participants.filter(id=> byId(id));
+    return AIS.slice();
+  }
+  function guestList(){
+    const a = state.agenda;
+    if(!a || !a.guests) return [];
+    return a.guests.filter(g=> g && g.name);
+  }
+  function panelCount(a){
+    const target = a || state.agenda;
+    if(!target || !target.panels) return 0;
+    return partList().filter(id=> target.panels[id]).length;
+  }
 
   const K_SPEED = "darkjin_mr4_speed";
   const K_VOICE = "darkjin_mr4_voice";
@@ -21,6 +41,7 @@
   const K_REQ   = "darkjin_mr4_requests";
   const K_SEEN  = "darkjin_mr4_seen_ready";
   const K_NOTIFY= "darkjin_mr4_notify";
+  const K_PLAN  = "darkjin_mr4_plans";
 
   const LS = {
     get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
@@ -34,8 +55,9 @@
     option:null,         // 확정한 결론 후보 id
     ownerDir:"",         // 결론 확정 시 오너 추가 지시
     notes:[],            // 오너 코멘트 전체
-    readSet:{},
-    rebutSet:{},
+    round:0,             // 지금까지 본 라운드 (0=아직 없음, 1~4)
+    roundSet:{},         // 라운드별 완료 여부
+    talked:{},           // 라운드:AI 중복 기록 방지
     busy:false,
     runToken:0,
     speed:Number(LS.get(K_SPEED) || 1),
@@ -58,7 +80,7 @@
   const pad = n => String(n).padStart(2,"0");
   const nowHM = () => { const d=new Date(); return pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds()); };
   const nowStamp = () => { const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes()); };
-  const norm = s => String(s||"").replace(/\s+/g,"").replace(/[.,?!"'·:;()\[\]]/g,"").toLowerCase();
+  const norm = s => String(s||"").replace(/\s+/g,"").replace(/[.,?!"'·:;()\[\]—–]/g,"").toLowerCase();
 
   /* ═══════════════════ 효과음 (Web Audio · 외부 파일 0) ═══════════════════ */
   const SFX = (function(){
@@ -133,7 +155,9 @@
     cue:     {pitch:1.30, rate:1.12, tone:"리서치 · 빠름"},
     hark:    {pitch:0.78, rate:1.04, tone:"검증 · 낮고 무겁게"},
     chatgpt: {pitch:1.00, rate:0.96, tone:"구조 · 차분"},
-    claude:  {pitch:1.14, rate:0.88, tone:"작가 · 느긋"}
+    claude:  {pitch:1.14, rate:0.88, tone:"작가 · 느긋"},
+    meta_muse:{pitch:1.20, rate:1.05, tone:"영상 · 밝고 경쾌"},
+    keyring: {pitch:1.02, rate:1.00, tone:"신참 · 차분"}
   };
   const synthOK = (typeof window !== "undefined") && ("speechSynthesis" in window) && (typeof window.SpeechSynthesisUtterance === "function");
   let koVoices = [];
@@ -244,10 +268,10 @@
   async function psleep(ms){ await waitIfPaused(); if(state.paused) return; await sleep(ms); }
 
   function quietAll(){
-    stopListening(true); stopInterjectMic(true);
+    stopInterjectMic(true);
     const first = !state.paused;
     if(first){ state.paused = true; state.pausedAt = Date.now(); }
-    AIS.forEach(id=>{
+    Object.keys(tileRefs).forEach(id=>{
       const r = tileRefs[id]; if(!r) return;
       r.tile.classList.add("quiet");
       r.tile.classList.remove("speaking");
@@ -273,7 +297,7 @@
     if(!state.paused){ toast("지금은 멈춰 있지 않습니다"); return; }
     state.paused = false;
     document.body.classList.remove("is-quiet");
-    AIS.forEach(restoreTileState);
+    Object.keys(tileRefs).forEach(restoreTileState);
     if(state.activeSpeaker && tileRefs[state.activeSpeaker]) setTileState(state.activeSpeaker,"speaking","발언 중");
     if(state.pausedAt){ state.pausedMs += Date.now()-state.pausedAt; state.pausedAt = 0; }
     if(state.agenda) startClock(state.pausedMs);
@@ -297,8 +321,8 @@
     return STOP_WORDS.some(w=>s.indexOf(w)>=0);
   }
   function setMicUI(on){
-    const b=document.getElementById("micBtn"); const f=document.getElementById("inputField");
-    if(b){ b.classList.toggle("on",on); b.textContent = on?"■ 듣는 중":"🎤 말하기"; }
+    const b=document.getElementById("planMic"); const f=document.getElementById("planTopic");
+    if(b){ b.classList.toggle("on",on); b.textContent = on?"■":"🎤"; }
     if(f) f.classList.toggle("listening",on);
   }
   function setIMicUI(on){
@@ -322,7 +346,7 @@
         if(heard && isStopPhrase(heard)){ stopListening(true); quietAll(); toast('🤫 "'+heard+'" 감지 — 전체 정지'); return; }
         if(fin) micFinal=(micFinal+" "+fin).replace(/\s+/g," ").trim();
         const shown=(micFinal+(interim?" "+interim:"")).trim();
-        const input=document.getElementById("reqTopic");
+        const input=document.getElementById("planTopic");
         if(input && shown) input.value = micBase ? micBase+" "+shown : shown;
       };
       recog.onerror = ev=>{
@@ -338,8 +362,8 @@
   function startListening(){
     if(!SR){ toast("이 브라우저는 음성 인식을 지원하지 않습니다"); return; }
     if(micWant){ toast("🎤 이미 듣고 있습니다"); return; }
-    micWant=true; micBase=($("#reqTopic").value||"").trim(); micFinal="";
-    toast("🎤 듣는 중 … 주제를 말해 주세요");
+    micWant=true; micBase=($("#planTopic").value||"").trim(); micFinal="";
+    toast("🎤 듣는 중 … 회의 주제를 말해 주세요");
     beginRecognition();
   }
   function stopListening(silent){
@@ -396,9 +420,11 @@
   const stage = $("#stage");
   const tileRefs = {};
 
-  function buildTiles(){
+  function buildTiles(ids){
     stage.innerHTML = "";
-    PEOPLE.forEach(p=>{
+    Object.keys(tileRefs).forEach(k=>{ delete tileRefs[k]; });
+    const list = (ids && ids.length ? ids : AIS).map(id=> byId(id)).filter(Boolean);
+    list.forEach(p=>{
       const t = el("div","tile");
       t.dataset.id = p.id;
 
@@ -473,6 +499,7 @@
     if(p.color) nm.style.color = p.color;
     who.append(nm);
     if(kind==="read") who.append(el("span","pill","준비 자료"));
+    if(kind==="round") who.append(el("span","pill", (opts.round ? opts.round + "R · " : "") + (opts.tag || "발언")));
     if(kind==="react") who.append(el("span","pill","코멘트 반영"));
     if(kind==="owner") who.append(el("span","pill","오너"));
     if(opts.to){
@@ -558,6 +585,7 @@
     const cutP = new Promise(res=>{ cutRec.fire = ()=>{ if(!cutRec.fired){ cutRec.fired = true; res(); } }; });
     state.activeSpeaker = id;
     setTileState(id, "speaking", opts.label || "낭독 중");
+    focusTile(id);
     const talking = (state.voiceOn && text) ? speakText(id, text, token, cutRec) : Promise.resolve();
     await Promise.race([talking, cutP]);
     state.activeCut = null;
@@ -572,10 +600,36 @@
 
   /* ═══════════════════ 준비실 ═══════════════════ */
   function readyAgendas(){ return (LIB.agendas||[]).filter(a=>a.ready && a.panels); }
-  function requests(){
-    try{ return JSON.parse(LS.get(K_REQ)||"[]") || []; }catch(e){ return []; }
+  function localPlans(){
+    try{ return JSON.parse(LS.get(K_PLAN)||"[]") || []; }catch(e){ return []; }
   }
-  function saveRequests(list){ LS.set(K_REQ, JSON.stringify(list.slice(-20))); }
+  function saveLocalPlans(list){ LS.set(K_PLAN, JSON.stringify(list.slice(-30))); }
+  function dstr(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function dayOffset(n){ const d=new Date(); d.setDate(d.getDate()+n); return dstr(d); }
+  function prettyDate(iso){
+    if(!iso) return "날짜 미정";
+    const s = String(iso).slice(0,10);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if(!m) return String(iso);
+    const label = s === dayOffset(0) ? "오늘" : s === dayOffset(1) ? "내일" : s === dayOffset(2) ? "모레" : "";
+    return (+m[2]) + "/" + (+m[3]) + (label ? " (" + label + ")" : "");
+  }
+  function plannedAgendas(){
+    const out = [];
+    (LIB.planned||[]).forEach(p=> out.push({topic:p.topic, date:p.date, by:p.by||"", note:p.note||"", sample:true}));
+    localPlans().forEach(p=>{
+      if(out.some(o=>norm(o.topic) === norm(p.topic))) return;
+      out.push({topic:p.topic, date:p.date, by:p.by||"오너 예약", note:p.note||"", local:true});
+    });
+    out.sort((a,b)=> String(a.date||"").localeCompare(String(b.date||"")));
+    return out;
+  }
+  function roundTotal(a){
+    if(!a) return 1;
+    if(a.rounds && a.rounds.length) return 1 + a.rounds.length;
+    const hasReb = Object.keys(a.panels||{}).some(k=> a.panels[k] && a.panels[k].rebuttal && a.panels[k].rebuttal.text);
+    return hasReb ? 2 : 1;
+  }
   function findReadyByTopic(topic){
     const n = norm(topic);
     if(!n) return null;
@@ -587,95 +641,106 @@
     const ready = readyAgendas();
     list.innerHTML = "";
     if(!ready.length){
-      list.append(el("div","qempty","아직 준비 완료된 안건이 없습니다. 아래에서 주제를 요청해 주세요."));
+      list.append(el("div","qempty","아직 ✅ 준비 완료 안건이 없습니다. ＋ 안건 예약으로 다음 회의 주제를 정해 두세요."));
     }
     ready.forEach(a=>{
       const b = el("button","agcard" + (state.agenda && state.agenda.id === a.id ? " active" : ""));
       b.dataset.id = a.id;
       const cnt = a.panels ? Object.keys(a.panels).filter(k=>a.panels[k]).length : 0;
-      b.append(el("span","tg", a.tag || "안건"));
+      const top = el("div","agtop");
+      top.append(el("span","tg", a.tag || "안건"));
+      top.append(el("span","agst","✅ 준비 완료"));
+      b.append(top);
       b.append(el("div","tt", a.title));
       b.append(el("div","bf", a.brief || ""));
       const mt = el("div","mt");
-      const m1 = el("span"); m1.innerHTML = "자료 <b>"+cnt+"/6</b> 준비 완료";
+      const m1 = el("span"); m1.innerHTML = "자료 <b>"+cnt+"/6</b>";
       mt.append(m1);
+      mt.append(el("span","rd", "· 🎙 " + roundTotal(a) + "라운드"));
       if(a.preparedAt) mt.append(el("span","", "· " + a.preparedAt));
-      if(a.preparedBy) mt.append(el("span","", "· " + a.preparedBy));
       b.append(mt);
       b.addEventListener("click", ()=> openAgenda(a.id));
       list.append(b);
     });
+    renderPlanList();
     const cntEl = document.getElementById("readyCnt");
-    const req = requests();
-    const pending = req.filter(r=>!findReadyByTopic(r.topic)).length;
-    cntEl.textContent = "준비 완료 " + ready.length + "건" + (pending ? " · 준비 중 " + pending + "건" : "");
-    cntEl.classList.toggle("warn", pending > 0);
-    renderQueue();
+    if(cntEl) cntEl.textContent = "✅ " + ready.length;
+    const wEl = document.getElementById("waitCnt");
+    if(wEl) wEl.textContent = "⏳ " + plannedAgendas().length;
   }
 
-  function renderQueue(){
-    const list = document.getElementById("queueList");
-    const empty = document.getElementById("queueEmpty");
-    const req = requests();
-    list.innerHTML = "";
-    if(!req.length){ empty.style.display = "block"; return; }
-    empty.style.display = "none";
-    req.slice().reverse().forEach(r=>{
-      const hit = findReadyByTopic(r.topic);
-      const li = el("li","qitem" + (hit ? " ready" : ""));
-      li.append(el("span","st", hit ? "준비 완료" : "자료 준비 중"));
-      li.append(el("span","qt", r.topic));
-      if(hit){
-        const go = el("button","qb","열기");
-        go.addEventListener("click", ()=> openAgenda(hit.id));
-        li.append(go);
-        const cp = el("button","qb","요청문");
-        cp.addEventListener("click", ()=> copyText(requestText(r.topic)));
-        li.append(cp);
-      }else{
-        const cp = el("button","qb","요청문 복사");
-        cp.addEventListener("click", ()=> copyText(requestText(r.topic)));
-        li.append(cp);
+  function renderPlanList(){
+    const box = document.getElementById("planList");
+    if(!box) return;
+    const plan = plannedAgendas();
+    box.innerHTML = "";
+    box.append(el("div","wt","⏳ 준비 중 (대기) — 자료가 모이면 ✅로 바뀝니다"));
+    if(!plan.length){
+      box.append(el("div","qempty","예약된 안건이 없습니다 — ＋ 안건 예약으로 '내일 이 주제로 회의'를 정해 두세요."));
+      return;
+    }
+    plan.forEach(p=>{
+      const card = el("div","agcard wcard");
+      const top = el("div","agtop");
+      top.append(el("span","tg","⏳ 준비 중"));
+      if(p.sample) top.append(el("span","agst smp","예시"));
+      card.append(top);
+      card.append(el("div","tt", p.topic));
+      card.append(el("div","bf", "예정 " + prettyDate(p.date) + (p.by ? " · " + p.by : "")));
+      if(p.note) card.append(el("div","note2", p.note));
+      const row = el("div","wrow");
+      const cp = el("button","qb","📋 피클에게 자료 요청문 복사");
+      cp.addEventListener("click", e=>{ e.stopPropagation(); copyText(requestText(p.topic, p.date)); });
+      row.append(cp);
+      if(p.local){
+        const x = el("button","qx","✕");
+        x.title = "예약 취소";
+        x.addEventListener("click", e=>{
+          e.stopPropagation();
+          saveLocalPlans(localPlans().filter(v=>norm(v.topic) !== norm(p.topic)));
+          renderPrep(); toast("예약을 취소했습니다");
+        });
+        row.append(x);
       }
-      const x = el("button","qx","✕");
-      x.title = "큐에서 빼기";
-      x.addEventListener("click", ()=>{
-        const cur = requests().filter(v=>v.at !== r.at || v.topic !== r.topic);
-        saveRequests(cur); renderPrep(); toast("큐에서 뺐습니다");
+      card.append(row);
+      card.addEventListener("click", ()=>{
+        toast("⏳ 아직 자료가 준비되지 않았습니다 · 피클이 6인 자료를 모으면 ✅로 바뀝니다");
       });
-      li.append(x);
-      list.append(li);
+      box.append(card);
     });
   }
 
-  function requestText(topic){
+  function requestText(topic, date){
     return [
-      "[회의 안건 요청] 다크진 AI 비서실 · 6분할 회의실",
+      "[회의 안건 예약] 다크진 AI 비서실 · 6분할 회의실",
       "",
+      "예정일: " + (date || "미정") + (date ? " (" + prettyDate(date) + ")" : ""),
       "주제: " + topic,
       "요청: 오너 darkjin / " + nowStamp(),
       "",
-      "피클, 이 주제로 6분할 회의실 v4 사전 자료를 준비해 주세요.",
+      "피클, 이 주제로 6분할 회의실 v4.1 사전 자료를 준비해 주세요.",
       "- 6인(피클·Gemini·Cue·Hark·ChatGPT·Claude)이 서로 겹치지 않는 사전 조사 자료를 각각 만들 것",
       "- 각 AI 자료: 핵심 요약 1~2문장 / 근거·데이터 2~3개 / 우려·반박 1개 / 제안 1개 / 자료 출처 한 줄",
       "- 확인 가능한 근거와 추정을 구분해서 적을 것",
+      "- 2라운드 정면 반박 · 3라운드 대안·절충 · 4라운드 최종 정리까지 서로 물고 물리는 발언을 rounds 에 적을 것",
       "- 결론 후보 2~3개와 후보별 6인 역할 분담을 함께 만들 것",
       "- 다 모이면 work/meeting-room/v4/agendas.js 에 안건을 추가하고 ready:true 로 표시",
       "",
-      "자료가 모두 준비되면 '회의 준비 완료'로 알려 주세요. 그때까지 웹에는 '자료 준비 중'으로 남습니다."
+      "자료가 모두 준비되면 '회의 준비 완료'로 알려 주세요. 그때까지 웹에는 '⏳ 준비 중'으로 남습니다."
     ].join("\n");
   }
 
-  function addRequest(topic){
+  function addPlanned(topic, date){
     const t = String(topic||"").replace(/\s+/g," ").trim();
     if(!t){ toast("주제를 적어 주세요"); return null; }
     const hit = findReadyByTopic(t);
-    if(hit){ toast("이미 준비 완료된 안건입니다 · 목록에서 열어 주세요"); openAgenda(hit.id); return hit; }
-    const list = requests();
-    if(list.some(r=>norm(r.topic) === norm(t))){ toast("이미 큐에 있는 주제입니다"); return null; }
-    list.push({topic:t, at:Date.now()});
-    saveRequests(list); renderPrep();
-    toast("➕ 안건 큐에 등록 — 피클이 자료를 모으면 '준비 완료'로 바뀝니다");
+    if(hit){ toast("이미 ✅ 준비 완료된 안건입니다 · 목록에서 열어 주세요"); openAgenda(hit.id); return hit; }
+    if(plannedAgendas().some(p=>norm(p.topic) === norm(t))){ toast("이미 예약된 안건입니다"); return null; }
+    const list = localPlans();
+    list.push({topic:t, date: date || dayOffset(1), at:Date.now()});
+    saveLocalPlans(list);
+    renderPrep();
+    toast("⏳ 안건 예약 — 피클이 자료를 모으면 ✅로 바뀝니다");
     return null;
   }
 
@@ -692,7 +757,7 @@
     state.option = null;
     state.ownerDir = "";
     state.notes = [];
-    state.readSet = {}; state.rebutSet = {};
+    state.round = 0; state.roundSet = {}; state.talked = {};
     state.paused = false; state.pausedAt = 0; state.pausedMs = 0;
     document.body.classList.remove("is-quiet");
     releasePause();
@@ -705,16 +770,21 @@
     document.getElementById("finalBlock").classList.remove("show");
     document.getElementById("ownerDirection").value = "";
 
+    buildTiles(partList());
     renderPrep();
     renderMaterials();
     renderOwnerChips();
+    renderRoundBar();
+    renderGuestBar();
     document.getElementById("prepCard").classList.add("has-agenda");
     document.getElementById("prepCard").classList.add("collapsed");
     document.getElementById("curAgendaTitle").textContent = a.title;
     document.getElementById("prepToggle").textContent = "다른 안건 ▾";
 
     setStep(1);
-    setStageHead("1단계","준비된 자료 보기 & 주제 논의", "자료 " + Object.keys(a.panels).length + " / 6", false);
+    const goal = roundTotal(a);
+    const pc = panelCount(a);
+    setStageHead("1라운드", "📖 자료 발표 — 각자 준비해 온 근거부터", "자료 " + pc + " / " + pc, false);
     setLive("자료 열람", "");
     startClock(0);
     SFX.ding();
@@ -722,26 +792,28 @@
     showReadyBanner(true);
     document.getElementById("refNote").innerHTML =
       "자료 출처는 각 패널의 <b>자료 펼치기</b>에서 확인할 수 있습니다. " +
-      "<b>Meta Muse · Keyring</b>은 이번 안건 자료를 아직 내지 않아 6분할에 넣지 않았습니다.";
+      "이 안건은 <b>1라운드 자료 발표 → 2 정면 반박 → 3 대안·절충 → 4 최종 정리</b>까지 " + goal + "라운드로 이어집니다. " +
+      (guestList().length
+        ? "👀 <b>참관 게스트 " + guestList().length + "인</b>(" + guestList().map(g=>g.name).join(" · ") + ")은 토론 중에는 말하지 않고, 결론을 고를 때 최종 조언만 냅니다."
+        : "");
 
     clearMinEmpty();
     minList.innerHTML = ""; minN = 0; minCountEl.textContent = "0건";
     talkList.innerHTML = ""; talkN = 0; talkCountEl.textContent = "0건";
-    const te = el("li","talk-empty", "자료 6/6 도착 — 카드를 펼쳐 읽고, 📖 자료 낭독이나 🔁 반박 라운드로 6인의 관점 차이를 확인하세요. 아래 💬 오너 코멘트로 방향을 잡으면 결론 후보가 좁혀집니다.");
+    const te = el("li","talk-empty", "자료 " + pc + "/" + pc + " 도착 — 카드를 펼쳐 읽고, 아래 ▶️ 라운드를 이어서 누르면 1라운드 발표부터 2 정면 반박 · 3 대안·절충 · 4 최종 정리까지 " + pc + "인의 티키타카가 이어집니다. 💬 오너 코멘트를 넣으면 그 라운드 흐름에서 바로 반응합니다.");
     te.id = "talkEmpty"; talkList.append(te);
 
-    addSystem('안건 열람 — "' + a.title + '" (자료 ' + Object.keys(a.panels).length + '/6 · ' + (a.preparedAt||"") + ")");
-    addSystem("1단계 · 역할 분담은 결론을 확정한 뒤에 나옵니다");
+    addSystem('안건 열람 — "' + a.title + '" (자료 ' + pc + '/' + pc + ' · ' + (a.preparedAt||"") + ")");
+    addSystem("라운드 " + goal + "개 준비됨 · 1라운드 자료 발표부터 차례로 진행하세요 (결론은 언제든 고를 수 있습니다)");
 
-    $("#reqTopic").value = "";
-    toast("🗂️ 안건 열었습니다 · 6인 자료가 준비되어 있습니다");
+    toast("🗂️ 안건 열었습니다 · 주전 " + pc + "인 자료와 " + goal + "라운드 토론이 준비되어 있습니다");
     const sh = document.getElementById("stageHd");
     if(sh) sh.scrollIntoView({block:"start"});
   }
 
   function renderMaterials(){
     const a = state.agenda;
-    AIS.forEach(id=>{
+    partList().forEach(id=>{
       const p = a.panels[id];
       const r = tileRefs[id];
       if(!p){
@@ -770,6 +842,24 @@
     (p.points||[]).forEach(t=> ul.append(el("li","", t)));
     document.getElementById("matConcern").textContent = p.concern || "—";
     document.getElementById("matProposal").textContent = p.proposal || "—";
+    const mr = document.getElementById("matRounds");
+    if(mr){
+      mr.innerHTML = "";
+      let any = 0;
+      roundPlan().forEach(rd=>{
+        if(rd.n === 1) return;
+        if(!state.roundSet[rd.n]) return;
+        const l = lineFor(id, rd);
+        if(!l) return;
+        any++;
+        const row = el("div","rline");
+        row.append(el("span","who3", rd.n + "R " + (rd.emoji||"") + " " + rd.tag));
+        if(l.to){ const t2 = byId(l.to); row.append(el("span","to3", " → " + (t2 ? t2.name : l.to))); }
+        row.append(document.createTextNode(" — " + l.text));
+        mr.append(row);
+      });
+      if(!any) mr.append(el("div","dnone","아직 2라운드 이후가 진행되지 않았습니다. 아래 라운드를 눌러 이어서 들을 수 있습니다."));
+    }
     const rb = document.getElementById("matRebuttal");
     if(p.rebuttal && p.rebuttal.text){
       const to = byId(p.rebuttal.to);
@@ -779,75 +869,191 @@
     document.getElementById("matModal").classList.add("show");
   }
 
-  /* ═══════════════════ 1단계: 자료 낭독 ═══════════════════ */
+  /* ═══════════════════ 라운드 엔진 (1 자료발표 → 2 반박 → 3 절충 → 4 정리) ═══════════════════ */
   function setBarBusy(v){
     state.busy = !!v;
-    ["readBtn","rebutBtn","toConfirmBtn","confirmRoleBtn","backToTalkBtn"].forEach(i=>{
+    ["nextRoundBtn","toConfirmBtn","confirmRoleBtn","backToTalkBtn"].forEach(i=>{
       const b = document.getElementById(i);
       if(b) b.disabled = state.busy;
     });
+    if(!state.busy) renderRoundBar();
   }
 
-  async function readAll(){
+  function roundPlan(){
+    const a = state.agenda;
+    if(!a) return [];
+    const out = [{n:1, emoji:"📖", tag:"자료 발표", desc:"각자 준비해 온 근거와 관점을 차례로 발표합니다", lines:null, order:null}];
+    const rs = (a.rounds||[]).slice();
+    if(rs.length){
+      rs.forEach((r,i)=>{
+        const n = r.n || (i+2);
+        out.push({n:n, emoji:r.emoji||"🔁", tag:r.tag||(n+"라운드"), desc:r.desc||"", order:r.order||null, lines:r.lines||null});
+      });
+    } else {
+      const lines = {}; let has = false;
+      partList().forEach(x=>{
+        const p = a.panels[x];
+        if(p && p.rebuttal && p.rebuttal.text){ lines[x] = {to:p.rebuttal.to, text:p.rebuttal.text}; has = true; }
+      });
+      if(has) out.push({n:2, emoji:"🔁", tag:"정면 반박", desc:"각자 다른 AI의 자료를 짚고 반박합니다", lines:lines, order:null});
+    }
+    return out;
+  }
+
+  function lineFor(id, rd){
+    if(!rd || !state.agenda) return null;
+    if(rd.n === 1){ const p = state.agenda.panels[id]; return p ? {text:p.summary} : null; }
+    const l = rd.lines && rd.lines[id];
+    if(!l) return null;
+    return (typeof l === "string") ? {text:l} : l;
+  }
+
+  function renderNextLabel(){
+    const b = document.getElementById("nextRoundBtn");
+    if(!b) return;
+    const nx = roundPlan()[state.round];
+    if(!state.agenda){ b.textContent = "📖 1라운드: 자료 발표 시작"; return; }
+    if(nx) b.textContent = (nx.emoji||"▶️") + " " + nx.n + "라운드: " + nx.tag + " 시작";
+    else b.textContent = "📖 1라운드부터 다시 보기";
+  }
+
+  function renderRoundBar(){
+    const bar = document.getElementById("roundBar");
+    if(!bar) return;
+    bar.innerHTML = "";
+    renderNextLabel();
+    if(!state.agenda) return;
+    roundPlan().forEach(rd=>{
+      const done = !!state.roundSet[rd.n];
+      const isNext = !done && rd.n === state.round + 1;
+      const open = done || rd.n <= state.round + 1;
+      const b = el("button","rchip" + (done ? " done" : "") + (isNext ? " next" : ""), (done ? "✓ " : "") + rd.n + " " + rd.tag);
+      b.dataset.round = rd.n;
+      b.disabled = !open;
+      b.title = done ? (rd.n + "라운드 다시 보기") : isNext ? "이어서 재생" : "앞 라운드부터 차례로";
+      b.addEventListener("click", ()=>{ unlockVoice(); playRound(rd.n); });
+      bar.append(b);
+    });
+  }
+
+  /* ═══════════════════ 참관 게스트 (2인) ═══════════════════ */
+  function renderGuestBar(){
+    const bar = document.getElementById("guestBar");
+    if(!bar) return;
+    const gs = guestList();
+    bar.innerHTML = "";
+    if(!gs.length){ bar.classList.remove("on"); return; }
+    bar.classList.add("on");
+    bar.append(el("div","gt", "👀 참관 게스트 " + gs.length + "인 — 토론 중에는 말하지 않고 지켜봅니다"));
+    const w = el("div","gw");
+    gs.forEach(g=>{
+      const i = el("div","gi");
+      i.append(el("span","gie", g.emoji || "👀"));
+      i.append(el("span","gin", g.name));
+      if(g.role) i.append(el("span","gir", g.role));
+      w.append(i);
+    });
+    bar.append(w);
+    bar.append(el("div","gh", "결론을 고를 때 🌟 최종 조언으로 두 사람의 추천과 놓친 포인트가 나옵니다"));
+  }
+
+  function renderGuestAdvice(){
+    const box = document.getElementById("guestAdviceBox");
+    const list = document.getElementById("guestAdvice");
+    if(!box || !list) return;
+    const gs = guestList();
+    list.innerHTML = "";
+    if(!gs.length){ box.style.display = "none"; return; }
+    box.style.display = "";
+    const opts = (state.agenda && state.agenda.options) || [];
+    gs.forEach(g=>{
+      const ad = g.advice || {};
+      const card = el("div","gcard");
+      const head = el("div","gch");
+      head.append(el("span","gce", g.emoji || "👀"));
+      const nm = el("div","gcn");
+      nm.append(el("div","gcnm", g.name));
+      if(g.role) nm.append(el("div","gcr", g.role));
+      head.append(nm);
+      if(ad.option){
+        const o = opts.find(x=>x.id === ad.option);
+        head.append(el("span","gco", "추천 " + ad.option + (o ? " · " + o.title : "")));
+      }
+      card.append(head);
+      if(g.reason) card.append(el("div","gcrs", "참관 이유 — " + g.reason));
+      if(ad.why) card.append(el("div","gcw", ad.why));
+      if(ad.missed){
+        const m = el("div","gcm");
+        m.append(el("b","", "놓친 포인트 "));
+        m.append(document.createTextNode(ad.missed));
+        card.append(m);
+      }
+      list.append(card);
+    });
+  }
+
+  function focusTile(id){
+    if(window.innerWidth > 768) return;
+    const r = tileRefs[id]; if(!r) return;
+    const rect = r.tile.getBoundingClientRect();
+    if(rect.top >= 62 && rect.bottom <= window.innerHeight - 128) return;
+    try{ r.tile.scrollIntoView({block:"center", behavior:"smooth"}); }catch(e){ try{ r.tile.scrollIntoView(); }catch(e2){} }
+  }
+
+  async function playRound(n){
     if(!state.agenda || state.busy) return;
+    const plan = roundPlan();
+    const rd = plan.find(r=> r.n === n);
+    if(!rd){ toast("이 안건에는 그 라운드가 없습니다"); return; }
+    if(n > state.round + 1){ toast((state.round + 1) + "라운드부터 차례로 넘어가 주세요"); return; }
     setBarBusy(true);
     const token = ++state.runToken;
-    state.phase = "materials";
-    addSystem("📖 자료 낭독 — 6인이 준비해 온 요약을 차례로 읽습니다");
-    for(const id of AIS){
+    state.phase = n === 1 ? "materials" : "discussion";
+    setStep(n === 1 ? 1 : 2);
+    const plist = partList();
+    const order = ((rd.order && rd.order.length) ? rd.order : plist).filter(id=> plist.indexOf(id) >= 0);
+    const headLbl = (rd.emoji||"") + " " + rd.n + "라운드 · " + rd.tag;
+    setStageHead(rd.n + "라운드", (rd.desc || rd.tag), headLbl + " 0 / " + order.length, n > 1);
+    addSystem((rd.emoji||"") + " " + rd.n + "라운드 " + rd.tag + " — " + (rd.desc || ""));
+    setLive(n === 1 ? "자료 발표" : rd.tag, "");
+    let k = 0;
+    for(const id of order){
       if(token !== state.runToken) break;
       await waitIfPaused();
       if(token !== state.runToken) break;
-      const p = state.agenda.panels[id];
-      if(!p) continue;
-      renderBubble(id, "준비 자료", p.summary, {showBtn:true});
-      await speakLine(id, p.summary, {label:"자료 낭독"});
+      const line = lineFor(id, rd);
+      if(!line) continue;
+      const who = line.to ? byId(line.to) : null;
+      const tag = rd.n + "라운드 · " + (who ? "→ " + who.name : rd.tag);
+      renderBubble(id, tag, line.text, {showBtn:true});
+      await speakLine(id, line.text, {label: rd.tag + " 중"});
       if(token !== state.runToken) break;
-      if(!state.readSet[id]){ addTalk(id, "read", p.summary); state.readSet[id] = true; }
-      setTileState(id,"ready","낭독 완료");
+      const key = rd.n + ":" + id;
+      if(!state.talked[key]){
+        addTalk(id, n === 1 ? "read" : "round", line.text, {to:line.to, round:rd.n, tag:rd.tag});
+        state.talked[key] = true;
+      }
+      setTileState(id, "ready", n === 1 ? "발표 완료" : rd.n + "라운드 완료");
+      k++;
+      setStageHead(rd.n + "라운드", (rd.desc || rd.tag), headLbl + " " + k + " / " + order.length, n > 1);
       await psleep(150/state.speed);
     }
     if(token === state.runToken){
-      state.phase = "discussion";
-      setStep(2);
-      setStageHead("1단계","논의 — 반박 라운드로 관점 차이를 확인", "낭독 " + Object.keys(state.readSet).length + " / 6", false);
-      setLive("논의 중", "");
-      addSystem("자료 낭독 완료 — 이제 반박 라운드로 서로 다른 관점을 확인합니다");
-      toast("📖 낭독 끝 · 이제 🔁 반박 라운드로 넘어가세요");
-    }
-    setBarBusy(false);
-  }
-
-  /* ═══════════════════ 1단계: 반박 라운드 ═══════════════════ */
-  async function rebuttalRound(){
-    if(!state.agenda || state.busy) return;
-    setBarBusy(true);
-    const token = ++state.runToken;
-    state.phase = "discussion";
-    setStep(2);
-    setStageHead("1단계","논의 — 6인이 서로의 자료에 반박·보완", "반박 0 / 6", false);
-    addSystem("🔁 반박 라운드 — 각자 다른 AI의 자료를 짚고 반박합니다");
-    let n = 0;
-    for(const id of AIS){
-      if(token !== state.runToken) break;
-      await waitIfPaused();
-      if(token !== state.runToken) break;
-      const p = state.agenda.panels[id];
-      if(!p || !p.rebuttal || !p.rebuttal.text) continue;
-      const to = byId(p.rebuttal.to);
-      renderBubble(id, "반박 → " + (to?to.name:p.rebuttal.to), p.rebuttal.text, {showBtn:true});
-      await speakLine(id, p.rebuttal.text, {label:"반박 중"});
-      if(token !== state.runToken) break;
-      if(!state.rebutSet[id]){ addTalk(id, "rebut", p.rebuttal.text, {to:p.rebuttal.to}); state.rebutSet[id] = true; }
-      setTileState(id,"ready","반박 완료");
-      n++;
-      setStageHead("1단계","논의 — 6인이 서로의 자료에 반박·보완", "반박 " + n + " / 6", false);
-      await psleep(150/state.speed);
-    }
-    if(token === state.runToken){
-      setLive("오너 결정 대기", "owner");
-      addSystem("반박 라운드 완료 — 오너가 결론을 확정하면 역할 분담이 나옵니다");
-      toast("🔁 반박 6건 끝 · ✅ 결론 확정으로 넘어가세요");
+      state.round = Math.max(state.round, rd.n);
+      state.roundSet[rd.n] = true;
+      if(state.round >= 1) setStep(2);
+      renderRoundBar();
+      const nx = plan[state.round];
+      if(nx){
+        setLive("논의 중", "");
+        addSystem(rd.n + "라운드 완료 — 다음은 " + nx.n + "라운드 " + nx.tag + "입니다");
+        toast("✅ " + rd.n + "라운드 끝 · ▶️ " + nx.n + "라운드 " + nx.tag + "로 이어서 보세요");
+      } else {
+        setLive("오너 결정 대기", "owner");
+        addSystem("모든 라운드 완료 — ✅ 논의 마치고 결론을 고르세요");
+        toast("🏁 " + plan.length + "라운드 끝 · ✅ 결론을 고르세요");
+      }
+      SFX.ding();
     }
     setBarBusy(false);
   }
@@ -892,7 +1098,7 @@
 
     const a = state.agenda;
     let picked = null;
-    AIS.forEach(id=>{
+    partList().forEach(id=>{
       const p = a.panels[id];
       if(!p) return;
       const rep = (a.ownerReplies && a.ownerReplies[id]) || "";
@@ -934,11 +1140,19 @@
       b.addEventListener("click", ()=>{
         state.option = o.id;
         document.querySelectorAll("#optList .opt").forEach(x=>x.classList.toggle("sel", x.dataset.id === o.id));
-        document.getElementById("cfMeta").textContent = "선택: " + o.id + " · 반박 " + Object.keys(state.rebutSet).length + "건";
+        document.getElementById("cfMeta").textContent = "선택: " + o.id + " · 논의 " + state.round + "/" + roundPlan().length + "라운드";
       });
       list.append(b);
     });
-    document.getElementById("cfMeta").textContent = "결론 후보 " + opts.length + " · 반박 " + Object.keys(state.rebutSet).length + "건 반영";
+    const total = roundPlan().length;
+    document.getElementById("cfMeta").textContent = "결론 후보 " + opts.length + " · 논의 " + state.round + "/" + total + "라운드 · 발언 " + talkN + "건";
+    renderGuestAdvice();
+    const hint = document.getElementById("cfHint");
+    if(hint){
+      hint.innerHTML = state.round >= total
+        ? "🏁 " + total + "라운드까지 다 보셨습니다. 후보를 고르면 그 결론에 맞춘 역할 분담표가 나옵니다."
+        : "지금 " + state.round + "라운드까지 보셨습니다. 더 들어 보려면 아래 <b>↩️ 논의로 돌아가기</b>로 나가 ▶️ 다음 라운드를 이어가면 됩니다. 결론은 언제든 골라도 됩니다.";
+    }
     document.getElementById("confirmPanel").classList.add("show");
     addSystem("결론 확정 단계 — 오너가 후보를 고르고 역할 분담이 생성됩니다");
     document.getElementById("confirmPanel").scrollIntoView({block:"center", behavior:"smooth"});
@@ -984,7 +1198,8 @@
 
     const list = document.getElementById("actionList");
     list.innerHTML = "";
-    AIS.forEach(id=>{
+    const plist = partList();
+    plist.forEach(id=>{
       const p = byId(id);
       const card = el("div","ac"); card.dataset.id = id;
       const body = el("div");
@@ -1000,10 +1215,10 @@
     fin.textContent = a.closing || "역할 분담대로 진행하고, 결과는 다음 회의에서 복기합니다.";
     document.getElementById("finalBlock").classList.add("show");
 
-    setStageHead("2단계","결론 확정 → 역할 분담", "배정 6 / 6", true);
+    setStageHead("2단계","결론 확정 → 역할 분담", "배정 " + plist.length + " / " + plist.length, true);
     setLive("역할 분담 완료", "done");
-    addSystem("✅ 결론 확정 — 후보 " + opt.id + " · 역할 6건 배정");
-    AIS.forEach(id=>{
+    addSystem("✅ 결론 확정 — 후보 " + opt.id + " · 역할 " + plist.length + "건 배정");
+    plist.forEach(id=>{
       if(roles[id]) addTalk(id,"sys", "배정 — " + roles[id]);
     });
     toast("🧩 역할 분담 완료 · 복사해서 피클에게 넘기세요");
@@ -1012,14 +1227,14 @@
 
     const token = state.runToken;
     speakLine("pickle", "결론 확정했습니다. " + opt.title + ". 역할 여섯 개를 나눴습니다.", {label:"결론 확정"})
-      .then(()=>{ if(token === state.runToken){ AIS.forEach(id=>{ if(state.phase==="roles") setTileState(id,"assigned","배정"); }); } });
+      .then(()=>{ if(token === state.runToken){ partList().forEach(id=>{ if(state.phase==="roles") setTileState(id,"assigned","배정"); }); } });
   }
 
   function newMeeting(){
     state.runToken++;
     state.phase = "idle";
     state.agenda = null; state.option = null; state.ownerDir = "";
-    state.notes = []; state.readSet = {}; state.rebutSet = {};
+    state.notes = []; state.round = 0; state.roundSet = {}; state.talked = {};
     document.body.classList.remove("meeting-on");
     document.getElementById("prepCard").classList.remove("collapsed");
     document.getElementById("prepCard").classList.remove("has-agenda");
@@ -1032,17 +1247,13 @@
     document.getElementById("refNote").textContent = "";
     clearInterval(state.timerId);
     document.getElementById("clock").textContent = "00:00";
-    AIS.forEach(id=>{
-      const r = tileRefs[id]; if(!r) return;
-      r.bubble.innerHTML = ""; r.bubble.classList.add("empty");
-      r.bubble.textContent = "안건을 고르면 준비해 온 자료가 여기에 열립니다.";
-      r.matbtn.classList.add("ghost");
-      setTileState(id,"","대기");
-    });
+    buildTiles(AIS);
+    renderGuestBar();
     setStep(0);
-    setStageHead("1단계","안건을 고르면 6인이 준비해 온 자료가 열립니다","자료 0 / 6",false);
+    setStageHead("준비","안건 목록에서 고르면 6인 자료와 4라운드 토론이 열립니다","자료 0 / 6",false);
     setLive("준비실", "");
     renderPrep();
+    renderRoundBar();
     window.scrollTo({top:0, behavior:"smooth"});
     toast("준비실로 돌아왔습니다");
   }
@@ -1097,19 +1308,43 @@
     if(state.notes.length){ L.push(""); L.push("### 오너 코멘트"); state.notes.forEach(n=>L.push("- " + n)); }
     L.push("");
     L.push("### 역할 분담");
-    AIS.forEach(id=>{
+    partList().forEach(id=>{
       const p = byId(id);
       L.push("- " + p.name + " (" + p.role + ") — " + (roles[id] || "미정"));
     });
     L.push("");
     L.push("### 다음 단계");
     L.push(a.closing || "");
+    const roundsPlayed = roundPlan().filter(r=> r.n >= 2 && state.roundSet[r.n]);
+    if(roundsPlayed.length){
+      L.push("");
+      L.push("### 논의 라운드");
+      roundsPlayed.forEach(rd=>{
+        L.push("");
+        L.push("#### " + rd.n + "라운드 · " + rd.tag);
+        partList().forEach(id=>{
+          const l = lineFor(id, rd); if(!l) return;
+          const to = l.to ? (byId(l.to) ? byId(l.to).name : l.to) : "";
+          L.push("- " + byId(id).name + (to ? " → " + to : "") + ": " + l.text);
+        });
+      });
+    }
     L.push("");
     L.push("### 준비 자료 요약");
-    AIS.forEach(id=>{
+    partList().forEach(id=>{
       const p = a.panels[id]; if(!p) return;
       L.push("- " + byId(id).name + ": " + p.summary);
     });
+    const gs = guestList();
+    if(gs.length){
+      L.push("");
+      L.push("### 🌟 참관 게스트 최종 조언");
+      gs.forEach(g=>{
+        const ad = g.advice || {};
+        L.push("- " + g.name + " (" + (g.role||"참관") + ") → 추천 " + (ad.option||"—") + ": " + (ad.why||""));
+        if(ad.missed) L.push("  · 놓친 포인트: " + ad.missed);
+      });
+    }
     return L.join("\n");
   }
 
@@ -1134,9 +1369,9 @@
     const a = state.agenda;
     const b = document.getElementById("readyBanner");
     if(!a){ b.classList.remove("show"); return; }
-    const cnt = Object.keys(a.panels||{}).length;
+    const cnt = panelCount(a);
     document.getElementById("readyTitle").textContent = "회의 준비 완료 — " + a.title;
-    document.getElementById("readySub").textContent = "6인 자료 " + cnt + "/6 · 준비 " + (a.preparedAt||"") + " · " + (a.preparedBy||"");
+    document.getElementById("readySub").textContent = "주전 " + cnt + "인 자료 " + cnt + "/" + cnt + " · 준비 " + (a.preparedAt||"") + " · " + (a.preparedBy||"") + (guestList().length ? " · 👀 게스트 " + guestList().length + "인" : "");
     b.classList.add("show");
     if(force) SFX.ding();
   }
@@ -1173,10 +1408,27 @@
     nb.textContent = LS.get(K_NOTIFY) === "1" ? "🔔 알림 켜짐" : "🔕 알림 꺼짐";
   }
   function closeSettings(){ document.getElementById("settingsModal").classList.remove("show"); }
+  function openPlan(){
+    const t = document.getElementById("planTopic");
+    const d = document.getElementById("planDate");
+    if(t) t.value = "";
+    if(d) d.value = dayOffset(1);
+    document.querySelectorAll("#planDateRow .chip").forEach(c=>c.classList.toggle("on", c.dataset.day === "tomorrow"));
+    document.getElementById("planModal").classList.add("show");
+    setTimeout(()=>{ if(t) t.focus(); }, 80);
+  }
+  function closePlan(){
+    stopListening(true);
+    document.getElementById("planModal").classList.remove("show");
+  }
 
   /* ═══════════════════ 이벤트 ═══════════════════ */
-  document.getElementById("readBtn").addEventListener("click", ()=>{ unlockVoice(); readAll(); });
-  document.getElementById("rebutBtn").addEventListener("click", ()=>{ unlockVoice(); rebuttalRound(); });
+  document.getElementById("nextRoundBtn").addEventListener("click", ()=>{
+    unlockVoice();
+    if(!state.agenda){ toast("먼저 안건 목록에서 안건을 골라 주세요"); return; }
+    const nx = roundPlan()[state.round];
+    playRound(nx ? nx.n : 1);
+  });
   document.getElementById("toConfirmBtn").addEventListener("click", ()=>{ unlockVoice(); openConfirm(); });
   document.getElementById("backToTalkBtn").addEventListener("click", backToTalk);
   document.getElementById("confirmRoleBtn").addEventListener("click", confirmRoles);
@@ -1188,7 +1440,7 @@
     document.getElementById("stage1Bar").style.display = "";
     state.phase = "materials";
     renderMaterials();
-    AIS.forEach(id=>{ const r=tileRefs[id]; if(r) r.matbtn.classList.remove("ghost"); });
+    partList().forEach(id=>{ const r=tileRefs[id]; if(r) r.matbtn.classList.remove("ghost"); });
     openConfirm();
     toast("↩️ 결론을 다시 고를 수 있습니다 · 자료도 그대로 남아 있습니다");
   });
@@ -1209,6 +1461,7 @@
   document.getElementById("settingsBtn").addEventListener("click", openSettings);
   document.querySelectorAll("[data-close]").forEach(n=> n.addEventListener("click", ()=>{
     if(n.closest("#matModal")) document.getElementById("matModal").classList.remove("show");
+    else if(n.closest("#planModal")) closePlan();
     else closeSettings();
   }));
   document.getElementById("matSpeak").addEventListener("click", ()=>{
@@ -1220,17 +1473,25 @@
     speakLine(state.matId, p.summary, {label:"자료 낭독"}).then(()=>{ if(state.phase!=="roles" && state.agenda) setTileState(state.matId,"ready","자료 준비"); });
   });
 
-  document.getElementById("reqCopy").addEventListener("click", ()=>{
-    const t = ($("#reqTopic").value||"").trim();
+  document.getElementById("planAddBtn").addEventListener("click", ()=>{ unlockVoice(); openPlan(); });
+  document.getElementById("planSave").addEventListener("click", ()=>{
+    const t = ($("#planTopic").value||"").trim();
     if(!t){ toast("주제를 먼저 적어 주세요"); return; }
-    copyText(requestText(t));
+    const d = ($("#planDate").value||"").trim() || dayOffset(1);
+    stopListening(true);
+    addPlanned(t, d);
+    $("#planTopic").value = "";
+    closePlan();
   });
-  document.getElementById("reqQueue").addEventListener("click", ()=>{
-    const t = ($("#reqTopic").value||"").trim();
-    const hit = addRequest(t);
-    if(!hit) $("#reqTopic").value = "";
+  $("#planTopic").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); document.getElementById("planSave").click(); } });
+  document.getElementById("planMic").addEventListener("click", ()=>{ unlockVoice(); startListening(); });
+  document.querySelectorAll("#planDateRow .chip").forEach(c=>{
+    c.addEventListener("click", ()=>{
+      document.querySelectorAll("#planDateRow .chip").forEach(x=>x.classList.toggle("on", x === c));
+      const off = c.dataset.day === "today" ? 0 : c.dataset.day === "after" ? 2 : 1;
+      document.getElementById("planDate").value = dayOffset(off);
+    });
   });
-  $("#reqTopic").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); document.getElementById("reqQueue").click(); } });
 
   document.getElementById("voiceBtn").addEventListener("click", ()=>{
     setVoice(!state.voiceOn);
@@ -1300,7 +1561,7 @@
     }
   });
   document.addEventListener("keydown", e=>{
-    if(e.key === "Escape"){ closeSettings(); document.getElementById("matModal").classList.remove("show"); }
+    if(e.key === "Escape"){ closeSettings(); closePlan(); document.getElementById("matModal").classList.remove("show"); }
     const tag = (e.target && e.target.tagName) || "";
     if((e.key === "q" || e.key === "Q") && !/input|textarea/i.test(tag)){ if(state.paused) resumeAll(); else quietAll(); }
   });
@@ -1308,7 +1569,7 @@
   /* ═══════════════════ 시작 ═══════════════════ */
   buildTiles();
   setStep(0);
-  setStageHead("1단계","안건을 고르면 6인이 준비해 온 자료가 열립니다","자료 0 / 6",false);
+  setStageHead("준비","안건 목록에서 고르면 6인 자료와 4라운드 토론이 시작됩니다","자료 0 / 6",false);
   setVoice(state.voiceOn, true);
   refreshVoices();
   if(synthOK){ try{ window.speechSynthesis.onvoiceschanged = refreshVoices; }catch(e){} }
@@ -1326,7 +1587,7 @@
     const ag = q.get("agenda");
     const tp = q.get("topic");
     if(ag && LIB.byId && LIB.byId[ag]) openAgenda(ag);
-    else if(tp) document.getElementById("reqTopic").value = tp;
+    else if(tp){ openPlan(); document.getElementById("planTopic").value = tp; }
   }catch(e){}
 
   const unlockOnce = ()=>{ unlockVoice(); document.removeEventListener("pointerdown", unlockOnce); document.removeEventListener("touchstart", unlockOnce); };
@@ -1338,11 +1599,16 @@
     state: state,
     agendaIds: () => (LIB.agendas||[]).map(a=>a.id),
     openAgenda: openAgenda,
-    readAll: readAll,
-    rebuttalRound: rebuttalRound,
+    playRound: playRound,
+    roundPlan: roundPlan,
+    roundTotal: roundTotal,
+    participants: partList,
+    guests: guestList,
     submitComment: submitComment,
     openConfirm: openConfirm,
     confirmRoles: confirmRoles,
+    addPlanned: addPlanned,
+    plannedAgendas: plannedAgendas,
     rolesText: rolesText
   };
 })();
