@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 화상 회의 v3</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4 — 사전 자료 · 선 논의</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -41,7 +41,7 @@
     background:linear-gradient(145deg,#20263a,#12151f);border:1px solid var(--line);flex:0 0 auto;
   }
   .brand h1{font-size:14px;margin:0;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .brand .sub{font-size:10.5px;color:var(--mut2);white-space:nowrap}
+  .brand .sub{font-size:10.5px;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .spacer{flex:1}
   .live{
     display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#b9f7cd;
@@ -57,42 +57,81 @@
   }
   .iconbtn:hover{color:var(--txt);border-color:#333b52}
 
-  /* ── 안건 입력 ── */
-  .brief{padding:12px 14px 6px}
-  .briefcard{
+  /* ══════════ 회의 준비실 (안건 선택 · 새 주제 요청) ══════════ */
+  .prep{padding:12px 14px 2px}
+  .prepcard{
     background:linear-gradient(180deg,rgba(23,27,38,.9),rgba(15,18,25,.9));
     border:1px solid var(--line);border-radius:16px;padding:12px;
   }
-  .briefhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
-  .briefhead .t{font-size:12px;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;gap:7px}
-  .briefhead .t span.tag{font-size:10px;font-weight:600;color:#cdc7ff;background:rgba(124,108,246,.16);border:1px solid rgba(124,108,246,.36);padding:2px 7px;border-radius:999px}
-  .briefhead .hint{font-size:10.5px;color:var(--mut2)}
-  .briefhead .echo{display:none;font-size:11px;color:#c9cfe0;margin-left:auto;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .inputrow{display:flex;gap:8px}
-  #topic{
-    flex:1;min-width:0;background:#0b0e15;border:1px solid var(--line);color:var(--txt);
-    border-radius:11px;padding:12px 12px;font-size:14px;font-family:inherit;outline:none;transition:.15s;
+  .prephead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .prephead .t{font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .prephead .cnt{font-size:10px;font-weight:700;color:#a9fbc4;background:rgba(46,224,106,.12);border:1px solid rgba(46,224,106,.34);padding:2px 7px;border-radius:999px}
+  .prephead .cnt.warn{color:#ffd58a;background:rgba(245,192,74,.12);border-color:rgba(245,192,74,.34)}
+  .prephead .sp{flex:1}
+  .prephead .hint{font-size:10.5px;color:var(--mut2)}
+  /* 안건을 열면 준비실은 접힌다 — 6분할이 화면 안에 들어오도록 */
+  .curline{display:flex;align-items:center;gap:7px;margin-top:9px}
+  .prepcard:not(.has-agenda) .curline{display:none}
+  .prepcard.collapsed .aglist,.prepcard.collapsed .reqbox{display:none}
+  .curline .cl-t{flex:0 0 auto;font-size:9px;font-weight:800;color:#9df9b9;background:rgba(46,224,106,.12);border:1px solid rgba(46,224,106,.34);padding:1px 6px;border-radius:999px}
+  .curline .cl-v{min-width:0;flex:1;font-size:11.5px;font-weight:700;color:#dfe4f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .curline .cl-b{flex:0 0 auto;border:1px solid var(--line);background:#141925;color:#c9cfe0;font-size:10px;font-weight:700;font-family:inherit;padding:5px 8px;border-radius:8px;cursor:pointer}
+  .curline .cl-b:hover{border-color:#3b4560;color:#fff}
+  .aglist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+  .agcard{
+    display:flex;flex-direction:column;gap:6px;text-align:left;width:100%;
+    background:#0d111a;border:1px solid var(--line);border-radius:13px;padding:11px;
+    color:inherit;font-family:inherit;cursor:pointer;transition:border-color .15s;
   }
-  #topic::placeholder{color:#5b6478}
-  #topic:focus{border-color:rgba(124,108,246,.65);box-shadow:0 0 0 3px rgba(124,108,246,.14)}
-  #topic:disabled{opacity:.55}
-  .primary{
-    flex:0 0 auto;border:0;border-radius:11px;padding:0 16px;font-size:13.5px;font-weight:800;font-family:inherit;
-    color:#04140a;background:linear-gradient(180deg,#3df07a,#20c95c);cursor:pointer;
-    box-shadow:0 6px 18px rgba(46,224,106,.22);white-space:nowrap;min-height:44px;
+  .agcard:hover{border-color:#39425c}
+  .agcard.active{border-color:rgba(46,224,106,.55);background:#0e1512}
+  .agcard .tg{
+    align-self:flex-start;font-size:9.5px;font-weight:800;color:#cdc7ff;
+    background:rgba(124,108,246,.14);border:1px solid rgba(124,108,246,.36);
+    padding:1px 7px;border-radius:999px;
   }
-  .primary:active{transform:translateY(1px)}
-  .primary[disabled]{opacity:.45;cursor:default;box-shadow:none}
-  .presets{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
-  .chip{
-    font-size:11.5px;color:#c3c9da;background:#141925;border:1px solid var(--line);
-    padding:6px 10px;border-radius:999px;cursor:pointer;font-family:inherit;transition:.15s;
+  .agcard .tt{font-size:12.5px;font-weight:800;line-height:1.35;letter-spacing:-.2px}
+  .agcard .bf{font-size:10.5px;color:var(--mut);line-height:1.5}
+  .agcard .mt{display:flex;gap:7px;flex-wrap:wrap;font-size:9.5px;color:var(--mut2);margin-top:auto;padding-top:4px}
+  .agcard .mt b{color:#9df9b9;font-weight:700}
+  .reqbox{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
+  .reqbox .rt{font-size:11px;font-weight:800;color:#dfe4f0;display:flex;align-items:center;gap:6px}
+  .reqbox .rh{font-size:10.5px;color:var(--mut2);margin-top:3px;line-height:1.5}
+  #reqTopic{
+    width:100%;margin-top:7px;background:#0b0e15;border:1px solid var(--line);color:var(--txt);
+    border-radius:10px;padding:10px 11px;font-size:13px;font-family:inherit;outline:none;
   }
-  .chip:hover{border-color:#39425c;color:#fff}
-  .chip:disabled{opacity:.4;cursor:default}
+  #reqTopic::placeholder{color:#5b6478}
+  #reqTopic:focus{border-color:rgba(124,108,246,.65);box-shadow:0 0 0 3px rgba(124,108,246,.14)}
+  .reqrow{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+  .qlist{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .qlist:empty{display:none}
+  .qitem{
+    display:flex;gap:7px;align-items:center;font-size:11px;color:#c3cbd9;
+    background:#0b0e15;border:1px solid var(--line-soft);border-radius:9px;padding:7px 9px;
+  }
+  .qitem .st{flex:0 0 auto;font-size:9px;font-weight:800;color:#ffd58a;background:rgba(245,192,74,.12);border:1px solid rgba(245,192,74,.34);padding:2px 6px;border-radius:999px}
+  .qitem.ready .st{color:#a9fbc4;background:rgba(46,224,106,.12);border-color:rgba(46,224,106,.4)}
+  .qitem .qt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qitem .qb{flex:0 0 auto;font-size:10px;font-weight:700;color:#d3ccff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.4);border-radius:7px;padding:3px 7px;font-family:inherit;cursor:pointer}
+  .qitem .qx{flex:0 0 auto;border:0;background:transparent;color:#6d7689;font-size:13px;cursor:pointer;padding:0 2px}
+  .qempty{font-size:10.5px;color:#4f586c;margin-top:8px}
+
+  /* 준비 완료 배너 */
+  .banner{
+    display:none;margin:10px 14px 0;border:1px solid rgba(46,224,106,.4);
+    background:linear-gradient(180deg,rgba(46,224,106,.13),rgba(46,224,106,.04));
+    border-radius:13px;padding:10px 12px;font-size:11.5px;color:#c8f7d6;align-items:center;gap:8px;
+  }
+  .banner.show{display:flex}
+  .banner .em{font-size:15px;flex:0 0 auto}
+  .banner .bt{min-width:0;flex:1;line-height:1.5}
+  .banner .bt b{color:#9df9b9}
+  .banner .bt .sm{display:block;font-size:10.5px;color:#8fbfa0;margin-top:1px}
+  .banner .x{flex:0 0 auto;border:0;background:transparent;color:#7fa98e;font-size:15px;cursor:pointer;padding:2px 4px}
 
   /* 단계 표시 */
-  .stepper{display:flex;align-items:center;gap:6px;margin-top:11px;overflow-x:auto;scrollbar-width:none}
+  .stepper{display:flex;align-items:center;gap:6px;margin-top:11px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
   .stepper::-webkit-scrollbar{display:none}
   .step{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--mut2);white-space:nowrap;flex:0 0 auto}
   .step .n{
@@ -106,9 +145,7 @@
   .sepline{width:12px;height:1px;background:var(--line);flex:0 0 auto}
 
   /* 라운드 표시 */
-  .stagehd{
-    display:flex;align-items:center;gap:8px;padding:10px 16px 0;min-height:24px;
-  }
+  .stagehd{display:flex;align-items:center;gap:8px;padding:12px 16px 0;min-height:24px;scroll-margin-top:62px}
   .stagehd .rr{
     display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;color:#c8c0ff;
     background:rgba(124,108,246,.13);border:1px solid rgba(124,108,246,.38);padding:2px 8px;border-radius:999px;
@@ -118,15 +155,12 @@
   .stagehd .talkers{margin-left:auto;font-size:10px;color:var(--mut2);font-variant-numeric:tabular-nums;white-space:nowrap}
 
   /* ── 6분할 스테이지 ── */
-  .stage{
-    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;
-    padding:8px 14px 4px;
-  }
+  .stage{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:8px 14px 4px}
   .tile{
     position:relative;display:flex;flex-direction:column;min-height:0;
     background:linear-gradient(175deg,var(--tile-a),var(--tile-b));
     border:1px solid var(--line);border-radius:var(--r);
-    transition:border-color .2s,box-shadow .25s,transform .2s;
+    transition:border-color .2s,box-shadow .25s;
     overflow:hidden;
   }
   .tile::after{
@@ -137,19 +171,13 @@
     border-color:var(--green);
     box-shadow:0 0 0 1px var(--green),0 0 28px rgba(46,224,106,.30),inset 0 0 46px rgba(46,224,106,.055);
   }
-  .tile.owner{border-color:rgba(245,192,74,.30)}
-  .tile.owner.speaking{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 26px rgba(245,192,74,.26)}
-  .tile.working{border-color:rgba(124,108,246,.55);box-shadow:0 0 0 1px rgba(124,108,246,.20) inset,0 0 18px rgba(124,108,246,.12)}
-  .tile.done{border-color:rgba(46,224,106,.35);background:linear-gradient(175deg,#141d19,#10151a)}
+  .tile.matready{border-color:rgba(124,108,246,.45)}
+  .tile.assigned{border-color:rgba(46,224,106,.42);background:linear-gradient(175deg,#141d19,#10151a)}
+  .tile.dimmed{opacity:.62}
 
   /* 조용: 레이아웃을 건드리지 않는 불투명 오버레이만 쓴다 (iOS 깜빡임 제거) */
-  .qveil{
-    position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
-    background:rgba(8,10,16,.46);opacity:0;
-    transition:opacity .16s linear;
-  }
+  .qveil{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;background:rgba(8,10,16,.46);opacity:0;transition:opacity .16s linear}
   .tile.quiet .qveil{opacity:1}
-  /* 조용 전환은 애니메이션 없이 즉시 — iOS에서 큰 카드의 box-shadow 트랜지션이 깜빡임을 만든다 */
   .tile.quiet{transition:none;box-shadow:none;border-color:rgba(242,84,91,.38)}
   .tile.quiet .wave i{animation:none;height:5px;opacity:.35}
 
@@ -159,36 +187,36 @@
     background:#0d1119;border:1px solid var(--line);
   }
   .who{min-width:0;flex:1}
-  .who .nm{font-size:12px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
+  .who .nm{font-size:12px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .who .rl{font-size:9.5px;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .state{
     flex:0 0 auto;font-size:9px;font-weight:700;padding:3px 6px;border-radius:999px;
     border:1px solid var(--line);color:var(--mut);background:#10141d;white-space:nowrap;
     min-width:48px;text-align:center;
   }
+  .state.s-ready{color:#cdc6ff;background:rgba(124,108,246,.15);border-color:rgba(124,108,246,.5)}
   .state.s-speaking{color:#a9fbc4;background:rgba(46,224,106,.13);border-color:rgba(46,224,106,.5)}
-  .state.s-working{color:#cdc6ff;background:rgba(124,108,246,.15);border-color:rgba(124,108,246,.5)}
   .state.s-done{color:#9df9b9;background:rgba(46,224,106,.10);border-color:rgba(46,224,106,.35)}
   .state.s-quiet{color:#ffb3b7;background:rgba(242,84,91,.15);border-color:rgba(242,84,91,.5)}
 
-  .stagewrap{position:relative;flex:1;min-height:88px;display:flex;flex-direction:column;padding:0 9px}
+  .stagewrap{position:relative;flex:1;min-height:92px;display:flex;flex-direction:column;padding:0 9px}
   .bubble{
-    flex:1;min-height:0;overflow-y:auto;font-size:11.5px;line-height:1.45;color:#c6ccdb;
+    flex:1;min-height:0;overflow-y:auto;font-size:11.5px;line-height:1.5;color:#c6ccdb;
     background:#0c0f17;border:1px solid var(--line-soft);border-radius:10px;padding:7px 8px;
     scrollbar-width:thin;
   }
-  .bubble.empty{color:#4f586c;font-style:normal}
+  .bubble.empty{color:#4f586c}
   .tile.speaking .bubble{border-color:rgba(46,224,106,.35);color:#e3fbea}
   .bubble .cursor{display:inline-block;width:6px;height:11px;background:var(--green);vertical-align:-1px;margin-left:2px;animation:blink .9s steps(1) infinite}
   @keyframes blink{50%{opacity:0}}
-  .task{
-    display:none;margin:6px 9px 0;font-size:10.5px;line-height:1.4;color:#d5d9ea;
-    background:#0d1018;border-left:2px solid var(--accent);border-radius:0 7px 7px 0;padding:5px 7px;
-    max-height:60px;overflow-y:auto;
+  .bubble .mtag{
+    display:inline-block;font-size:8.5px;font-weight:800;color:#cdc6ff;
+    background:rgba(124,108,246,.14);border:1px solid rgba(124,108,246,.36);
+    padding:0 5px;border-radius:999px;margin-bottom:4px;letter-spacing:.02em;
   }
-  .tile.working .task,.tile.done .task{display:block}
-  .task:empty{display:none !important}
-  .task b{color:#bdb4ff;font-weight:700}
+  .bubble .msum{display:block;color:#cfd6e6}
+  .bubble b{color:#e9eefb}
+  .bubble .mrole{display:block;font-size:9px;color:#7ee6a3;font-weight:800;margin-bottom:3px}
 
   .tfoot{display:flex;align-items:center;gap:6px;padding:7px 9px 8px;min-height:34px}
   .wave{display:none;align-items:flex-end;gap:2px;height:14px;flex:1}
@@ -199,45 +227,18 @@
   .wave i:nth-child(6){animation-delay:.58s}.wave i:nth-child(7){animation-delay:.70s}
   @keyframes wv{0%,100%{height:3px;opacity:.55}50%{height:14px;opacity:1}}
   .who-role{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--mut2)}
-  .mic{font-size:10px;opacity:.7}
-  .report{
-    display:none;border:1px solid rgba(46,224,106,.38);background:rgba(46,224,106,.08);color:#a9fbc4;
-    font-size:10px;font-weight:700;font-family:inherit;padding:4px 8px;border-radius:7px;cursor:pointer;
+  .matbtn{
+    flex:0 0 auto;border:1px solid rgba(124,108,246,.45);background:rgba(124,108,246,.12);
+    color:#d3ccff;font-size:10px;font-weight:800;font-family:inherit;padding:4px 8px;border-radius:7px;cursor:pointer;
+    white-space:nowrap;
   }
-  .tile.working .report{display:inline-block}
-  .tile.done .report{display:inline-block;border-color:rgba(46,224,106,.25);background:transparent;color:#7fe3a1;cursor:default}
-  .owneractions{display:none;margin-left:auto}
-  .tile.owner.working .owneractions{display:flex;gap:5px}
-  .approve{
-    border:1px solid rgba(245,192,74,.45);background:rgba(245,192,74,.10);color:#ffdd93;
-    font-size:10px;font-weight:800;font-family:inherit;padding:4px 8px;border-radius:7px;cursor:pointer;
-  }
-  .approve.on{background:rgba(46,224,106,.12);border-color:rgba(46,224,106,.4);color:#a9fbc4;cursor:default}
+  .matbtn:hover{border-color:rgba(124,108,246,.75);color:#fff}
+  .matbtn.ghost{opacity:0;pointer-events:none}
 
-  /* ── 중간 정리 / 오너 결정 ── */
-  .proposal{display:none;margin:12px 14px 0;border-radius:16px;padding:1px;
-    background:linear-gradient(120deg,rgba(245,192,74,.55),rgba(124,108,246,.5),rgba(46,224,106,.25))}
-  .proposal.show{display:block;animation:rise .3s ease both}
-  .proposal .inner{background:#0c0f16;border-radius:15px;padding:13px}
-  .p-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-  .p-head .k{font-size:10px;font-weight:800;color:#2a1c02;background:linear-gradient(180deg,#ffd77a,#f5b93a);padding:3px 8px;border-radius:999px}
-  .p-head .ttl{font-size:13px;font-weight:800}
-  .p-head .meta{margin-left:auto;font-size:10px;color:var(--mut2)}
-  .narrow{list-style:none;margin:0 0 9px;padding:0;display:flex;flex-direction:column;gap:5px}
-  .narrow li{
-    display:flex;gap:7px;font-size:11.5px;line-height:1.5;color:#dbe1ef;
-    background:#0a0d14;border:1px solid var(--line-soft);border-radius:9px;padding:7px 9px;
-  }
-  .narrow li .no{
-    flex:0 0 auto;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
-    font-size:9px;font-weight:800;color:#0a1a10;background:#48d97e;margin-top:1px;
-  }
-  .narrow li.owner-note{border-color:rgba(245,192,74,.35);color:#ffe7b0}
-  .narrow li.owner-note .no{background:var(--gold);color:#2a1c02}
-  .pq{font-size:11.5px;color:#c3cbd9;margin:0 0 10px;line-height:1.55}
-  .pbtns{display:flex;gap:8px;flex-wrap:wrap}
+  /* ── 1단계 조작 바 ── */
+  .ctlbar{display:flex;gap:7px;flex-wrap:wrap;padding:11px 14px 0}
   .btn3{
-    flex:1 1 180px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
     border-radius:11px;padding:11px 12px;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;
     border:1px solid var(--line);background:#141925;color:#dfe4f0;min-height:44px;
   }
@@ -248,31 +249,83 @@
   }
   .btn3.more{color:#d3ccff;border-color:rgba(124,108,246,.45);background:rgba(124,108,246,.12)}
   .btn3[disabled]{opacity:.45;cursor:default;box-shadow:none}
-  .pnote{margin-top:8px;font-size:10.5px;color:var(--mut2)}
+  .ctlbar .btn3{flex:1 1 170px}
+  .ctlbar .btn3.wide{flex:1 1 100%}
 
-  /* ── 결론 카드 ── */
+  /* ── 논의 기록 ── */
+  .talk{margin:12px 14px 0;background:rgba(15,18,25,.7);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .sec-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+  .sec-head .t{font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .sec-head .cnt{font-size:10px;color:var(--mut2);font-weight:600}
+  .sec-head .sp{flex:1}
+  .talk-list{list-style:none;margin:0;padding:6px 8px 10px;max-height:400px;overflow-y:auto;scrollbar-width:thin}
+  .talk-item{display:flex;gap:8px;padding:7px 6px;border-radius:9px;animation:rise .25s ease both}
+  .talk-item:nth-child(odd){background:rgba(255,255,255,.017)}
+  .talk-item .tt2{font-size:9.5px;color:#545d72;font-variant-numeric:tabular-nums;padding-top:3px;flex:0 0 auto}
+  .talk-item .bd{min-width:0;flex:1}
+  .talk-item .tw{font-size:10.5px;font-weight:800;display:flex;align-items:center;gap:5px;margin-bottom:2px;flex-wrap:wrap}
+  .talk-item .tw .pill{font-size:8.5px;font-weight:700;color:var(--mut);border:1px solid var(--line);padding:1px 5px;border-radius:999px}
+  .talk-item .tw .to{font-size:8.5px;font-weight:800;color:#ffd58a;border:1px solid rgba(245,192,74,.4);background:rgba(245,192,74,.1);padding:1px 5px;border-radius:999px}
+  .talk-item .tx{font-size:11.5px;color:#b9c0d0;line-height:1.55;word-break:break-word}
+  .talk-item.sys .tx{color:#8f97ab;font-style:italic}
+  .talk-item.owner{background:rgba(245,192,74,.06)}
+  .talk-item.owner .tx{color:#ffe7b0}
+  .talk-empty{font-size:11px;color:#4c556a;padding:14px 8px;text-align:center}
+  @keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+  /* ── 결론 확정 패널 ── */
+  .panel{display:none;margin:12px 14px 0;border-radius:16px;padding:1px;
+    background:linear-gradient(120deg,rgba(245,192,74,.5),rgba(124,108,246,.5),rgba(46,224,106,.25))}
+  .panel.show{display:block;animation:rise .3s ease both;scroll-margin-top:66px}
+  .panel .inner{background:#0c0f16;border-radius:15px;padding:13px}
+  .p-head{display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap}
+  .p-head .k{font-size:10px;font-weight:800;color:#2a1c02;background:linear-gradient(180deg,#ffd77a,#f5b93a);padding:3px 8px;border-radius:999px}
+  .p-head .ttl{font-size:13px;font-weight:800}
+  .p-head .meta{margin-left:auto;font-size:10px;color:var(--mut2)}
+  .p-head .k.green{color:#04140a;background:linear-gradient(180deg,#3df07a,#20c95c)}
+  .opt{
+    display:block;width:100%;text-align:left;background:#0a0d14;border:1px solid var(--line-soft);
+    border-radius:11px;padding:10px;color:inherit;font-family:inherit;cursor:pointer;margin-bottom:7px;
+    transition:border-color .15s;
+  }
+  .opt:hover{border-color:#39425c}
+  .opt.sel{border-color:rgba(46,224,106,.6);background:rgba(46,224,106,.07);box-shadow:0 0 0 1px rgba(46,224,106,.22)}
+  .opt .ot{font-size:12px;font-weight:800;color:#e6eaf4;display:flex;gap:6px;align-items:flex-start}
+  .opt .ot .ck2{flex:0 0 auto;width:15px;height:15px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:9px;color:transparent;margin-top:1px}
+  .opt.sel .ot .ck2{background:var(--green);border-color:var(--green);color:#04140a;font-weight:900}
+  .opt .od{font-size:11px;color:#a9b2c6;line-height:1.55;margin-top:4px;padding-left:21px}
+  .opt .om{font-size:9.5px;color:var(--mut2);margin-top:5px;padding-left:21px;display:flex;gap:9px;flex-wrap:wrap}
+  .opt .om .sup{color:#9df9b9}
+  .opt .om .rk{color:#ffbd90}
+  .plabel{display:block;font-size:11px;font-weight:800;color:#c4cadb;margin:10px 0 5px}
+  #ownerDirection{
+    width:100%;background:#0a0d14;border:1px solid var(--line);color:var(--txt);border-radius:10px;
+    padding:10px;font-size:12.5px;font-family:inherit;outline:none;resize:vertical;min-height:64px;line-height:1.5;
+  }
+  #ownerDirection:focus{border-color:rgba(245,192,74,.6)}
+  .pnote{margin-top:8px;font-size:10.5px;color:var(--mut2);line-height:1.5}
+  .pbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+
+  /* ── 역할 분담 (2단계) ── */
   .conclusion{
     display:none;margin:12px 14px 0;border-radius:16px;padding:1px;
     background:linear-gradient(120deg,rgba(46,224,106,.55),rgba(124,108,246,.55),rgba(46,224,106,.2));
   }
-  .conclusion.show{display:block;animation:rise .35s ease both}
+  .conclusion.show{display:block;animation:rise .35s ease both;scroll-margin-top:66px}
   .conclusion .inner{background:#0c0f16;border-radius:15px;padding:13px}
   .cc-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
   .cc-head .k{font-size:10px;font-weight:800;color:#04140a;background:linear-gradient(180deg,#3df07a,#20c95c);padding:3px 8px;border-radius:999px}
   .cc-head .ttl{font-size:13px;font-weight:800}
   .cc-head .meta{margin-left:auto;font-size:10px;color:var(--mut2)}
-  .concl-text{font-size:12.5px;color:#dfe4f0;background:#0a0d14;border:1px solid var(--line-soft);border-radius:10px;padding:10px 11px;line-height:1.55;white-space:pre-line}
-  .final{display:none;margin-top:9px;border:1px solid rgba(46,224,106,.30);background:rgba(46,224,106,.06);border-radius:10px;padding:9px 10px;font-size:11.5px;line-height:1.55;color:#c9f3d6}
-  .final.show{display:block;animation:rise .3s ease both}
-  .final b{display:block;font-size:9.5px;letter-spacing:.06em;color:#8ef0ad;margin-bottom:3px;font-weight:800}
+  .concl-text{font-size:12.5px;color:#dfe4f0;background:#0a0d14;border:1px solid var(--line-soft);border-radius:10px;padding:10px 11px;line-height:1.6;white-space:pre-line}
   .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
   .ac{display:flex;gap:8px;background:#0a0d14;border:1px solid var(--line-soft);border-radius:10px;padding:8px 9px}
   .ac .em{font-size:13px;line-height:1.2}
   .ac .nm{font-size:10.5px;font-weight:800;color:#cfd5e5}
-  .ac .tx{font-size:10.5px;color:#9aa3b8;line-height:1.42;margin-top:1px}
-  .ac .ck{margin-left:auto;font-size:11px;color:#4f586c;align-self:flex-start}
-  .ac.done{border-color:rgba(46,224,106,.3)}
-  .ac.done .ck{color:var(--green)}
+  .ac .tx{font-size:10.5px;color:#9aa3b8;line-height:1.45;margin-top:1px}
+  .final{display:none;margin-top:9px;border:1px solid rgba(46,224,106,.30);background:rgba(46,224,106,.06);border-radius:10px;padding:9px 10px;font-size:11.5px;line-height:1.55;color:#c9f3d6}
+  .final.show{display:block;animation:rise .3s ease both}
+  .final b{display:block;font-size:9.5px;letter-spacing:.06em;color:#8ef0ad;margin-bottom:3px;font-weight:800}
   .cc-foot{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:11px}
   .btn2{
     border:1px solid var(--line);background:#141925;color:#d8ddec;font-size:11.5px;font-weight:700;
@@ -281,35 +334,29 @@
   .btn2:hover{border-color:#3b4560;color:#fff}
   .btn2.green{border-color:rgba(46,224,106,.42);background:rgba(46,224,106,.10);color:#b6fccb}
   .btn2.purple{border-color:rgba(124,108,246,.45);background:rgba(124,108,246,.12);color:#d3ccff}
+  .btn2.gold{border-color:rgba(245,192,74,.45);background:rgba(245,192,74,.10);color:#ffe0a2}
   .btn2.glow{box-shadow:0 0 14px rgba(46,224,106,.24)}
-  .cc-progress{margin-left:auto;font-size:10.5px;color:var(--mut)}
-  .cc-progress b{color:var(--green)}
 
   /* ── 회의록 ── */
   .minutes{margin:12px 14px 0;background:rgba(15,18,25,.7);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-  .min-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
-  .min-head .t{font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}
-  .min-head .cnt{font-size:10px;color:var(--mut2);font-weight:600}
-  .min-head .sp{flex:1}
   .min-list{list-style:none;margin:0;padding:6px 8px 10px;max-height:330px;overflow-y:auto;scrollbar-width:thin}
-  .min-item{display:flex;gap:8px;padding:7px 6px;border-radius:9px;animation:rise .25s ease both}
-  .min-item:nth-child(odd){background:rgba(255,255,255,.017)}
+  .min-item{display:flex;gap:8px;padding:7px 6px;border-radius:9px}
   .min-item .tm{font-size:9.5px;color:#545d72;font-variant-numeric:tabular-nums;padding-top:3px;flex:0 0 auto}
   .min-item .body{min-width:0;flex:1}
   .min-item .who2{font-size:10.5px;font-weight:800;display:flex;align-items:center;gap:5px;margin-bottom:2px}
   .min-item .who2 .pill{font-size:8.5px;font-weight:700;color:var(--mut);border:1px solid var(--line);padding:1px 5px;border-radius:999px}
-  .min-item .who2 .rnd{font-size:8.5px;font-weight:800;color:#c8c0ff;border:1px solid rgba(124,108,246,.4);background:rgba(124,108,246,.12);padding:1px 5px;border-radius:999px}
   .min-item .tx{font-size:11.5px;color:#b9c0d0;line-height:1.5;word-break:break-word}
   .min-item.sys .tx{color:#8f97ab;font-style:italic}
-  .min-item.owner .tx{color:#ffe7b0}
-  .min-item.owner{background:rgba(245,192,74,.06)}
   .min-empty{font-size:11px;color:#4c556a;padding:14px 8px;text-align:center}
-  @keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 
-  /* ── 오너 콘솔 (끼어들기) ── */
+  /* 참고 안내 */
+  .refnote{margin:10px 14px 0;font-size:10px;color:#525b70;line-height:1.55}
+  .refnote b{color:#8b93a7}
+
+  /* ── 오너 콘솔 (코멘트) ── */
   .ownerbar{
     display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;
-    background:rgba(10,13,20,.96);border-top:1px solid rgba(245,192,74,.28);
+    background:rgba(10,13,20,.97);border-top:1px solid rgba(245,192,74,.28);
     box-shadow:0 -10px 30px rgba(0,0,0,.45);
     padding:7px 10px calc(7px + env(safe-area-inset-bottom));
   }
@@ -330,7 +377,6 @@
     flex:0 0 auto;border:1px solid rgba(245,192,74,.55);background:rgba(245,192,74,.14);color:#ffe0a2;
     border-radius:10px;padding:0 12px;height:40px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;
   }
-  .ob-send:active{transform:translateY(1px)}
   .obchips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;max-width:1440px;margin:6px auto 0;padding-bottom:1px}
   .obchips::-webkit-scrollbar{display:none}
   .chip2{
@@ -339,27 +385,35 @@
   }
   .chip2:hover{border-color:rgba(245,192,74,.55);color:#fff}
 
+  /* ── 버튼 공통 ── */
+  .chip{
+    font-size:11.5px;color:#c3c9da;background:#141925;border:1px solid var(--line);
+    padding:6px 10px;border-radius:999px;cursor:pointer;font-family:inherit;transition:.15s;
+  }
+  .chip:hover{border-color:#39425c;color:#fff}
+
   /* ── 모달 ── */
   .modal{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:16px}
   .modal.show{display:flex}
   .modal .veil{position:absolute;inset:0;background:rgba(3,5,9,.82)}
   .sheet{
-    position:relative;width:100%;max-width:430px;background:#0e1219;border:1px solid var(--line);
+    position:relative;width:100%;max-width:470px;background:#0e1219;border:1px solid var(--line);
     border-radius:18px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.6);max-height:86vh;overflow:auto;
   }
   .sheet h3{margin:0 0 4px;font-size:14px}
-  .sheet p.note{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.55}
+  .sheet p.note{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.6}
+  .sheet .dsec{margin-top:11px;border-top:1px solid var(--line-soft);padding-top:9px}
+  .sheet .dsec:first-of-type{border-top:0;padding-top:0}
+  .sheet .dk{font-size:9.5px;font-weight:800;letter-spacing:.05em;color:#8ef0ad;margin-bottom:4px}
+  .sheet .dk.warn{color:#ffbd90}
+  .sheet .dk.plan{color:#c8c0ff}
+  .sheet ul.dlist{margin:0;padding-left:16px}
+  .sheet ul.dlist li{font-size:11.5px;color:#c3cbd9;line-height:1.55;margin-bottom:3px}
+  .sheet .dtx{font-size:11.5px;color:#c3cbd9;line-height:1.55}
+  .sheet .dsrc{font-size:10px;color:#5d6579;margin-top:9px;line-height:1.5}
+  .sheet .foot{display:flex;gap:7px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .sheet input[type=text]{width:100%;background:#0a0d14;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px;font-size:12.5px;font-family:inherit;outline:none}
   .sheet label{display:block;font-size:11px;font-weight:700;color:#c4cadb;margin:12px 0 5px}
-  .sheet input[type=password],.sheet input[type=text],.sheet select{
-    width:100%;background:#0a0d14;border:1px solid var(--line);color:var(--txt);border-radius:10px;
-    padding:10px;font-size:12.5px;font-family:inherit;outline:none;
-  }
-  .sheet input:focus,.sheet select:focus{border-color:rgba(124,108,246,.6)}
-  .keyrow{display:flex;gap:6px}
-  .keyrow input{flex:1;min-width:0}
-  .keystate{font-size:10.5px;margin-top:7px;color:var(--mut2)}
-  .keystate.on{color:#9df9b9}
-  .sheet .foot{display:flex;gap:7px;justify-content:flex-end;margin-top:16px}
   .radio-row{display:flex;gap:6px;flex-wrap:wrap}
   .radio-row .chip.on{border-color:rgba(46,224,106,.5);background:rgba(46,224,106,.10);color:#c3fbd3}
 
@@ -383,7 +437,6 @@
   .vbtn:hover{border-color:#3b4560;color:#fff}
   .vbtn:active{transform:translateY(1px)}
   .vbtn.on{color:#b6fccb;border-color:rgba(46,224,106,.45);background:rgba(46,224,106,.10)}
-  /* 🤫 / ▶️ 토글 — 폭·높이 고정: 누를 때 레이아웃이 흔들리지 않는다 */
   .vbtn.quiet{width:118px;height:32px;padding:0 8px;color:#ffc4c7;border-color:rgba(242,84,91,.60);background:rgba(242,84,91,.16)}
   .vbtn.quiet:hover{color:#fff;border-color:var(--red)}
   .vbtn.quiet .q-off{display:none}
@@ -391,73 +444,70 @@
   body.is-quiet .vbtn.quiet .q-on{display:none}
   body.is-quiet .vbtn.quiet .q-off{display:inline}
 
-  .inputfield{position:relative;flex:1;min-width:0;display:flex}
-  .inputfield #topic{flex:1;min-width:0;padding-right:88px}
-  .micbtn{
-    position:absolute;right:6px;top:50%;transform:translateY(-50%);
-    display:inline-flex;align-items:center;gap:4px;
-    border:1px solid var(--line);background:#141925;color:#cfd6e6;
-    font-size:11px;font-weight:800;font-family:inherit;padding:7px 9px;border-radius:8px;cursor:pointer;
-    white-space:nowrap;transition:.15s;
-  }
-  .micbtn:hover{border-color:#3b4560;color:#fff}
-  .micbtn.on{background:rgba(242,84,91,.20);border-color:rgba(242,84,91,.65);color:#ffc4c7}
-  .inputfield.listening #topic{border-color:rgba(242,84,91,.6);box-shadow:0 0 0 3px rgba(242,84,91,.12)}
-
   /* ── 모바일: 2 x 3 ── */
   @media (max-width:820px){
     .wrap{padding-bottom:20px}
     body.meeting-on .wrap{padding-bottom:136px}
     .topbar{padding:8px 10px;gap:8px}
-    .brand h1{font-size:12.5px}
+    .brand h1{font-size:12.5px;max-width:98px}
     .brand .sub{display:none}
     .brand .logo{width:26px;height:26px;font-size:13px;border-radius:8px}
     .live{display:none}
     .clock{display:none}
-    .brief{padding:9px 10px 2px}
-    .briefcard{padding:10px;border-radius:14px}
-    .briefhead .hint{display:none}
-    .inputrow{flex-direction:column}
-    .primary{width:100%;min-height:42px;padding:0 12px}
-    #topic{padding:11px 11px;font-size:13.5px}
-    .presets{gap:5px;margin-top:7px}
-    .chip{font-size:10.5px;padding:5px 9px}
+    .prep{padding:9px 10px 2px}
+    .prepcard{padding:10px;border-radius:14px}
+    .prephead .hint{display:none}
+    .aglist{grid-template-columns:1fr;gap:7px}
+    .agcard{padding:10px}
+    .agcard .tt{font-size:12px}
+    .agcard .bf{font-size:10px}
     .stepper{margin-top:9px;gap:5px}
     .step{font-size:9.5px}
     .step .n{width:15px;height:15px;font-size:8.5px}
     .sepline{width:8px}
+    .banner{margin:8px 10px 0;padding:9px 10px;font-size:11px}
+    .banner .bt{font-size:10.5px;line-height:1.45}
+    .banner .bt .sm{font-size:9.5px}
 
-    .stagehd{padding:8px 10px 0;min-height:20px;gap:6px}
+    .stagehd{padding:9px 10px 0;min-height:20px;gap:6px}
     .stagehd .rr{font-size:9.5px;padding:2px 6px}
     .stagehd .descr{font-size:9.5px}
     .stagehd .talkers{display:none}
 
     .stage{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:6px 8px 2px}
-    .tile{border-radius:12px;min-height:152px}
-    body.meeting-on .inputrow,body.meeting-on .presets{display:none}
-    body.meeting-on .briefhead .echo{display:block}
+    .tile{border-radius:12px;min-height:170px}
     .thead{padding:7px 7px 5px;gap:6px}
     .avatar{width:24px;height:24px;border-radius:8px;font-size:12px}
     .who .nm{font-size:11px}
     .who .rl{font-size:8.5px}
     .state{font-size:8px;padding:2px 4px;min-width:42px}
-    .stagewrap{padding:0 7px;min-height:62px}
-    .bubble{font-size:10.5px;line-height:1.42;padding:6px 7px;border-radius:9px}
-    .task{margin:5px 7px 0;font-size:9.5px;max-height:46px;padding:4px 6px}
+    .stagewrap{padding:0 7px;min-height:74px}
+    .bubble{font-size:10.5px;line-height:1.45;padding:6px 7px;border-radius:9px}
+    .bubble .mtag{font-size:8px}
     .tfoot{padding:5px 7px 6px;min-height:28px}
     .who-role{font-size:8.5px}
-    .report,.approve{font-size:9px;padding:3px 6px}
+    .matbtn{font-size:9px;padding:3px 6px}
     .wave{height:11px}
     @keyframes wv{0%,100%{height:3px;opacity:.55}50%{height:11px;opacity:1}}
 
-    .proposal{margin:9px 8px 0;border-radius:14px}
-    .proposal .inner{padding:11px;border-radius:13px}
+    .ctlbar{padding:9px 8px 0;gap:6px}
+    .ctlbar .btn3{flex:1 1 100%;font-size:11.5px;padding:10px;min-height:42px}
+
+    .talk{margin:9px 8px 0;border-radius:14px}
+    .sec-head{padding:9px 10px}
+    .sec-head .t{font-size:11px}
+    .talk-list{max-height:300px;padding:4px 6px 8px}
+    .talk-item{padding:6px 4px;gap:6px}
+    .talk-item .tt2{font-size:9px;padding-top:2px}
+    .talk-item .tx{font-size:11px}
+
+    .panel{margin:9px 8px 0;border-radius:14px}
+    .panel .inner{padding:11px;border-radius:13px}
     .p-head .ttl{font-size:12px}
     .p-head .meta{display:none}
-    .narrow li{font-size:10.5px;padding:6px 8px}
-    .pq{font-size:10.5px}
-    .pbtns{gap:6px}
-    .btn3{flex:1 1 100%;font-size:11.5px;padding:10px;min-height:42px}
+    .opt{padding:9px}
+    .opt .ot{font-size:11.5px}
+    .opt .od{font-size:10.5px}
 
     .conclusion{margin:9px 8px 0;border-radius:14px}
     .conclusion .inner{padding:11px;border-radius:13px}
@@ -465,32 +515,23 @@
     .cc-head .meta{display:none}
     .concl-text{font-size:11.5px;padding:9px}
     .actions{grid-template-columns:1fr;gap:6px}
-    .ac{padding:7px 8px}
     .cc-foot{gap:6px}
     .btn2{font-size:10.5px;padding:7px 9px}
-    .cc-progress{width:100%;margin-left:0;text-align:right}
 
     .minutes{margin:9px 8px 0;border-radius:14px}
-    .min-head{padding:9px 10px}
-    .min-head .t{font-size:11px}
     .min-list{max-height:260px;padding:4px 6px 8px}
-    .min-item{padding:6px 4px;gap:6px}
-    .min-item .tm{font-size:9px;padding-top:2px}
-    .min-item .tx{font-size:11px}
+    .refnote{margin:8px 10px 0}
 
     .vbtn.quiet{width:86px;height:30px;padding:0 6px}
     .vbtn .lg{display:none}
-    .brand h1{max-width:92px}
     .iconbtn{width:30px;height:30px}
-    .micbtn{font-size:10px;padding:6px 8px}
-    .inputfield #topic{padding-right:76px}
     .ownerbar{padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
     #interjectInput{font-size:12px;padding:9px 10px}
     .ob-send{padding:0 9px;font-size:11px}
   }
   @media (min-width:821px){
-    .stage{grid-auto-rows:minmax(150px,auto)}
-    .bubble{max-height:132px}
+    .stage{grid-auto-rows:minmax(178px,auto)}
+    .bubble{max-height:168px}
   }
 </style>
 </head>
@@ -502,11 +543,11 @@
       <div class="logo">🖥️</div>
       <div>
         <h1>다크진 AI 비서실 · 6분할 회의실</h1>
-        <div class="sub">안건 → 1·2라운드 티키타카 → 오너 확정 → 배정 → 재소집</div>
+        <div class="sub">안건 → 각자 준비 자료 → 주제 논의 → 결론 확정 → 역할 분담</div>
       </div>
     </div>
     <div class="spacer"></div>
-    <div class="live" id="liveBadge"><span class="dot"></span><span id="liveTxt">대기 중</span></div>
+    <div class="live" id="liveBadge"><span class="dot"></span><span id="liveTxt">준비실</span></div>
     <div class="clock" id="clock">00:00</div>
     <div class="topactions">
       <button class="vbtn on" id="voiceBtn" title="AI 목소리·효과음 켜짐 · 누르면 끔">🔊 <span class="lg">음성 </span>ON</button>
@@ -514,113 +555,170 @@
         <span class="q-on">🤫 <span class="lg">다들 </span>조용!</span>
         <span class="q-off">▶️ <span class="lg">다시 </span>계속</span>
       </button>
-      <button class="iconbtn" id="reconveneTop" title="모두 작업 완료 → 재소집">⟳</button>
       <button class="iconbtn" id="settingsBtn" title="설정">⚙︎</button>
     </div>
   </header>
 
-  <section class="brief">
-    <div class="briefcard">
-      <div class="briefhead">
-        <div class="t">회의 안건 <span class="tag">TASK-009</span></div>
-        <div class="hint">오너가 안건을 말하면 6인이 두 라운드로 토론합니다</div>
-        <div class="echo" id="topicEcho"></div>
+  <!-- ═════════ 회의 준비실 ═════════ -->
+  <section class="prep">
+    <div class="prepcard" id="prepCard">
+      <div class="prephead">
+        <div class="t">🗂️ 회의 준비실 <span class="cnt" id="readyCnt">준비 완료 0건</span></div>
+        <div class="sp"></div>
+        <div class="hint" id="prepHint">자료가 모인 안건만 열립니다</div>
       </div>
-      <div class="inputrow">
-        <div class="inputfield" id="inputField">
-          <input id="topic" placeholder="오늘 안건을 적어주세요 (예: 6화 쇼츠 주제 정하기)" autocomplete="off" />
-          <button class="micbtn" id="micBtn" title="말로 안건 입력 · '다들 조용'이라고 하면 정지">🎤 말하기</button>
+      <div class="curline" id="curLine">
+        <span class="cl-t">안건</span>
+        <span class="cl-v" id="curAgendaTitle"></span>
+        <button class="cl-b" id="prepToggle">다른 안건 ▾</button>
+      </div>
+      <div class="aglist" id="agList"></div>
+
+      <div class="reqbox">
+        <div class="rt">✍️ 새 회의 주제 요청</div>
+        <div class="rh">
+          주제를 적으면 <b>피클에게 보낼 요청문</b>이 만들어집니다. 웹은 답을 지어내지 않습니다 —
+          6명이 자료를 모아 <b>준비 완료</b>하면 위 안건 목록에 뜹니다.
         </div>
-        <button class="primary" id="startBtn">회의 시작</button>
+        <input id="reqTopic" type="text" placeholder="예: 4화 쇼츠 소재 정하기 / 롱폼 2편 주제" autocomplete="off" />
+        <div class="reqrow">
+          <button class="btn2 gold" id="reqCopy">📋 피클에게 요청문 복사</button>
+          <button class="btn2 purple" id="reqQueue">➕ 안건 큐에 등록</button>
+        </div>
+        <ul class="qlist" id="queueList"></ul>
+        <div class="qempty" id="queueEmpty">자료 준비 중인 요청은 없습니다.</div>
       </div>
-      <div class="presets" id="presets">
-        <button class="chip" data-topic="6화 쇼츠 주제 정하기">6화 쇼츠 주제 정하기</button>
-        <button class="chip" data-topic="롱폼 첫 편 기획">롱폼 첫 편 기획</button>
-        <button class="chip" data-topic="이번 주 AI 비서 업무 자동화 점검">이번 주 AI 비서 업무 자동화 점검</button>
-      </div>
+
       <div class="stepper" id="stepper">
         <div class="step on" data-step="0"><span class="n">1</span>안건</div>
         <div class="sepline"></div>
-        <div class="step" data-step="1"><span class="n">2</span>1라운드 의견</div>
+        <div class="step" data-step="1"><span class="n">2</span>준비 자료</div>
         <div class="sepline"></div>
-        <div class="step" data-step="2"><span class="n">3</span>2라운드 반박</div>
+        <div class="step" data-step="2"><span class="n">3</span>논의</div>
         <div class="sepline"></div>
-        <div class="step" data-step="3"><span class="n">4</span>오너 결정</div>
+        <div class="step" data-step="3"><span class="n">4</span>결론 확정</div>
         <div class="sepline"></div>
-        <div class="step" data-step="4"><span class="n">5</span>배정·마무리</div>
+        <div class="step" data-step="4"><span class="n">5</span>역할 분담</div>
       </div>
     </div>
   </section>
 
+  <!-- 준비 완료 알림 -->
+  <div class="banner" id="readyBanner">
+    <div class="em">🔔</div>
+    <div class="bt"><b id="readyTitle">회의 준비 완료</b>
+      <span class="sm" id="readySub"></span>
+    </div>
+    <button class="x" id="readyClose" title="알림 닫기">✕</button>
+  </div>
+
   <div class="stagehd" id="stageHd">
-    <span class="rr" id="roundTag">R1</span>
-    <span class="descr" id="roundDescr">1라운드 · 각자 역할 관점의 첫 의견</span>
-    <span class="talkers" id="talkers">0 / 5 발언</span>
+    <span class="rr" id="roundTag">1단계</span>
+    <span class="descr" id="roundDescr">안건을 고르면 6인이 준비해 온 자료가 열립니다</span>
+    <span class="talkers" id="talkers">자료 0 / 6</span>
   </div>
 
   <main class="stage" id="stage"></main>
 
-  <section class="proposal" id="proposal">
+  <div class="ctlbar" id="stage1Bar" style="display:none">
+    <button class="btn3 more" id="readBtn">📖 6인 자료 낭독</button>
+    <button class="btn3 more" id="rebutBtn">🔁 반박 라운드</button>
+    <button class="btn3 confirm wide" id="toConfirmBtn">✅ 결론 확정 및 역할 나누기</button>
+  </div>
+
+  <div class="refnote" id="refNote"></div>
+
+  <!-- ═════════ 결론 확정 (2단계로 넘어가기 전) ═════════ -->
+  <section class="panel" id="confirmPanel">
     <div class="inner">
       <div class="p-head">
-        <span class="k">중간 정리</span>
-        <span class="ttl">피클 — 이대로 확정할까요?</span>
-        <span class="meta" id="pMeta"></span>
+        <span class="k">결론 확정</span>
+        <span class="ttl">어느 쪽으로 갈까요?</span>
+        <span class="meta" id="cfMeta"></span>
       </div>
-      <ol class="narrow" id="narrowList"></ol>
-      <p class="pq" id="proposalQ">이렇게 좁혀졌는데 이대로 확정할까요, 한 번 더 얘기할까요?</p>
+      <div id="optList"></div>
+      <label class="plabel" for="ownerDirection">오너 추가 지시 (선택)</label>
+      <textarea id="ownerDirection" placeholder="예: 이번 주는 A로 가고, 제목 교체는 내가 직접 하겠다"></textarea>
+      <p class="pnote">결론을 확정하면 <b>그 결론에 맞춘 역할 분담표</b>가 처음으로 나옵니다. 1단계에서는 역할이 나오지 않습니다.</p>
       <div class="pbtns">
-        <button class="btn3 confirm" id="confirmBtn">✅ 이대로 확정 (역할 배정)</button>
-        <button class="btn3 more" id="moreRoundBtn">🔄 한 라운드 더 토론</button>
+        <button class="btn3 confirm" id="confirmRoleBtn">🧩 이 결론으로 역할 나누기</button>
+        <button class="btn3 more" id="backToTalkBtn">↩️ 논의로 돌아가기</button>
       </div>
-      <div class="pnote" id="roundNote">오너 결정 대기 · 아래 💬 끼어들기로 방향을 바꿀 수도 있습니다</div>
     </div>
   </section>
 
-  <section class="conclusion" id="conclusion">
+  <!-- ═════════ 역할 분담 (2단계) ═════════ -->
+  <section class="conclusion" id="rolePanel">
     <div class="inner">
       <div class="cc-head">
-        <span class="k">결론</span>
-        <span class="ttl">피클 종합 · 역할 배정</span>
+        <span class="k">2단계 · 결론</span>
+        <span class="ttl" id="roleTitle">결론과 역할 분담</span>
         <span class="meta" id="ccMeta"></span>
       </div>
       <div class="concl-text" id="conclText"></div>
-      <div class="final" id="finalBlock"><b>최종 마무리</b><span id="finalText"></span></div>
       <div class="actions" id="actionList"></div>
+      <div class="final" id="finalBlock"><b>다음 단계</b><span id="finalText"></span></div>
       <div class="cc-foot">
-        <button class="btn2 purple" id="copyNotion">📋 노션 04 DB용 지시문 복사</button>
-        <button class="btn2 green glow" id="reconveneBtn">모두 작업 완료 → 재소집</button>
-        <div class="cc-progress" id="progress">완료 <b>0</b> / 5</div>
+        <button class="btn2 purple" id="copyRoles">📋 역할 분담표 복사</button>
+        <button class="btn2 gold" id="changeOption">↩️ 결론 다시 고르기</button>
+        <button class="btn2" id="copyAll">🗒️ 회의록 전체 복사</button>
+        <button class="btn2 green" id="newMeeting">🆕 다른 안건 열기</button>
       </div>
     </div>
   </section>
 
+
+  <!-- ═════════ 논의 기록 ═════════ -->
+  <section class="talk">
+    <div class="sec-head">
+      <div class="t">🗣️ 논의 기록 <span class="cnt" id="talkCount">0건</span></div>
+      <div class="sp"></div>
+      <button class="btn2" id="copyTalk" style="font-size:10.5px;padding:5px 9px">복사</button>
+    </div>
+    <ol class="talk-list" id="talkList">
+      <li class="talk-empty" id="talkEmpty">안건을 고르면 6인의 준비 자료 요약이 여기에 쌓입니다. 아래 💬 오너 코멘트로 방향을 잡아 주세요.</li>
+    </ol>
+  </section>
+
+  <!-- ═════════ 회의록 ═════════ -->
   <section class="minutes">
-    <div class="min-head">
+    <div class="sec-head">
       <div class="t">🗒️ 회의록 타임라인 <span class="cnt" id="minCount">0건</span></div>
       <div class="sp"></div>
-      <button class="btn2" id="copyAll" style="font-size:10.5px;padding:5px 9px">전체 복사</button>
-      <button class="btn2" id="resetBtn" style="font-size:10.5px;padding:5px 9px">새 회의</button>
+      <button class="btn2" id="copyMinutes" style="font-size:10.5px;padding:5px 9px">복사</button>
     </div>
     <ol class="min-list" id="minList">
-      <li class="min-empty" id="minEmpty">아직 회의록이 없습니다. 안건을 적고 회의를 시작해 주세요.</li>
+      <li class="min-empty" id="minEmpty">아직 기록이 없습니다. 준비실에서 안건을 골라 주세요.</li>
     </ol>
   </section>
 </div>
 
-<!-- 오너 콘솔: 회의 중 언제든 끼어들기 -->
+<!-- 오너 콘솔: 회의 중 언제든 코멘트 -->
 <div class="ownerbar" id="ownerBar">
   <div class="obinner">
-    <button class="ob-mic" id="interjectMic" title="말로 끼어들기 (누르면 발언이 잠시 멈춥니다)">🎤</button>
-    <input id="interjectInput" placeholder="오너 끼어들기 — 예: 비용 얘긴 빼고 조회수 쪽으로 가자" autocomplete="off" />
-    <button class="ob-send" id="interjectSend">💬 끼어들기</button>
+    <button class="ob-mic" id="interjectMic" title="말로 코멘트 (누르면 발언이 잠시 멈춥니다)">🎤</button>
+    <input id="interjectInput" placeholder="오너 코멘트 — 예: 이번 주는 제목 실험만 하자" autocomplete="off" />
+    <button class="ob-send" id="interjectSend">💬 코멘트</button>
   </div>
-  <div class="obchips" id="interjectChips">
-    <button class="chip2" data-note="비용 얘긴 빼고 조회수 쪽으로 가자">비용 빼고 조회수로</button>
-    <button class="chip2" data-note="Grok 의견에 1표">Grok에 1표</button>
-    <button class="chip2" data-note="더 짧고 실행 가능한 쪽으로 가자">더 짧게</button>
-    <button class="chip2" data-note="근거 없는 추정은 빼자">추정 빼기</button>
-    <button class="chip2" data-note="이건 다음 회의로 미루자">다음 회의로</button>
+  <div class="obchips" id="interjectChips"></div>
+</div>
+
+<!-- 자료 상세 -->
+<div class="modal" id="matModal">
+  <div class="veil" data-close="1"></div>
+  <div class="sheet">
+    <h3 id="matTitle">준비 자료</h3>
+    <p class="note" id="matWho"></p>
+    <div class="dsec"><div class="dk">핵심 요약</div><div class="dtx" id="matSum"></div></div>
+    <div class="dsec"><div class="dk">근거·데이터</div><ul class="dlist" id="matPoints"></ul></div>
+    <div class="dsec"><div class="dk warn">우려·반박 포인트</div><div class="dtx" id="matConcern"></div></div>
+    <div class="dsec"><div class="dk plan">제안</div><div class="dtx" id="matProposal"></div></div>
+    <div class="dsec"><div class="dk">다른 AI에게 던진 반박</div><div class="dtx" id="matRebuttal"></div></div>
+    <div class="dsrc" id="matSource"></div>
+    <div class="foot">
+      <button class="btn2 purple" id="matSpeak">🔊 읽어 주기</button>
+      <button class="btn2 green" data-close="1">닫기</button>
+    </div>
   </div>
 </div>
 
@@ -629,17 +727,9 @@
   <div class="veil" data-close="1"></div>
   <div class="sheet">
     <h3>회의실 설정</h3>
-    <p class="note">비워 두면 내장 회의 엔진으로 2라운드 티키타카가 돌아갑니다. Gemini 키를 넣으면 어떤 새 안건이든 6인 역할극·상호 반박·중간 정리를 실시간으로 생성합니다.</p>
+    <p class="note">이 회의실은 <b>미리 준비된 자료</b>로만 회의합니다. 자료가 없는 주제는 지어내지 않고 '자료 준비 중'으로 남깁니다.</p>
 
-    <label>Gemini API 키 (선택)</label>
-    <div class="keyrow">
-      <input type="password" id="keyInput" placeholder="AIza..." autocomplete="off" spellcheck="false" />
-      <button class="btn2" id="keyToggle">보기</button>
-    </div>
-    <div class="keystate" id="keyState">저장된 키 없음 · 내장 엔진 사용</div>
-    <p class="note" style="margin-top:8px">🔒 키는 이 브라우저의 localStorage에만 저장되고 서버로 보내지 않습니다. 구글 Gemini API 호출에만 쓰입니다. 공용 기기에서는 저장하지 마세요.</p>
-
-    <label>발언 속도</label>
+    <label>자료 낭독 속도</label>
     <div class="radio-row" id="speedRow">
       <button class="chip" data-speed="1">보통</button>
       <button class="chip" data-speed="2">빠르게</button>
@@ -650,47 +740,382 @@
     <div class="radio-row">
       <button class="chip on" id="sfxToggle" type="button">🔔 효과음 ON</button>
     </div>
-    <p class="note" style="margin-top:7px">🤫 조용=쉿 소리 · 회의 시작/재소집=딩동 · ✅ 확정=완료 화음 · 💬 끼어들기=팝. 🔊 음성 OFF면 효과음도 함께 꺼집니다.</p>
 
     <label>AI 목소리 (브라우저 무료 음성 · Web Speech)</label>
     <div class="radio-row">
-      <button class="chip" id="voiceTest" type="button">🔊 피클 목소리 미리 듣기</button>
-      <button class="chip" id="voiceTestAll" type="button">🎚️ 다섯 목소리 차례</button>
+      <button class="chip" id="voiceTest" type="button">🔊 피클 목소리</button>
+      <button class="chip" id="voiceTestAll" type="button">🎚️ 여섯 목소리 차례</button>
     </div>
-    <p class="note" style="margin-top:7px">AI마다 음높이·속도를 다르게 넣었습니다 — 피클(진행·낮고 또렷) · ChatGPT(분석·차분) · Cue(리서치·빠름) · Claude(작가·느긋) · Grok(관찰·낯고 퉁명). 아이폰은 <b>무음 스위치가 켜져 있거나 볼륨이 0이면 소리가 나지 않습니다</b>.</p>
+    <p class="note" style="margin-top:7px">AI마다 음높이·속도를 다르게 넣었습니다 — 피클(진행·낮고 또렷) · Gemini(분석·또박) · Cue(리서치·빠름) · Hark(검증·낮고 무겁게) · ChatGPT(구조·차분) · Claude(작가·느긋). 아이폰은 <b>무음 스위치가 켜져 있거나 볼륨이 0이면 소리가 나지 않습니다</b>.</p>
+
+    <label>준비 완료 알림</label>
+    <div class="radio-row">
+      <button class="chip" id="notifyToggle" type="button">🔔 새 안건 준비되면 알림</button>
+    </div>
+    <p class="note" style="margin-top:7px">피클이 새 안건 자료를 넣어 목록이 늘어나면 이 브라우저에 알림을 보냅니다. 알림 권한을 허용해야 하며, 페이지가 열려 있을 때만 동작합니다.</p>
 
     <div class="foot">
-      <button class="btn2" id="keyDelete">키 삭제</button>
-      <button class="btn2 green" id="keySave">저장</button>
-      <button class="btn2" data-close="1">닫기</button>
+      <button class="btn2 green" data-close="1">닫기</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 <script>
+/* ══════════════════════════════════════════════════════════════════
+   다크진 AI 비서실 · 6분할 회의실 v4 — 사전 준비 자료 라이브러리
+   ──────────────────────────────────────────────────────────────────
+   이 파일이 회의 자료의 유일한 원본이다. 웹앱은 여기 적힌 것만 보여 준다.
+   (뻔한 대본을 지어내지 않는다 — 자료가 없으면 '자료 준비 중'으로 남는다.)
+
+   새 안건을 추가하는 법 (피클이 자료를 모은 뒤):
+   1) 아래 AGENDAS 배열에 객체 하나를 추가한다.
+   2) panels 에 6인 자료를 각각 적는다 (summary·points·concern·proposal·rebuttal·source).
+   3) options 에 결론 후보 2~3개, options[].id 를 키로 roles 에 역할 분담을 적는다.
+   ready:true 로 바꾸면 웹앱 '준비 완료된 안건'에 뜨고, 오너에게 준비 완료 알림이 간다.
+   ══════════════════════════════════════════════════════════════════ */
+window.AGENDA_LIB = (function(){
+  "use strict";
+
+  var AGENDAS = [
+
+  /* ═══════════════════════════ 안건 1 ═══════════════════════════ */
+  {
+    id: "yt-growth",
+    tag: "유튜브 성장",
+    title: "다크진의 AI 비서실 유튜브 — 조회수·구독자 2배 전략",
+    ready: true,
+    preparedAt: "2026-11-26 20:40",
+    preparedBy: "피클 — 6인 자료 취합",
+    brief: "영상 3편·구독자 4명 상태인 채널 '@darkjin_ai_desk'를 어떤 순서로 키울지. 새 제작·실험·구조 중 무엇을 먼저 할지 정한다.",
+    facts: [
+      "채널 @darkjin_ai_desk · 구독자 4명 · 1화 조회 34회·좋아요 2개 (2026-11-23 13:26 기록)",
+      "1화 33.4초 / 2화 32.57초 / 3화는 hwp 양식 A안으로 확정, 게시 전",
+      "제작 규격: 45초 이하 · 여성 음성 · 둥근 자막 · -14 LUFS · 업로드 25MB 이하",
+      "3화 조건: 실제 문서 내용·기관명·성명 비노출 (더미·블러만)"
+    ],
+    ownerChips: ["이번 주는 제목 실험만 하자", "숫자(결과)를 앞세우자", "구독자보다 조회 먼저", "3화부터 게시하자"],
+    panels: {
+      pickle: {
+        summary: "지금 채널은 영상 3편, 구독자 4명입니다. 조회수를 두 배로 만드는 문제가 아니라, 노출이 시작되는 최소 조건을 아직 못 넘은 상태로 봅니다.",
+        points: [
+          "1화는 33.4초에 조회 34회·좋아요 2개입니다. 좋아요율 5.9%는 나쁘지 않아서, 눌러 보긴 했지만 구독으로 이어지지 않은 쪽이 문제입니다.",
+          "1~3화가 모두 '다크 1인칭 실사용기'라 정체성은 이미 일관됩니다. 다만 편과 편이 이어지지 않아 한 편만 보고 나가는 구조입니다.",
+          "다음 편은 1화 첫 장면(50대 아저씨가 '다크'라고 부르는 순간)을 다시 쓰는 이어보기 구조가 구독 전환에 유리합니다."
+        ],
+        concern: "편당 제작이 반나절이라 실험을 여러 번 돌리기 어렵습니다. 같은 영상을 여러 편으로 나눠 올리는 방식은 채널에 역효과가 나므로, 실험은 한 영상의 제목·썸네일 교체로만 해야 합니다.",
+        proposal: "이번 주는 새 영상 제작을 멈추고 1화 제목·썸네일 교체 1회와 지표 기록 표 신설로 제한합니다.",
+        rebuttal: { to: "hark", text: "Hark가 목표를 행동 기준으로 바꾸자고 했습니다. 동의합니다. 다만 1화 제목 교체는 지금 당장 할 수 있는 유일한 실험이라 목표 기준과 함께 이번 주에 넣겠습니다." },
+        source: "근거: 1화 지표(2026-11-23 13:26), 1~3화 제작 기록, 채널 설명"
+      },
+      gemini: {
+        summary: "1화 33.4초, 2화 32.57초로 둘 다 30초대입니다. 30초대는 이탈은 적지만 '한 번 더 보기'가 약합니다. 마지막 3초를 바꾸는 것만으로 반복 재생을 노릴 수 있습니다.",
+        points: [
+          "1화는 도입 3초에 '어느 날 50대 아저씨가 나를 다크라고 불렀다'가 그대로 나옵니다. 제목과 같은 문장이라 훅이 두 번 반복됩니다. 첫 3초는 장면, 제목은 문장으로 나눠야 합니다.",
+          "마지막 3초에 다음 편 예고를 넣으면 시청 지속과 다음 편 유입이 같이 올라갑니다. 2화가 메일 정리라 1화 끝에 '다음은 메일'을 붙이면 연결이 자연스럽습니다.",
+          "1인칭 '다크' 시점이라 감정선이 필요합니다. 지금 문장은 정보 전달 위주여서, 4화부터는 당황 → 발견 → 뿌듯 3감정으로 나눠 씁니다."
+        ],
+        concern: "구독자 4명 상태에서 대본을 다듬는 건 효율이 낮습니다. 조회가 붙는 소재를 먼저 확인하고 대본에 힘을 주는 순서가 맞습니다.",
+        proposal: "1화·2화 대본은 손대지 않고, 4화 대본만 3감정 구조로 새로 씁니다.",
+        rebuttal: { to: "hark", text: "Hark가 좋아요율 5.9%를 근거로 품질 문제를 부정했습니다. 저도 동의합니다. 다만 원인이 대본이 아니라 첫 3초 중복일 수 있어, 1화 첫 3초만 교체해 확인하고 싶습니다." },
+        source: "근거: 1화·2화 러닝타임, 1화 도입부 구성, 3화 대본 방향"
+      },
+      cue: {
+        summary: "국내 쇼츠에서 'AI 비서 실사용' 계열은 이미 상위에 있습니다. 다만 조회가 큰 영상은 대부분 결과 숫자(줄인 시간·아낀 금액)를 초반에 보여 줍니다. 이 채널 1~3화에는 그 숫자가 없습니다.",
+        points: [
+          "1화 34회는 게시 두 시간 뒤 수치라 판단 근거로 쓰기 어렵습니다. 24시간·72시간 수치를 따로 남겨야 다음 실험과 비교가 됩니다.",
+          "검색 유입은 'AI 비서'보다 'AI한테 시켰더니'가 넓습니다. 제목 뒤쪽에 이 구문을 붙이는 편이 노출에 유리합니다.",
+          "상위 영상 썸네일은 얼굴 클로즈업이나 결과 화면 캡처입니다. 대두 카툰은 채널 정체성에는 맞지만 썸네일 안에서는 작아 보입니다."
+        ],
+        concern: "숫자를 넣으려면 실제 인증이 필요합니다. 2화 메일 정리는 '9999+'가 0건이 된 화면이 이미 결과 숫자 역할을 합니다. 과장 없이 그 화면을 쓰면 됩니다.",
+        proposal: "제목·썸네일에 'AI한테 시켰더니'와 결과 화면(0건 메일함)을 쓰고, 24·72시간 수치를 남기는 표를 만듭니다.",
+        rebuttal: { to: "chatgpt", text: "ChatGPT가 지표 표에 썸네일 버전 칸을 넣자고 했습니다. 유튜브는 썸네일 교체 시각을 API로 주지 않으니, 제가 교체 시각을 직접 적는 방식이면 됩니다." },
+        source: "근거: 국내 쇼츠 상위 영상 구성, 2화 메일함 화면, 1화 게시 후 수치"
+      },
+      hark: {
+        summary: "이 채널의 자산은 '실제로 해 본 것'입니다. 조회수를 올리려고 실제보다 크게 말하는 순간 유튜브 AI 정책과 시청자 신뢰 둘 다에서 손해가 납니다.",
+        points: [
+          "3화는 실제 문서 내용·기관명 비노출이 조건입니다. 썸네일에서 그 화면을 확대하면 조건을 어기므로, 블러 처리된 상태로만 노출해야 합니다.",
+          "1화 34회·좋아요 2개는 좋아요율 5.9%로 나쁘지 않습니다. 조회가 낮은 이유를 콘텐츠 품질로 단정하면 다음 실험 설계가 흔들립니다.",
+          "'구독자 2배'는 4명 기준 8명입니다. 목표가 이렇게 작으면 우연히 달성해도 전략이 맞았는지 알 수 없습니다."
+        ],
+        concern: "조회수 구매나 조작은 계정 정지 사유이고, 지금까지 쌓은 실사용 기록이 한 번에 날아갑니다. 어떤 실험에도 이 선은 넘지 않습니다.",
+        proposal: "목표를 '구독자 8명'이 아니라 '1화 24시간 조회 100회, 구독 전환 3명'처럼 행동 기준으로 바꿉니다.",
+        rebuttal: { to: "pickle", text: "피클이 새 영상 제작 중단을 제안했습니다. 저는 반대입니다. 3화가 아직 게시 전이라, 그 편을 올리면서 실험을 같이 돌리는 편이 낫습니다." },
+        source: "근거: 3화 비노출 조건, 유튜브 AI 콘텐츠 정책 확인(2026-11-24), 1화 지표"
+      },
+      chatgpt: {
+        summary: "지금 필요한 건 영상이 아니라 실험 기록 구조입니다. 편마다 제목·썸네일·게시 시각·24시간 수치를 같은 칸에 남겨야 다음 판단이 됩니다.",
+        points: [
+          "노션 04 DB는 업무 DB라 영상 지표를 넣기엔 칸이 맞지 않습니다. 영상ID·게시일·제목버전·24시간·72시간·구독증감 6칸짜리 콘텐츠 지표 표를 따로 두는 게 좋습니다.",
+          "1화는 43.8MB 원본을 23.4MB로 줄여 올렸고, 2화 20.88MB는 그대로 올라갔습니다. 25MB 이하로 고정하면 업로드 실패가 사라집니다.",
+          "같은 영상에서 제목만 바꾸면 조회 데이터가 섞입니다. 교체 시각을 기록에 남겨야 전후 비교가 됩니다."
+        ],
+        concern: "지표 표를 만들어도 채우는 일이 남습니다. 자동으로 못 채우면 세 편 만에 방치됩니다. 주 1회 10분 점검으로 고정해야 합니다.",
+        proposal: "콘텐츠 지표 표 1개와 매주 일요일 10분 점검을 정하고, 인코딩은 25MB·-14 LUFS로 고정합니다.",
+        rebuttal: { to: "pickle", text: "피클이 촬영 없이 실험만 하자고 했습니다. 지표 표가 없으면 실험 결과도 남지 않으니, 표를 먼저 만들고 교체를 그 위에서 하는 순서를 제안합니다." },
+        source: "근거: 업로드 용량 기록(43.8MB → 23.4MB), 2화 인코딩 20.88MB, 04 DB 속성 구성"
+      },
+      claude: {
+        summary: "채널 설명이 '50대 아저씨의 AI 실사용 실험실'로 이미 좋습니다. 그런데 영상 제목은 그 문장과 따로 놉니다. 제목이 채널 소개를 이어받아야 구독으로 이어집니다.",
+        points: [
+          "1화 제목은 서사형이라 좋지만 검색어가 없습니다. 서사와 검색어를 한 제목에 넣으려면 'AI 비서'를 뒤에 붙이는 형태가 무난합니다.",
+          "2화 '몇 년 치 쌓인 네이버 메일, AI한테 통째로 정리시킨 썰'은 이미 좋은 제목입니다. 이 형태를 기준으로 삼고 1화만 고치면 됩니다.",
+          "고정 댓글에 다음 편 예고와 채널 소개 한 줄을 넣으면 구독 전환을 한 번 더 잡을 수 있습니다."
+        ],
+        concern: "제목을 자주 바꾸면 단골 시청자가 혼란스럽습니다. 1화만 예외로 하고, 3화부터는 게시 전에 제목을 확정하는 규칙이 필요합니다.",
+        proposal: "1화 제목만 'AI 비서' 검색어를 넣어 교체하고, 3화부터는 게시 전 제목 확정 규칙을 넣습니다.",
+        rebuttal: { to: "gemini", text: "Gemini가 마지막 3초 예고를 말했습니다. 찬성인데, 2화에 예고를 넣으면 1화로 돌아가는 동선이 아니라 3화로 가는 동선이 됩니다. 편 순서를 먼저 정해야 합니다." },
+        source: "근거: 1화·2화 제목, 채널 설명, 고정 댓글 미사용 상태"
+      }
+    },
+    options: [
+      {
+        id: "A",
+        title: "실험 우선 — 1화 제목·썸네일 1회 교체 + 지표 표 신설",
+        detail: "1화 제목에 'AI 비서'를 넣어 교체하고 24·72시간 수치를 기록한다. 콘텐츠 지표 표를 새로 만들고, 새 영상은 이미 만든 3화만 게시한다. 4화 기획은 다음 주로 미룬다.",
+        support: ["pickle", "chatgpt", "claude"],
+        risk: "제목 교체 효과는 1회로 판별이 어려울 수 있음"
+      },
+      {
+        id: "B",
+        title: "소재 우선 — 4화를 결과 숫자형으로 새로 제작",
+        detail: "2화의 '9999+ → 0건' 화면을 결과 숫자로 쓰고, 제목에 'AI한테 시켰더니'를 넣은 4화를 이번 주에 만든다. 지표 표와 24·72시간 기록은 병행한다.",
+        support: ["cue", "gemini"],
+        risk: "편당 반나절 이상 소요, 표본이 작아 효과 판별이 늦음"
+      },
+      {
+        id: "C",
+        title: "이어보기 우선 — 1화 첫 장면을 다시 쓰는 4화로 구독 전환 집중",
+        detail: "4화를 1화 첫 장면(50대 아저씨가 '다크'라고 부르는 순간)에서 이어지는 구조로 만들고, 1~3화 사이에 서로를 부르는 3초 예고를 넣어 편 간 이동을 만든다.",
+        support: ["claude", "hark"],
+        risk: "기존 편의 재편집이 필요해 손이 한 번 더 들어감"
+      }
+    ],
+    roles: {
+      A: {
+        pickle: "1화 제목·썸네일 교체 실행, 24·72시간 수치 기록해 다음 회의에 보고",
+        gemini: "1화 첫 3초 장면 교체본 대본·자막 작성 (문장 중복 제거)",
+        cue: "'AI한테 시켰더니' 검색 유입 근거 3개와 경쟁 썸네일 10개 정리",
+        hark: "3화 비노출 조건 체크리스트 작성, 1화 교체 전 조건 위반 없는지 확인",
+        chatgpt: "콘텐츠 지표 표(영상ID·게시일·제목버전·24h·72h·구독증감) 신설, 인코딩 25MB 고정",
+        claude: "1화 새 제목 3안(서사+검색어)과 고정 댓글 문구 1안 작성"
+      },
+      B: {
+        pickle: "4화 제작 일정 확정, 3화 게시 후 4화 착수 보고",
+        gemini: "4화 45초 대본을 당황·발견·뿌듯 3감정 구조로 작성",
+        cue: "'9999+ → 0건' 결과 화면 흐름과 경쟁 영상 결과 숫자 사례 10개",
+        hark: "2화 메일함 화면에 개인정보·주소 노출이 없는지 프레임 단위 확인",
+        chatgpt: "4화 제작 파이프라인 체크리스트(촬영·편집·인코딩 25MB) 작성",
+        claude: "4화 제목·썸네일 카피 3안과 첫 문장 후보 5개 작성"
+      },
+      C: {
+        pickle: "4화를 '1화 첫 장면 재사용' 구조로 확정, 1~3화 연결 순서표 작성",
+        gemini: "1화 첫 3초 장면을 4화 오프닝에 되살리는 대본 작성",
+        cue: "다른 채널의 이어보기 구조와 구독 전환 문구 사례 5건 조사",
+        hark: "1화 34회·좋아요 2의 실제 해석(좋아요율 5.9%) 정리, 과장 문구 검수",
+        chatgpt: "영상별 최종 화면 구성표 작성 (다음 편 고정 배치 포함)",
+        claude: "4화 고정 댓글·채널 소개 한 줄·구독 유도 문장 작성"
+      }
+    },
+    ownerReplies: {
+      pickle: "그 기준이면 후보 A를 1순위로 올리고 B·C는 2순위로 내리겠습니다. 자료 순서도 그 축으로 다시 정렬합니다.",
+      gemini: "그쪽으로 가면 1화 첫 3초 대본을 먼저 고쳐야 합니다. 문장은 바로 다시 쓰겠습니다.",
+      cue: "그 기준이면 제가 모은 경쟁 썸네일 중 절반은 근거로 못 씁니다. 다시 추리겠습니다.",
+      hark: "비노출 조건과 실제 수치 원칙은 그대로 두고 그 안에서만 움직이겠습니다. 벗어나는 안은 따로 표시해 두겠습니다.",
+      chatgpt: "그렇다면 지표 표의 칸을 먼저 맞춰야 합니다. 어떤 값을 볼지 정해 주시면 표부터 고치겠습니다.",
+      claude: "제목과 문구를 그 기준으로 다시 쓰겠습니다. 기존 3안은 대안으로 남겨 둡니다."
+    },
+    closing: "1화 실험 1회와 지표 표가 이번 주 업무로 등록됩니다. 결과는 24·72시간 수치로 다음 회의에서 복기합니다."
+  },
+
+  /* ═══════════════════════════ 안건 2 ═══════════════════════════ */
+  {
+    id: "ldp-workflow",
+    tag: "LDP 제작",
+    title: "LDP 롱보드 촬영·편집 워크플로우 효율화",
+    ready: true,
+    preparedAt: "2026-11-26 20:55",
+    preparedBy: "피클 — 6인 자료 취합",
+    brief: "새 주행 영상이 없는 동안, 다음 촬영부터 편집까지 걸리는 시간과 사용량을 줄이는 규격을 정한다. 촬영 지침·저장 규칙·문구 템플릿·인코딩 중 무엇을 먼저 고정할지.",
+    facts: [
+      "드라이브 'LDP 쇼츠 영상 자료'에 실사 클립 8개 731MB (462MB 1개는 64MiB 상한으로 다운로드 실패)",
+      "6개 클립으로 41.5초본 제작 → 실제 게시는 성진님 완성본 21.63초(1080×1920 30fps)",
+      "인코딩: 44.5MB 원본 업로드 실패 → CRF 24 · 23.48MB로 재인코딩해 성공",
+      "테스트 1편에 일일 사용량 79% → 91% (12%포인트)",
+      "편집 기준: 자막 64% 위치 · -13.9 LUFS · 둥근 폰트 · 영문 자막 통일"
+    ],
+    ownerChips: ["촬영 규격부터 정하자", "자막·문구 템플릿 먼저", "60초·20초 두 버전", "사용량 줄이는 쪽으로"],
+    panels: {
+      pickle: {
+        summary: "지금 LDP 제작의 기준값은 '한 편에 반나절, 사용량 12%포인트'입니다. 새 주행 영상이 없어 제작이 멈춰 있으니, 이번 회의는 다음 촬영 전에 파이프라인을 깔아 두는 문제로 잡겠습니다.",
+        points: [
+          "8개 클립 731MB 중 462MB 한 개는 다운로드 자체가 실패했습니다. 촬영 단계에서 클립을 나누지 않으면 같은 문제가 반복됩니다.",
+          "41.5초본을 만든 뒤 성진님은 21.63초 완성본을 따로 쓰셨습니다. 제 편집이 최종본이 아니었고, 사용량만 12%포인트 썼습니다.",
+          "다음 촬영은 '편집이 바로 되는 촬영'이어야 합니다. 컷 길이와 각도를 미리 정해 찍으면 편집 시간이 절반으로 줄어듭니다."
+        ],
+        concern: "촬영은 제가 못 하니 지침이 문서로만 남으면 현장에서 안 지켜집니다. 폰으로 바로 볼 수 있는 1장 요약이어야 합니다.",
+        proposal: "촬영 전날 1장 지침(컷 8개·길이·각도)을 만들어 보내고, 촬영 후에는 그 순서대로만 편집합니다.",
+        rebuttal: { to: "hark", text: "Hark가 클립 5초 분할을 말했습니다. 촬영할 때 나누면 되지만, 이미 찍어 둔 731MB는 다시 나눠야 합니다. 그 작업을 이번 주에 할지 다음 촬영부터 할지 정해야 합니다." },
+        source: "근거: 드라이브 클립 8개 731MB, 41.5초본·21.63초 완성본 기록, 사용량 79→91%"
+      },
+      gemini: {
+        summary: "편집에서 시간이 새는 곳은 컷 선택이 아니라 자막과 문구입니다. 41.5초본에 문구만 입히는 방식이 이미 검증됐으니, 문구를 먼저 확정하고 영상을 그 위에 얹는 순서로 바꿔야 합니다.",
+        points: [
+          "지난번에는 영상을 먼저 자르고 문구를 나중에 얹었습니다. 순서를 뒤집어 문구 4~5개를 먼저 쓰면 컷 선택 기준이 생깁니다.",
+          "자막은 영문 통일로 정하셨습니다(BRACKET SETUP / FULL PUMP). 이 규격을 템플릿 파일로 저장하면 매번 새로 쓰지 않아도 됩니다.",
+          "인트로 3초는 'NO PUSH, JUST PUMP' 같은 짧은 문장 하나로 고정하면 편집마다 고민할 것이 줄어듭니다."
+        ],
+        concern: "문구를 먼저 쓰려면 어떤 장면이 있는지 알아야 합니다. 촬영 목록(어떤 기술을 찍을지)이 먼저 정해져야 문구가 나옵니다.",
+        proposal: "촬영 목록 → 문구 5개 → 컷 선택 순서로 바꾸고, 자막 템플릿을 파일로 저장합니다.",
+        rebuttal: { to: "cue", text: "Cue가 40~60초와 20초 두 버전을 말했습니다. 문구를 먼저 확정하는 제 순서와 부딪힙니다. 두 길이면 문구도 두 벌이라, 한 벌로 쓰고 잘라 쓰는 방식이 맞습니다." },
+        source: "근거: 41.5초본 편집 순서, 영문 자막 통일 결정, 인트로 문구"
+      },
+      cue: {
+        summary: "LDP는 국내 검색량이 작은 대신 해외 시청 비중이 큽니다. 영문 자막 통일은 그 판단에 맞습니다. 다만 지금은 게시 1편뿐이라 어떤 편집이 나은지 판단할 단계가 아닙니다.",
+        points: [
+          "게시한 것은 21.63초 1편이고 릴스도 같은 영상입니다. 표본 1개로는 편집 방식의 우열을 가릴 수 없습니다.",
+          "해외 LDP 커뮤니티는 펌핑 영상에서 40~60초 긴 호흡을 선호합니다. 20초대는 릴스에는 맞지만 쇼츠에서는 짧게 끊깁니다.",
+          "경쟁 영상 상위에는 발 위치·펌핑 리듬·보드 각도 클로즈업 세 컷이 공통으로 들어갑니다. 초보 시청자 이탈을 줄이는 장치입니다."
+        ],
+        concern: "국내 유저가 거의 없어 국내 조회는 기대하기 어렵습니다. 한 영상으로 국내·해외를 같이 잡으려면 자막은 영어, 설명란은 한영 병기여야 합니다.",
+        proposal: "편집은 영문 자막·영문 제목으로 고정하고 설명란만 한영 병기. 같은 클립에서 40~60초본과 20초 컷을 함께 뽑습니다.",
+        rebuttal: { to: "claude", text: "Claude가 효과음과 BGM을 기본값으로 넣자고 했습니다. 해외 시청자는 펌핑 현장음을 중요하게 봅니다. BGM이 현장음을 덮으면 오히려 이탈합니다." },
+        source: "근거: 게시 1편(21.63초) 지표, 해외 LDP 커뮤니티 구성, 경쟁 영상 상위 10개 구성"
+      },
+      hark: {
+        summary: "지난 작업에서 확인된 실패는 두 가지입니다. 462MB 클립 다운로드 실패와 44.5MB 업로드 실패. 둘 다 크기 문제이고 편집 실력 문제가 아닙니다.",
+        points: [
+          "드라이브 다운로드는 64MiB 응답 상한이 있어 큰 원본은 받지 못합니다. 촬영 후 클립을 5초 단위로 나눠 저장하면 상한 아래로 들어옵니다.",
+          "업로드는 25MB 이하가 안전합니다. 23.48MB는 성공했고 44.5MB는 실패했습니다. 경계는 25MB 근처로 보는 게 맞습니다.",
+          "AI 생성 이미지로 만든 LDP는 '전혀 ldp보드가 아니야'로 되돌린 이력이 있습니다. 실사 클립만 쓴다는 원칙을 문서에 넣어야 재발이 없습니다."
+        ],
+        concern: "한 편에 사용량이 12%포인트 늘었습니다. 자동화로 사용량은 줄일 수 있지만 검수가 느슨해지면 되돌리는 일이 다시 생깁니다.",
+        proposal: "클립 5초 분할 저장 · 인코딩 25MB 이하 · 실사만 사용, 이 세 가지를 체크리스트로 고정합니다.",
+        rebuttal: { to: "chatgpt", text: "ChatGPT의 인코딩 자동화는 좋습니다. 다만 CRF 24로 25MB를 맞추려면 20초대여야 합니다. 40~60초본은 화질이 떨어질 수 있어 두 규격을 나눠야 합니다." },
+        source: "근거: 64MiB 다운로드 상한, 업로드 성공·실패 용량, AI 이미지 되돌림 이력"
+      },
+      chatgpt: {
+        summary: "지금 파이프라인은 사람 손이 세 번 들어갑니다. 클립 정리, 편집, 인코딩. 이 중 두 번은 규칙만 정하면 자동으로 돌릴 수 있습니다.",
+        points: [
+          "드라이브 폴더를 날짜/클립번호로 고정하면 편집할 때 파일 찾는 시간이 사라집니다. 지금은 8개가 한 폴더에 섞여 있습니다.",
+          "인코딩은 명령 한 줄로 끝납니다(CRF 24, 25MB 이하). 매번 손으로 설정하지 말고 명령을 파일로 저장해 두면 됩니다.",
+          "결과물 이름 규칙(날짜_기술_길이)을 정하면 같은 소재를 다시 쓸 때 찾기 쉽습니다."
+        ],
+        concern: "자동화는 실패했을 때 조용히 넘어가면 위험합니다. 인코딩 실패와 용량 초과는 반드시 알림으로 남겨야 합니다.",
+        proposal: "폴더 규칙·파일명 규칙·인코딩 명령 세 가지를 정해 'LDP 제작 규칙' 1장으로 만듭니다.",
+        rebuttal: { to: "pickle", text: "피클이 촬영 지침 1장을 말했습니다. 촬영 목록이 먼저 없으면 지침도 못 씁니다. 기술 목록(펌핑·브래킷·커빙)을 먼저 정하는 순서가 맞습니다." },
+        source: "근거: 드라이브 폴더 구성, 인코딩 이력(CRF 24·23.48MB), 파일명 규칙 부재"
+      },
+      claude: {
+        summary: "지난 두 편의 피드백은 이미 일관됩니다. '편집은 괜찮은데 밋밋하다, 효과·음악이 없다, 글꼴과 말투가 딱딱하다, 음성은 여성으로'. 이 네 가지를 기본값으로 박아 두면 매번 지적받지 않습니다.",
+        points: [
+          "자막 폰트는 둥근 계열로 정해졌습니다. 이 폰트를 기본값으로 저장하고, 영문 자막에 짝이 되는 영문 폰트를 하나 정해야 합니다.",
+          "효과음과 BGM은 있으면 좋은 것이 아니라 기본값이어야 합니다. 없다는 지적이 두 번 나왔습니다.",
+          "제목은 분위기와 맞아야 한다는 기준이 확실합니다('땅 한 번 안 딛고…' → 별루). 후보 3개를 쓰고 성진님이 고르는 방식이 빠릅니다."
+        ],
+        concern: "피드백을 문서로만 남기면 다음 편에서 또 잊힙니다. 편집 시작 전 체크 5개(폰트·효과음·BGM·음성·제목)를 화면에 띄우는 방식이어야 합니다.",
+        proposal: "편집 기본값 5개를 체크리스트로 만들고, 영문 자막 폰트 하나를 정해 템플릿에 넣습니다.",
+        rebuttal: { to: "gemini", text: "Gemini가 문구를 먼저 쓰자고 했습니다. 저도 찬성인데 문구 5개는 현장에서 헷갈립니다. 3개로 고정하고 나머지는 버리는 쪽이 맞습니다." },
+        source: "근거: 11-22·11-23 쇼츠 피드백(밋밋함·효과음·폰트·여성 음성), 제목 재선정 이력"
+      }
+    },
+    options: [
+      {
+        id: "A",
+        title: "규격 우선 — 촬영·저장·인코딩 규격을 먼저 고정",
+        detail: "클립 5초 분할 저장, 날짜/클립번호 폴더, 파일명 규칙, 인코딩 25MB 이하(CRF 24)를 'LDP 제작 규칙' 1장으로 만들고 다음 촬영부터 그대로 적용한다. 이미 찍어 둔 731MB는 이번 주에 나누지 않는다.",
+        support: ["pickle", "hark", "chatgpt"],
+        risk: "다음 촬영 시점이 정해지지 않아 적용이 미뤄질 수 있음"
+      },
+      {
+        id: "B",
+        title: "문구·템플릿 우선 — 자막·문구 템플릿으로 편집 시간을 줄인다",
+        detail: "영문 자막 템플릿(폰트·64% 위치)·문구 3개·효과음·BGM 기본값을 파일로 만들고, 다음 편은 문구 → 컷 순서로 편집한다. 촬영 규격은 그다음에 정한다.",
+        support: ["gemini", "claude"],
+        risk: "문구를 먼저 쓰려면 촬영 목록이 필요해 결국 촬영 계획이 먼저 필요함"
+      },
+      {
+        id: "C",
+        title: "두 버전 동시 — 60초 본편과 20초 컷을 한 클립에서 뽑는다",
+        detail: "같은 클립에서 40~60초 본편(유튜브)과 20초 컷(릴스)을 함께 뽑는다. 본편은 CRF 26, 컷은 CRF 24로 인코딩하고 영문 자막·한영 설명란을 공통 적용한다.",
+        support: ["cue", "hark"],
+        risk: "편집 시간이 두 배, 사용량 부담이 커짐"
+      }
+    ],
+    roles: {
+      A: {
+        pickle: "'LDP 제작 규칙' 1장 작성·전달, 다음 촬영 전날까지 확정",
+        gemini: "규격에 맞는 문구 3개(인트로·기술명·아웃트로) 초안 작성",
+        cue: "해외 LDP 채널의 60초 구성 사례 10건과 필요한 클립 목록 정리",
+        hark: "체크리스트 검수: 5초 분할·25MB 이하·실사만 사용 3항목 확인 절차 정리",
+        chatgpt: "폴더·파일명 규칙과 ffmpeg 인코딩 명령을 파일로 만들어 전달",
+        claude: "영문 자막 폰트 1개 선정과 편집 전 체크 5개 문구 작성"
+      },
+      B: {
+        pickle: "템플릿 3종(자막·문구·효과음) 완성 일정 관리, 다음 편 적용 보고",
+        gemini: "문구 3개 확정안과 컷 선택 기준표(문구별 필요 장면) 작성",
+        cue: "문구별 반응이 좋은 해외 사례 8건과 자막 위치 근거 정리",
+        hark: "템플릿에 개인정보·위치 정보가 들어가지 않는지 검수",
+        chatgpt: "템플릿 파일 구조(프로젝트 파일·자막 파일)와 적용 절차 문서화",
+        claude: "자막 템플릿(폰트·64% 위치·색)과 효과음·BGM 기본값 목록 작성"
+      },
+      C: {
+        pickle: "두 버전 제작 일정과 사용량 한도 정해 보고",
+        gemini: "본편 60초 대본과 20초 컷 대본을 한 벌에서 나누는 방식 설계",
+        cue: "유튜브(60초)와 릴스(20초) 각각의 시청 지속 기준 자료 정리",
+        hark: "본편 CRF 26 화질 저하 여부 테스트, 두 규격 용량 확인",
+        chatgpt: "두 규격 인코딩 명령과 파일명 규칙(길이 표기 포함) 작성",
+        claude: "본편·컷 공통 영문 자막 문구와 한영 설명란 초안 작성"
+      }
+    },
+    ownerReplies: {
+      pickle: "그 기준이면 후보 A를 앞으로 당기고 B·C를 뒤로 미루겠습니다. 일정표를 그 순서로 다시 잡습니다.",
+      gemini: "그쪽이면 문구를 먼저 확정해야 합니다. 3개로 줄여 바로 쓰겠습니다.",
+      cue: "그 기준이면 제가 모은 해외 사례 중 절반은 근거가 약합니다. 다시 추리겠습니다.",
+      hark: "용량·실사 원칙은 그대로 두겠습니다. 그 안에서만 조정하고, 벗어나는 안은 표시해 두겠습니다.",
+      chatgpt: "그렇다면 규칙 문서의 항목을 먼저 맞추겠습니다. 어떤 값을 고정할지 정해 주시면 바로 반영합니다.",
+      claude: "폰트·효과음·문구 기본값을 그 기준으로 다시 잡겠습니다."
+    },
+    closing: "제작 규칙 1장과 템플릿이 이번 주 업무로 등록됩니다. 다음 주행 촬영이 생기면 그 규격으로 한 편을 끝까지 돌려 검증합니다."
+  }
+
+  ];
+
+  var byId = {};
+  AGENDAS.forEach(function(a){ byId[a.id] = a; });
+
+  return {
+    version: "v4",
+    updatedAt: "2026-11-26 21:00",
+    agendas: AGENDAS,
+    byId: byId
+  };
+})();
+
 (function(){
   "use strict";
 
-  /* ───────────────────────── 기본 정의 ───────────────────────── */
+  /* ═══════════════════ 기본 정의 ═══════════════════ */
+  const LIB = window.AGENDA_LIB || {agendas:[], byId:{}};
+  const AIS = ["pickle","gemini","cue","hark","chatgpt","claude"];
   const PEOPLE = [
-    {id:"darkjin", name:"darkjin",  emoji:"👑", role:"오너 · 중간 개입·최종 결정", color:"#f5c04a", owner:true},
-    {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"회의 진행 · 최종 실행",       color:"#8b7cf6"},
-    {id:"chatgpt", name:"ChatGPT",  emoji:"🛠️", role:"DB 점검 · 구조 설계",         color:"#10a37f"},
-    {id:"cue",     name:"Cue",      emoji:"🔍", role:"트렌드 · 근거 리서치",         color:"#38bdf8"},
-    {id:"claude",  name:"Claude",   emoji:"✍️", role:"대본 · 카피 · 선제작",         color:"#d97757"},
-    {id:"grok",    name:"Grok",     emoji:"🐦", role:"X 실시간 반응 · 키워드",       color:"#e4e4e7"}
+    {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6"},
+    {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4"},
+    {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8"},
+    {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c"},
+    {id:"chatgpt", name:"ChatGPT",   emoji:"🛠️", role:"구조 설계·DB·자동화",     color:"#10a37f"},
+    {id:"claude",  name:"Claude",    emoji:"✍️", role:"글쓰기·기획 검토",        color:"#d97757"}
   ];
-  const AIS = ["pickle","chatgpt","cue","claude","grok"];
-  const byId = id => PEOPLE.find(p => p.id === id);
-  const MEETING_PHASES = {round1:1, round2:1, roundN:1, proposal:1, assign:1, working:1, reopen:1};
+  const byId = id => PEOPLE.find(p => p.id === id) || (id === "owner" ? {id:"owner", name:"오너", emoji:"👑", color:"#f5c04a"} : null);
 
-  const KEY_LS   = "darkjin_meeting_gemini_key";
-  const SPEED_LS = "darkjin_meeting_speed";
-  const VOICE_LS = "darkjin_meeting_voice";
-  const SFX_LS   = "darkjin_meeting_sfx";
+  const K_SPEED = "darkjin_mr4_speed";
+  const K_VOICE = "darkjin_mr4_voice";
+  const K_SFX   = "darkjin_mr4_sfx";
+  const K_REQ   = "darkjin_mr4_requests";
+  const K_SEEN  = "darkjin_mr4_seen_ready";
+  const K_NOTIFY= "darkjin_mr4_notify";
 
-  // Safari 파일 열람·시크릿 모드에서도 죽지 않도록 저장소 접근을 감싼다
   const LS = {
     get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
     set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
@@ -698,132 +1123,111 @@
   };
 
   const state = {
-    phase:"idle",          // idle | round1 | round2 | roundN | proposal | assign | working | reopen | closed
-    topic:"",
-    local:null,            // 내장 엔진 대본
-    data:null,             // 확정 결론(conclusion/actions/reopen/final/narrow)
-    done:{},
-    startedAt:0,
+    phase:"idle",        // idle | materials | discussion | confirm | roles
+    agenda:null,         // 선택된 안건 객체
+    option:null,         // 확정한 결론 후보 id
+    ownerDir:"",         // 결론 확정 시 오너 추가 지시
+    notes:[],            // 오너 코멘트 전체
+    readSet:{},
+    rebutSet:{},
+    busy:false,
     runToken:0,
-    speed:Number(LS.get(SPEED_LS) || 1),
-    timerId:null,
-    voiceOn:(LS.get(VOICE_LS) || "1") !== "0",
-    sfxOn:(LS.get(SFX_LS) || "1") !== "0",
+    speed:Number(LS.get(K_SPEED) || 1),
+    voiceOn:(LS.get(K_VOICE) || "1") !== "0",
+    sfxOn:(LS.get(K_SFX) || "1") !== "0",
     paused:false,
     pausedAt:0,
     pausedMs:0,
     voiceWarned:false,
-    round:0,
-    saidThisRound:0,
-    log:[],                // {round, id, text}
-    notes:[],              // 아직 반영 안 된 오너 개입
-    notesAll:[],           // 이번 회의 전체 오너 개입
+    startedAt:0,
+    timerId:null,
     activeCut:null,
-    busy:false
+    activeSpeaker:null,
+    matId:null
   };
 
-  const $ = sel => document.querySelector(sel);
+  const $ = s => document.querySelector(s);
   const el = (tag, cls, txt) => { const n=document.createElement(tag); if(cls) n.className=cls; if(txt!==undefined) n.textContent=txt; return n; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const pad = n => String(n).padStart(2,"0");
   const nowHM = () => { const d=new Date(); return pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds()); };
+  const nowStamp = () => { const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes()); };
+  const norm = s => String(s||"").replace(/\s+/g,"").replace(/[.,?!"'·:;()\[\]]/g,"").toLowerCase();
 
-  /* ═══════════════════ v3 · Web Audio 효과음 (외부 파일 0) ═══════════════════ */
+  /* ═══════════════════ 효과음 (Web Audio · 외부 파일 0) ═══════════════════ */
   const SFX = (function(){
     let ctx = null;
-    const log = [];
-    const calls = [];
-    window.__sfxLog = log;
-    window.__sfxCalls = calls;
-
+    const log = [], calls = [];
+    window.__sfxLog = log; window.__sfxCalls = calls;
     function ac(){
       if(!state.sfxOn || !state.voiceOn) return null;
       try{
-        if(!ctx){
-          const C = window.AudioContext || window.webkitAudioContext;
-          if(!C) return null;
-          ctx = new C();
-        }
+        if(!ctx){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; ctx = new C(); }
         if(ctx.state === "suspended" && ctx.resume) ctx.resume();
         return ctx;
       }catch(e){ return null; }
     }
-    function note(c, opt){
-      const t0 = opt.at, dur = opt.dur || .12, f = opt.freq, to = opt.to || f;
-      const o = c.createOscillator(), g = c.createGain();
-      o.type = opt.type || "sine";
-      o.frequency.setValueAtTime(f, t0);
-      if(to !== f) o.frequency.exponentialRampToValueAtTime(Math.max(30,to), t0 + dur);
-      const peak = opt.gain == null ? .16 : opt.gain;
-      g.gain.setValueAtTime(.0001, t0);
-      g.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(.02, dur/3));
-      g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
-      o.connect(g); g.connect(c.destination);
-      o.start(t0); o.stop(t0 + dur + .02);
+    function note(c,o){
+      const t0=o.at, dur=o.dur||.12, f=o.freq, to=o.to||f;
+      const osc=c.createOscillator(), g=c.createGain();
+      osc.type=o.type||"sine";
+      osc.frequency.setValueAtTime(f,t0);
+      if(to!==f) osc.frequency.exponentialRampToValueAtTime(Math.max(30,to),t0+dur);
+      const peak=o.gain==null?.16:o.gain;
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(peak,t0+Math.min(.02,dur/3));
+      g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+      osc.connect(g); g.connect(c.destination); osc.start(t0); osc.stop(t0+dur+.02);
     }
-    function noise(c, opt){
-      const dur = opt.dur || .18;
-      const len = Math.max(1, Math.floor(c.sampleRate * dur));
-      const buf = c.createBuffer(1, len, c.sampleRate);
-      const d = buf.getChannelData(0);
-      for(let i=0;i<len;i++){
-        const k = 1 - i/len;
-        d[i] = (Math.random()*2-1) * k * k;
-      }
-      const src = c.createBufferSource(); src.buffer = buf;
-      const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = opt.q || 1.1;
-      bp.frequency.setValueAtTime(opt.from || 2400, opt.at);
-      bp.frequency.exponentialRampToValueAtTime(Math.max(120, opt.to || 700), opt.at + dur);
-      const g = c.createGain();
-      g.gain.setValueAtTime(opt.gain == null ? .13 : opt.gain, opt.at);
-      g.gain.exponentialRampToValueAtTime(.0001, opt.at + dur);
-      src.connect(bp); bp.connect(g); g.connect(c.destination);
-      src.start(opt.at);
+    function noise(c,o){
+      const dur=o.dur||.18, len=Math.max(1,Math.floor(c.sampleRate*dur));
+      const buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+      for(let i=0;i<len;i++){ const k=1-i/len; d[i]=(Math.random()*2-1)*k*k; }
+      const src=c.createBufferSource(); src.buffer=buf;
+      const bp=c.createBiquadFilter(); bp.type="bandpass"; bp.Q.value=o.q||1.1;
+      bp.frequency.setValueAtTime(o.from||2400,o.at);
+      bp.frequency.exponentialRampToValueAtTime(Math.max(120,o.to||700),o.at+dur);
+      const g=c.createGain(); g.gain.setValueAtTime(o.gain==null?.13:o.gain,o.at);
+      g.gain.exponentialRampToValueAtTime(.0001,o.at+dur);
+      src.connect(bp); bp.connect(g); g.connect(c.destination); src.start(o.at);
     }
-    function play(name, fn){
-      calls.push(name); if(calls.length > 120) calls.shift();
-      const c = ac();
-      if(!c) return;
-      try{ fn(c, c.currentTime + .01); log.push({name:name, t:Date.now()}); if(log.length>120) log.shift(); }catch(e){}
+    function play(name,fn){
+      calls.push(name); if(calls.length>120) calls.shift();
+      const c=ac(); if(!c) return;
+      try{ fn(c,c.currentTime+.01); log.push({name:name,t:Date.now()}); if(log.length>120) log.shift(); }catch(e){}
     }
     return {
-      unlock(){ const c = ac(); if(c && c.state === "suspended" && c.resume) c.resume(); },
-      reset(){},
-      // 🤫 음소거: 하강 2음 + 짧은 쉭 노이즈 + 낮은 쿵
-      shush(){ play("shush", (c,t)=>{
-        note(c,{at:t, freq:900, to:560, dur:.10, type:"sine", gain:.13});
-        note(c,{at:t+.085, freq:640, to:430, dur:.13, type:"sine", gain:.12});
-        note(c,{at:t, freq:190, to:70, dur:.18, type:"sine", gain:.10});
-        noise(c,{at:t+.02, dur:.22, from:2800, to:620, q:1.0, gain:.14});
+      unlock(){ const c=ac(); if(c&&c.state==="suspended"&&c.resume) c.resume(); },
+      shush(){ play("shush",(c,t)=>{
+        note(c,{at:t,freq:900,to:560,dur:.10,type:"sine",gain:.13});
+        note(c,{at:t+.085,freq:640,to:430,dur:.13,type:"sine",gain:.12});
+        note(c,{at:t,freq:190,to:70,dur:.18,type:"sine",gain:.10});
+        noise(c,{at:t+.02,dur:.22,from:2800,to:620,q:1.0,gain:.14});
       }); },
-      // 회의 시작·재소집: 부드러운 딩동
-      ding(){ play("ding", (c,t)=>{
-        note(c,{at:t, freq:660, dur:.26, type:"triangle", gain:.13});
-        note(c,{at:t+.16, freq:880, dur:.34, type:"triangle", gain:.12});
-        note(c,{at:t+.16, freq:1320, dur:.30, type:"sine", gain:.05});
+      ding(){ play("ding",(c,t)=>{
+        note(c,{at:t,freq:660,dur:.26,type:"triangle",gain:.13});
+        note(c,{at:t+.16,freq:880,dur:.34,type:"triangle",gain:.12});
+        note(c,{at:t+.16,freq:1320,dur:.30,type:"sine",gain:.05});
       }); },
-      // ✅ 확정: 기분 좋은 완료 화음 (C-E-G-C)
-      confirm(){ play("confirm", (c,t)=>{
-        [523.25, 659.25, 783.99, 1046.5].forEach((f,i)=>{
-          note(c,{at:t+i*.075, freq:f, dur:.42, type:"triangle", gain:i===3?.10:.11});
-        });
-        note(c,{at:t, freq:130.81, dur:.5, type:"sine", gain:.07});
+      confirm(){ play("confirm",(c,t)=>{
+        [523.25,659.25,783.99,1046.5].forEach((f,i)=>note(c,{at:t+i*.075,freq:f,dur:.42,type:"triangle",gain:i===3?.10:.11}));
+        note(c,{at:t,freq:130.81,dur:.5,type:"sine",gain:.07});
       }); },
-      // 💬 끼어들기: 가벼운 팝
-      pop(){ play("pop", (c,t)=>{
-        note(c,{at:t, freq:420, to:760, dur:.085, type:"sine", gain:.15});
-        note(c,{at:t+.04, freq:1180, duration:.05, dur:.05, type:"sine", gain:.05});
+      pop(){ play("pop",(c,t)=>{
+        note(c,{at:t,freq:420,to:760,dur:.085,type:"sine",gain:.15});
+        note(c,{at:t+.04,freq:1180,dur:.05,type:"sine",gain:.05});
       }); }
     };
   })();
 
-  /* ═══════════════════ 음성 엔진 (Web Speech API) ═══════════════════ */
+  /* ═══════════════════ 음성 엔진 (Web Speech) ═══════════════════ */
   const VOICE_CFG = {
     pickle:  {pitch:0.90, rate:1.02, tone:"진행 · 낮고 또렷"},
-    chatgpt: {pitch:1.00, rate:0.96, tone:"분석 · 차분"},
-    cue:     {pitch:1.32, rate:1.14, tone:"리서치 · 빠름"},
-    claude:  {pitch:1.12, rate:0.88, tone:"작가 · 느긋"},
-    grok:    {pitch:0.74, rate:1.08, tone:"관찰 · 낮고 퉁명"}
+    gemini:  {pitch:1.06, rate:1.00, tone:"분석 · 또박"},
+    cue:     {pitch:1.30, rate:1.12, tone:"리서치 · 빠름"},
+    hark:    {pitch:0.78, rate:1.04, tone:"검증 · 낮고 무겁게"},
+    chatgpt: {pitch:1.00, rate:0.96, tone:"구조 · 차분"},
+    claude:  {pitch:1.14, rate:0.88, tone:"작가 · 느긋"}
   };
   const synthOK = (typeof window !== "undefined") && ("speechSynthesis" in window) && (typeof window.SpeechSynthesisUtterance === "function");
   let koVoices = [];
@@ -841,24 +1245,21 @@
     const i = Math.max(0, AIS.indexOf(id));
     return koVoices[i % koVoices.length];
   }
-
-  // 긴 문장은 문장 단위 청크로 나눠 읽는다(iOS Safari가 긴 문장을 끊는 문제 완화)
   function splitChunks(text){
-    const clean = String(text || "").replace(/\s+/g, " ").trim();
+    const clean = String(text || "").replace(/\s+/g," ").trim();
     if(!clean) return [];
     const parts = clean.match(/[^.!?。？！\n]+[.!?。？！]?/g) || [clean];
-    const out = []; let buf = "";
-    parts.forEach(p => {
+    const out = []; let buf="";
+    parts.forEach(p=>{
       const s = p.trim(); if(!s) return;
-      if(buf && (buf + " " + s).length > 110){ out.push(buf); buf = s; }
-      else buf = buf ? buf + " " + s : s;
+      if(buf && (buf+" "+s).length > 110){ out.push(buf); buf=s; }
+      else buf = buf ? buf+" "+s : s;
     });
     if(buf) out.push(buf);
     return out;
   }
-
   function speakChunk(id, text, cfg){
-    return new Promise(resolve => {
+    return new Promise(resolve=>{
       if(!synthOK || !state.voiceOn){ resolve("skip"); return; }
       const synth = window.speechSynthesis;
       const u = new window.SpeechSynthesisUtterance(text);
@@ -866,38 +1267,28 @@
       const v = pickVoice(id);
       if(v){ u.voice = v; if(v.lang) u.lang = v.lang; }
       u.pitch = cfg.pitch; u.rate = cfg.rate; u.volume = 1;
-      let done = false, started = false, silent = 0;
+      let done=false, started=false, silent=0;
       const began = Date.now();
-      const finish = r => {
+      const finish = r => { if(done) return; done=true; clearInterval(watch); clearTimeout(hard); resolve((started||r==="canceled")?r:"empty"); };
+      u.onstart = ()=>{ started = true; };
+      u.onend = ()=> finish("ended");
+      u.onerror = ev => { const code=(ev&&(ev.error||ev.name))||""; finish(/cancel|interrupt/i.test(code)?"canceled":"error"); };
+      const watch = setInterval(()=>{
         if(done) return;
-        done = true;
-        clearInterval(watch); clearTimeout(hard);
-        resolve((started || r === "canceled") ? r : "empty");
-      };
-      u.onstart = () => { started = true; };
-      u.onend = () => finish("ended");
-      u.onerror = ev => {
-        const code = (ev && (ev.error || ev.name)) || "";
-        finish(/cancel|interrupt/i.test(code) ? "canceled" : "error");
-      };
-      const watch = setInterval(() => {
-        if(done) return;
-        if(synth.paused){ silent = 0; return; }
-        if(synth.speaking || synth.pending){ silent = 0; started = started || synth.speaking; return; }
+        if(synth.paused){ silent=0; return; }
+        if(synth.speaking || synth.pending){ silent=0; started = started || synth.speaking; return; }
         silent++;
-        if(Date.now() - began > 700 && silent >= 4) finish("ended");
-      }, 120);
-      const hard = setTimeout(() => finish("ended"), 1500 + text.length * 300);
-      try{ synth.speak(u); if(synth.paused) synth.resume(); }
-      catch(e){ finish("error"); }
+        if(Date.now()-began > 700 && silent >= 4) finish("ended");
+      },120);
+      const hard = setTimeout(()=>finish("ended"), 1500 + text.length*300);
+      try{ synth.speak(u); if(synth.paused) synth.resume(); }catch(e){ finish("error"); }
     });
   }
-
   async function speakText(id, text, token, cutRec){
     if(!synthOK || !state.voiceOn) return;
     const cfg = VOICE_CFG[id] || {pitch:1, rate:1};
     const chunks = splitChunks(text);
-    let i = 0, emptyRuns = 0, cancelRuns = 0;
+    let i=0, emptyRuns=0, cancelRuns=0;
     while(i < chunks.length){
       if(token !== state.runToken || !state.voiceOn) return;
       if(cutRec && cutRec.fired) return;
@@ -906,501 +1297,303 @@
       if(cutRec && cutRec.fired) return;
       const res = await speakChunk(id, chunks[i], cfg);
       if(cutRec && cutRec.fired) return;
-      if(res === "empty"){
-        emptyRuns++;
-        if(emptyRuns >= 3){ voiceUnavailable(); return; }
-        i++; continue;
-      }
+      if(res === "empty"){ emptyRuns++; if(emptyRuns>=3){ voiceUnavailable(); return; } i++; continue; }
       emptyRuns = 0;
-      if(res === "canceled"){
-        cancelRuns++;
-        if(cutRec && cutRec.fired) return;
-        if(cancelRuns > 4 && !state.paused) return;
-        continue;
-      }
-      cancelRuns = 0;
-      i++;
+      if(res === "canceled"){ cancelRuns++; if(cutRec && cutRec.fired) return; if(cancelRuns>4 && !state.paused) return; continue; }
+      cancelRuns = 0; i++;
     }
   }
-
   function voiceUnavailable(){
     if(state.voiceWarned) return;
     state.voiceWarned = true;
     setVoice(false, true);
     toast("🔇 이 브라우저에서 목소리를 재생할 수 없습니다 · 글자로만 진행합니다");
-    addSystem("음성 재생 실패 — 이 브라우저/기기에서는 글자로만 진행합니다.");
   }
-
-  /* ── 정지 / 재개 게이트 ── */
-  let pauseWaiters = [];
-  function waitIfPaused(){
-    if(!state.paused) return Promise.resolve();
-    return new Promise(res => pauseWaiters.push(res));
-  }
-  function releasePause(){
-    const ws = pauseWaiters; pauseWaiters = [];
-    ws.forEach(fn => { try{ fn(); }catch(e){} });
-  }
-  async function psleep(ms){
-    await waitIfPaused();
-    if(state.paused) return;
-    await sleep(ms);
-  }
-
   function setVoice(on, quiet){
     state.voiceOn = !!on;
-    LS.set(VOICE_LS, state.voiceOn ? "1" : "0");
+    LS.set(K_VOICE, state.voiceOn ? "1" : "0");
     const b = document.getElementById("voiceBtn");
     if(b){
       b.classList.toggle("on", state.voiceOn);
       b.innerHTML = state.voiceOn ? '🔊 <span class="lg">음성 </span>ON' : '🔇 <span class="lg">음성 </span>OFF';
-      b.title = state.voiceOn ? "AI 목소리·효과음 켜짐 · 누르면 끔" : "AI 목소리·효과음 꺼짐 · 누르면 켬";
     }
     if(!state.voiceOn && synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
-    if(!quiet){
-      toast(state.voiceOn ? "🔊 AI 목소리 ON" : "🔇 AI 목소리 OFF · 글자로만 진행");
-      addSystem(state.voiceOn ? "🔊 AI 목소리 켜짐" : "🔇 AI 목소리 꺼짐");
-    }
+    if(!quiet) toast(state.voiceOn ? "🔊 AI 목소리 ON" : "🔇 AI 목소리 OFF · 글자로만 진행");
   }
-
   function unlockVoice(){
     if(!synthOK || !state.voiceOn) return;
     try{
       const s = window.speechSynthesis;
       const u = new window.SpeechSynthesisUtterance(" ");
-      u.lang = "ko-KR"; u.volume = 0; u.rate = 2;
-      s.speak(u);
+      u.lang="ko-KR"; u.volume=0; u.rate=2; s.speak(u);
       if(s.paused) s.resume();
     }catch(e){}
     SFX.unlock();
   }
 
-  /* ── 🤫 다들 조용! / ▶️ 다시 계속 ── */
+  /* ── 정지 / 재개 ── */
+  let pauseWaiters = [];
+  function waitIfPaused(){ if(!state.paused) return Promise.resolve(); return new Promise(res=>pauseWaiters.push(res)); }
+  function releasePause(){ const ws=pauseWaiters; pauseWaiters=[]; ws.forEach(fn=>{ try{ fn(); }catch(e){} }); }
+  async function psleep(ms){ await waitIfPaused(); if(state.paused) return; await sleep(ms); }
+
   function quietAll(){
-    stopListening(true);
-    stopInterjectMic(true);
+    stopListening(true); stopInterjectMic(true);
     const first = !state.paused;
-    if(first){
-      state.paused = true;
-      state.pausedAt = Date.now();
-      clearInterval(state.timerId);
-    }
-    // 카드 높이·문구를 건드리지 않는다: 오버레이(qveil)와 상태 라벨만 바뀐다
-    AIS.forEach(id => {
+    if(first){ state.paused = true; state.pausedAt = Date.now(); }
+    AIS.forEach(id=>{
       const r = tileRefs[id]; if(!r) return;
       r.tile.classList.add("quiet");
       r.tile.classList.remove("speaking");
-      r.state.classList.remove("s-speaking");
+      r.state.classList.remove("s-speaking","s-ready","s-done");
       r.state.classList.add("s-quiet");
       r.state.textContent = "조용";
     });
     document.body.classList.add("is-quiet");
     if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
     if(first) SFX.shush();
-    if(state.phase !== "idle"){
-      setLive("조용히", "quiet");
-      if(first){
-        addSystem("🤫 다들 조용! — 전원 음소거 · 진행 정지");
-        toast("🤫 다들 조용! · 모두 멈췄습니다");
-      }
-    } else if(first){
-      toast("🤫 조용히 대기 중입니다");
-    }
+    setLive("조용히", "quiet");
+    if(first){ addSystem("🤫 다들 조용! — 전원 음소거 · 진행 정지"); toast("🤫 다들 조용! · 모두 멈췄습니다"); }
   }
-
   function restoreTileState(id){
     const r = tileRefs[id]; if(!r) return;
     r.tile.classList.remove("quiet");
     r.state.classList.remove("s-quiet");
-    if(id === "darkjin"){
-      const workingPhase = (state.phase === "working" || state.phase === "reopen" || state.phase === "closed") && state.data;
-      setTileState("darkjin", workingPhase ? (state.done.darkjin ? "done" : "working") : "", workingPhase ? (state.done.darkjin ? "승인 완료" : "승인 대기") : "오너");
-      return;
-    }
-    if(state.done[id]) setTileState(id, "done", "완료");
-    else if(state.phase === "working") setTileState(id, "working", "작업 중");
-    else if(state.phase === "reopen" || state.phase === "closed") setTileState(id, "done", "완료");
-    else if(MEETING_PHASES[state.phase]) setTileState(id, "", "경청");
-    else setTileState(id, "", "대기");
+    if(state.phase === "roles") setTileState(id,"assigned","배정");
+    else if(state.agenda) setTileState(id,"ready","자료 준비");
+    else setTileState(id,"","대기");
   }
-
   function resumeAll(){
     if(!state.paused){ toast("지금은 멈춰 있지 않습니다"); return; }
     state.paused = false;
     document.body.classList.remove("is-quiet");
-    AIS.forEach(id => restoreTileState(id));
-    if(state.activeSpeaker && tileRefs[state.activeSpeaker]){
-      setTileState(state.activeSpeaker, "speaking", "발언 중");
-    }
-    if(state.pausedAt){ state.pausedMs += Date.now() - state.pausedAt; state.pausedAt = 0; }
-    if(state.phase !== "idle" && state.phase !== "closed"){
-      startClock(state.pausedMs);
-      setLive(state.phase === "working" ? "작업 중" : "회의 중", state.phase === "working" ? "working" : "");
-      addSystem("▶️ 다시 계속 — 회의를 이어갑니다");
-    } else {
-      setLive(state.phase === "closed" ? "마무리 완료" : "대기 중", state.phase === "closed" ? "done" : "");
-    }
+    AIS.forEach(restoreTileState);
+    if(state.activeSpeaker && tileRefs[state.activeSpeaker]) setTileState(state.activeSpeaker,"speaking","발언 중");
+    if(state.pausedAt){ state.pausedMs += Date.now()-state.pausedAt; state.pausedAt = 0; }
+    if(state.agenda) startClock(state.pausedMs);
+    setLive(state.phase==="roles" ? "역할 분담" : "회의 중", "");
+    addSystem("▶️ 다시 계속 — 이어갑니다");
     SFX.ding();
     if(synthOK && state.voiceOn){ try{ window.speechSynthesis.resume(); }catch(e){} }
     releasePause();
     toast("▶️ 다시 계속");
   }
 
-  /* ═══════════════════ 음성 인식 (안건 · 끼어들기) ═══════════════════ */
+  /* ═══════════════════ 음성 인식 (오너 코멘트) ═══════════════════ */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-  const STOP_WORDS = ["다들 조용", "조용히 해", "조용", "그만", "멈춰", "멈춰요", "스톱", "중지"];
-  let recog = null, listening = false, micWant = false, micBase = "", micFinal = "";
-  let iRecog = null, iListening = false, iWant = false, iBase = "", iFinal = "";
+  const STOP_WORDS = ["다들 조용","조용히 해","조용","그만","멈춰","멈춰요","스톱","중지"];
+  let recog=null, listening=false, micWant=false, micBase="", micFinal="";
+  let iRecog=null, iListening=false, iWant=false, iBase="", iFinal="";
 
   function isStopPhrase(t){
-    const s = String(t || "").replace(/\s+/g, " ").trim();
+    const s = String(t||"").replace(/\s+/g," ").trim();
     if(!s) return false;
-    return STOP_WORDS.some(w => s.indexOf(w) >= 0);
+    return STOP_WORDS.some(w=>s.indexOf(w)>=0);
   }
   function setMicUI(on){
-    const b = document.getElementById("micBtn");
-    const f = document.getElementById("inputField");
-    if(b){
-      b.classList.toggle("on", on);
-      b.textContent = on ? "■ 듣는 중" : "🎤 말하기";
-      b.title = on ? "누르면 음성 입력을 멈춥니다" : "말로 안건 입력 · '다들 조용'이라고 하면 정지";
-    }
-    if(f) f.classList.toggle("listening", on);
+    const b=document.getElementById("micBtn"); const f=document.getElementById("inputField");
+    if(b){ b.classList.toggle("on",on); b.textContent = on?"■ 듣는 중":"🎤 말하기"; }
+    if(f) f.classList.toggle("listening",on);
   }
   function setIMicUI(on){
-    const b = document.getElementById("interjectMic");
-    if(b){
-      b.classList.toggle("on", on);
-      b.title = on ? "듣는 중 · 누르면 멈춤" : "말로 끼어들기 (누르면 발언이 잠시 멈춥니다)";
-    }
+    const b=document.getElementById("interjectMic");
+    if(b){ b.classList.toggle("on",on); b.title = on?"듣는 중 · 누르면 멈춤":"말로 코멘트"; }
   }
-
   function beginRecognition(){
     if(!SR || !micWant || listening) return;
     try{
       recog = new SR();
-      recog.lang = "ko-KR";
-      recog.continuous = true;
-      recog.interimResults = true;
-      recog.maxAlternatives = 1;
-      recog.onstart = () => {
-        listening = true; setMicUI(true);
-        try{ if(synthOK && window.speechSynthesis.speaking && !window.speechSynthesis.paused) window.speechSynthesis.pause(); }catch(e){}
-      };
-      recog.onresult = ev => {
-        let fin = "", interim = "";
-        for(let i = ev.resultIndex; i < ev.results.length; i++){
-          const r = ev.results[i];
-          if(r.isFinal) fin += (r[0] && r[0].transcript) || "";
-          else interim += (r[0] && r[0].transcript) || "";
+      recog.lang="ko-KR"; recog.continuous=true; recog.interimResults=true; recog.maxAlternatives=1;
+      recog.onstart = ()=>{ listening=true; setMicUI(true); };
+      recog.onresult = ev=>{
+        let fin="", interim="";
+        for(let i=ev.resultIndex;i<ev.results.length;i++){
+          const r=ev.results[i];
+          if(r.isFinal) fin += (r[0]&&r[0].transcript)||"";
+          else interim += (r[0]&&r[0].transcript)||"";
         }
-        const heard = (fin || interim).trim();
-        if(heard && isStopPhrase(heard)){
-          stopListening(true);
-          quietAll();
-          toast('🤫 "' + heard + '" 감지 — 전체 정지');
-          return;
-        }
-        if(fin) micFinal = (micFinal + " " + fin).replace(/\s+/g, " ").trim();
-        const shown = (micFinal + (interim ? " " + interim : "")).trim();
-        const input = document.getElementById("topic");
-        if(input && shown) input.value = micBase ? micBase + " " + shown : shown;
+        const heard=(fin||interim).trim();
+        if(heard && isStopPhrase(heard)){ stopListening(true); quietAll(); toast('🤫 "'+heard+'" 감지 — 전체 정지'); return; }
+        if(fin) micFinal=(micFinal+" "+fin).replace(/\s+/g," ").trim();
+        const shown=(micFinal+(interim?" "+interim:"")).trim();
+        const input=document.getElementById("reqTopic");
+        if(input && shown) input.value = micBase ? micBase+" "+shown : shown;
       };
-      recog.onerror = ev => {
-        const e = ev && ev.error;
-        if(e === "not-allowed" || e === "service-not-allowed") toast("🎤 마이크 권한이 필요합니다 · 주소창의 마이크 허용을 켜 주세요");
-        else if(e === "no-speech") toast("🎤 소리가 들리지 않았습니다 · 다시 눌러 말해 주세요");
-        else if(e === "audio-capture") toast("🎤 마이크를 찾을 수 없습니다");
-        else if(e === "aborted"){ /* 사용자가 멈춤 */ }
-        else toast("🎤 음성 인식 오류: " + e);
+      recog.onerror = ev=>{
+        const e=ev&&ev.error;
+        if(e==="not-allowed"||e==="service-not-allowed") toast("🎤 마이크 권한이 필요합니다");
+        else if(e==="no-speech") toast("🎤 소리가 들리지 않았습니다");
+        else if(e!=="aborted") toast("🎤 음성 인식 오류: "+e);
       };
-      recog.onend = () => {
-        listening = false; setMicUI(false);
-        recog = null;
-        try{ if(synthOK && window.speechSynthesis.paused) window.speechSynthesis.resume(); }catch(e){}
-        if(micWant) setTimeout(beginRecognition, 260);
-      };
+      recog.onend = ()=>{ listening=false; setMicUI(false); recog=null; if(micWant) setTimeout(beginRecognition,260); };
       recog.start();
-    }catch(err){
-      listening = false; setMicUI(false);
-      toast("🎤 음성 입력을 시작하지 못했습니다: " + ((err && err.message) || err));
-    }
+    }catch(err){ listening=false; setMicUI(false); toast("🎤 음성 입력을 시작하지 못했습니다"); }
   }
-
   function startListening(){
-    if(!SR){
-      toast("이 브라우저는 음성 인식을 지원하지 않습니다 · Chrome·Edge·최신 Safari에서 열어 주세요");
-      addSystem("음성 인식 미지원 브라우저 — 안건은 직접 입력해 주세요.");
-      return;
-    }
+    if(!SR){ toast("이 브라우저는 음성 인식을 지원하지 않습니다"); return; }
     if(micWant){ toast("🎤 이미 듣고 있습니다"); return; }
-    if(micWant === false) stopInterjectMic(true);
-    micWant = true;
-    micBase = (document.getElementById("topic").value || "").trim();
-    micFinal = "";
-    toast("🎤 듣는 중 … '다들 조용'이라고 하면 바로 멈춥니다");
+    micWant=true; micBase=($("#reqTopic").value||"").trim(); micFinal="";
+    toast("🎤 듣는 중 … 주제를 말해 주세요");
     beginRecognition();
   }
-
   function stopListening(silent){
-    micWant = false;
-    if(recog){
-      try{ recog.onend = null; recog.abort(); }catch(e){ try{ recog.stop(); }catch(e2){} }
-      recog = null;
-    }
-    listening = false;
-    setMicUI(false);
-    try{ if(synthOK && window.speechSynthesis.paused) window.speechSynthesis.resume(); }catch(e){}
+    micWant=false;
+    if(recog){ try{ recog.onend=null; recog.abort(); }catch(e){ try{ recog.stop(); }catch(e2){} } recog=null; }
+    listening=false; setMicUI(false);
     if(!silent) toast("🎤 음성 입력을 멈췄습니다");
   }
-
   function beginInterjectMic(){
     if(!SR){ toast("이 브라우저는 음성 인식을 지원하지 않습니다 · 직접 입력해 주세요"); return; }
     if(iWant){ stopInterjectMic(); return; }
     stopListening(true);
-    iWant = true; iListening = false;
-    iBase = (document.getElementById("interjectInput").value || "").trim();
-    iFinal = "";
+    iWant=true; iListening=false;
+    iBase=(document.getElementById("interjectInput").value||"").trim(); iFinal="";
     try{ if(synthOK && window.speechSynthesis.speaking && !window.speechSynthesis.paused) window.speechSynthesis.pause(); }catch(e){}
     (function start(){
       if(!iWant) return;
       try{
         iRecog = new SR();
-        iRecog.lang = "ko-KR";
-        iRecog.continuous = true;
-        iRecog.interimResults = true;
-        iRecog.maxAlternatives = 1;
-        iRecog.onstart = () => { iListening = true; setIMicUI(true); };
-        iRecog.onresult = ev => {
-          let fin = "", interim = "";
-          for(let i = ev.resultIndex; i < ev.results.length; i++){
-            const r = ev.results[i];
-            if(r.isFinal) fin += (r[0] && r[0].transcript) || "";
-            else interim += (r[0] && r[0].transcript) || "";
+        iRecog.lang="ko-KR"; iRecog.continuous=true; iRecog.interimResults=true; iRecog.maxAlternatives=1;
+        iRecog.onstart = ()=>{ iListening=true; setIMicUI(true); };
+        iRecog.onresult = ev=>{
+          let fin="", interim="";
+          for(let i=ev.resultIndex;i<ev.results.length;i++){
+            const r=ev.results[i];
+            if(r.isFinal) fin += (r[0]&&r[0].transcript)||"";
+            else interim += (r[0]&&r[0].transcript)||"";
           }
-          if(fin) iFinal = (iFinal + " " + fin).replace(/\s+/g, " ").trim();
-          const shown = (iFinal + (interim ? " " + interim : "")).trim();
-          const input = document.getElementById("interjectInput");
-          if(input && shown) input.value = iBase ? iBase + " " + shown : shown;
+          if(fin) iFinal=(iFinal+" "+fin).replace(/\s+/g," ").trim();
+          const shown=(iFinal+(interim?" "+interim:"")).trim();
+          const input=document.getElementById("interjectInput");
+          if(input && shown) input.value = iBase ? iBase+" "+shown : shown;
         };
-        iRecog.onerror = ev => {
-          const e = ev && ev.error;
-          if(e === "not-allowed" || e === "service-not-allowed") toast("🎤 마이크 권한이 필요합니다");
-          else if(e !== "aborted" && e !== "no-speech") toast("🎤 음성 인식 오류: " + e);
+        iRecog.onerror = ev=>{
+          const e=ev&&ev.error;
+          if(e==="not-allowed"||e==="service-not-allowed") toast("🎤 마이크 권한이 필요합니다");
+          else if(e!=="aborted"&&e!=="no-speech") toast("🎤 음성 인식 오류: "+e);
         };
-        iRecog.onend = () => {
-          iListening = false; setIMicUI(false); iRecog = null;
-          if(iWant) setTimeout(start, 260);
-        };
+        iRecog.onend = ()=>{ iListening=false; setIMicUI(false); iRecog=null; if(iWant) setTimeout(start,260); };
         iRecog.start();
-        toast("🎤 듣는 중 … 말한 뒤 💬 끼어들기를 누르세요");
-      }catch(err){
-        iWant = false; iListening = false; setIMicUI(false);
-        toast("🎤 음성 입력을 시작하지 못했습니다");
-      }
+        toast("🎤 듣는 중 … 말한 뒤 💬 코멘트를 누르세요");
+      }catch(err){ iWant=false; iListening=false; setIMicUI(false); toast("🎤 음성 입력을 시작하지 못했습니다"); }
     })();
   }
-
   function stopInterjectMic(silent){
-    iWant = false;
-    if(iRecog){
-      try{ iRecog.onend = null; iRecog.abort(); }catch(e){ try{ iRecog.stop(); }catch(e2){} }
-      iRecog = null;
-    }
-    iListening = false;
-    setIMicUI(false);
+    iWant=false;
+    if(iRecog){ try{ iRecog.onend=null; iRecog.abort(); }catch(e){ try{ iRecog.stop(); }catch(e2){} } iRecog=null; }
+    iListening=false; setIMicUI(false);
     try{ if(synthOK && state.voiceOn && window.speechSynthesis.paused) window.speechSynthesis.resume(); }catch(e){}
-    if(!silent) toast("🎤 끼어들기 입력을 멈췄습니다");
+    if(!silent) toast("🎤 코멘트 입력을 멈췄습니다");
   }
 
-  /* ───────────────────────── 타일 렌더 ───────────────────────── */
+  /* ═══════════════════ 타일 ═══════════════════ */
   const stage = $("#stage");
   const tileRefs = {};
 
   function buildTiles(){
     stage.innerHTML = "";
     PEOPLE.forEach(p=>{
-      const t = el("div","tile" + (p.owner?" owner":""));
+      const t = el("div","tile");
       t.dataset.id = p.id;
 
       const head = el("div","thead");
       const av = el("div","avatar", p.emoji);
       av.style.borderColor = p.color + "55";
       const who = el("div","who");
-      const nm = el("div","nm", p.name);
-      const rl = el("div","rl", p.role);
-      who.append(nm, rl);
-      const st = el("div","state", p.owner ? "오너" : "대기");
+      who.append(el("div","nm", p.name), el("div","rl", p.role));
+      const st = el("div","state","대기");
       head.append(av, who, st);
 
       const wrap = el("div","stagewrap");
-      const bubble = el("div","bubble empty", p.owner ? "안건을 적고 회의 시작을 누르면 6인이 모입니다. 회의 중에는 아래 💬 끼어들기로 언제든 말할 수 있습니다." : "대기 중…");
+      const bubble = el("div","bubble empty","안건을 고르면 준비해 온 자료가 여기에 열립니다.");
       wrap.append(bubble);
 
-      const task = el("div","task");
       const foot = el("div","tfoot");
       const wave = el("div","wave");
       for(let i=0;i<7;i++) wave.append(el("i"));
       const roleTag = el("div","who-role");
-      roleTag.innerHTML = '<span class="mic">'+(p.owner?"🎙️":"🔇")+'</span>';
-
-      let report = null, approveWrap = null;
-      if(p.owner){
-        approveWrap = el("div","owneractions");
-        const ap = el("button","approve","최종 승인");
-        ap.title = "오너 최종 승인";
-        ap.addEventListener("click", ()=>{
-          ap.classList.add("on"); ap.textContent = "승인 완료 ✓";
-          setTileState("darkjin","done","승인 완료");
-          state.done.darkjin = true;
-          addMinute("darkjin","sys","오너 최종 승인 — 배정된 역할과 결론으로 진행합니다.", true);
-          toast("👑 최종 승인 완료");
-        });
-        approveWrap.append(ap);
-      } else {
-        report = el("button","report","완료 보고");
-        report.addEventListener("click", ()=> reportDone(p.id));
-      }
-
-      foot.append(wave, roleTag);
-      if(approveWrap) foot.append(approveWrap);
-      if(report) foot.append(report);
+      roleTag.innerHTML = '<span class="mic">🔇</span>';
+      const matbtn = el("button","matbtn ghost","자료 펼치기");
+      matbtn.addEventListener("click", ()=> openMat(p.id));
+      foot.append(wave, roleTag, matbtn);
 
       const qv = el("div","qveil");
-      t.append(head, wrap, task, foot, qv);
+      t.append(head, wrap, foot, qv);
       stage.append(t);
-      tileRefs[p.id] = {tile:t, state:st, bubble, task, report, wave, approveWrap};
+      tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave};
     });
   }
 
   function setTileState(id, kind, label){
     const r = tileRefs[id]; if(!r) return;
-    r.tile.classList.remove("speaking","working","done","quiet");
-    r.state.classList.remove("s-speaking","s-working","s-done","s-quiet");
+    r.tile.classList.remove("speaking","assigned");
+    r.state.classList.remove("s-speaking","s-ready","s-done","s-quiet");
     if(kind==="speaking"){ r.tile.classList.add("speaking"); r.state.classList.add("s-speaking"); }
-    if(kind==="working"){ r.tile.classList.add("working"); r.state.classList.add("s-working"); }
-    if(kind==="done"){ r.tile.classList.add("done"); r.state.classList.add("s-done"); }
-    r.state.textContent = label || (kind==="speaking"?"발언 중":kind==="working"?"작업 중":kind==="done"?"완료":"대기");
+    if(kind==="ready"){ r.tile.classList.add("matready"); r.state.classList.add("s-ready"); }
+    if(kind==="assigned"){ r.tile.classList.add("assigned"); r.state.classList.add("s-done"); }
+    if(kind==="quiet"){ r.state.classList.add("s-quiet"); }
+    r.state.textContent = label || (kind==="speaking"?"발언 중":kind==="ready"?"자료 준비":kind==="assigned"?"배정":kind==="quiet"?"조용":"대기");
   }
 
-  function setBubble(id, text, empty){
+  function renderBubble(id, tag, text, opts){
     const r = tileRefs[id]; if(!r) return;
-    r.bubble.textContent = text;
-    r.bubble.classList.toggle("empty", !!empty);
-    r.bubble.scrollTop = r.bubble.scrollHeight;
-  }
-
-  /* ───────────────────────── 회의록 ───────────────────────── */
-  const minList = $("#minList"), minCount = $("#minCount");
-  let minuteCount = 0;
-
-  function clearEmptyNote(){
-    const e = document.getElementById("minEmpty");
-    if(e && e.parentNode) e.remove();
-  }
-
-  function addMinute(id, kind, text, isSystem, roundNo){
-    clearEmptyNote();
-    const li = el("li","min-item" + (isSystem?" sys":"") + (id==="darkjin" && !isSystem ? " owner" : ""));
-    const tm = el("div","tm", nowHM());
-    const body = el("div","body");
-    const who = el("div","who2");
-    const p = byId(id) || {name:id, emoji:"•", role:"", color:"#8b93a7"};
-    const nm = el("span","", p.emoji+" "+p.name);
-    nm.style.color = p.color;
-    who.append(nm);
-    if(p.role){ who.append(el("span","pill", p.role.split(" · ")[0])); }
-    if(roundNo) who.append(el("span","rnd","R"+roundNo));
-    const tx = el("div","tx", text);
-    body.append(who, tx);
-    li.append(tm, body);
-    li.dataset.name = (p.emoji ? p.emoji + " " : "") + p.name;
-    li.dataset.role = p.role || "";
-    minList.append(li);
-    minuteCount++;
-    minCount.textContent = minuteCount + "건";
-    minList.scrollTop = minList.scrollHeight;
-    return tx;
-  }
-
-  /* ───────────────────────── 타이핑 연출 ───────────────────────── */
-  function typeText(targets, text, token, cutRec){
-    return new Promise(resolve=>{
-      if(state.speed >= 4 || !text){ targets.forEach(t=>t.textContent = text); resolve(); return; }
-      let i = 0;
-      const per = 13 / state.speed;
-      const step = Math.max(1, Math.round(text.length/70));
-      (function tick(){
-        if(token !== state.runToken || (cutRec && cutRec.fired)){ resolve(); return; }
-        if(state.paused){ waitIfPaused().then(()=>{ if(token === state.runToken && !(cutRec && cutRec.fired)) tick(); }); return; }
-        i = Math.min(text.length, i + step);
-        targets.forEach(t=>{ t.textContent = text.slice(0,i); });
-        targets.forEach(t=>{ if(t.classList && t.classList.contains("bubble")) t.scrollTop = t.scrollHeight; });
-        if(i < text.length) setTimeout(tick, per*step);
-        else resolve();
-      })();
-    });
-  }
-
-  // 한 발언 턴. 오너 개입이 들어오면 즉시 끊고 {cut:true}로 돌아온다.
-  async function speakTurn(id, text, opts){
-    const token = state.runToken;
     opts = opts || {};
-    const r = tileRefs[id];
-    await waitIfPaused();
-    if(token !== state.runToken) return {cut:false};
-    const cutRec = {fired:false, fire:null};
-    state.activeCut = cutRec;
-    const cutP = new Promise(res => { cutRec.fire = () => { if(!cutRec.fired){ cutRec.fired = true; res(); } }; });
+    r.bubble.innerHTML = "";
+    r.bubble.classList.remove("empty");
+    if(tag) r.bubble.append(el("span","mtag", tag));
+    if(opts.role) r.bubble.append(el("span","mrole", opts.role));
+    r.bubble.append(el("span","msum", text));
+    r.bubble.scrollTop = 0;
+    if(opts.showBtn) r.matbtn.classList.remove("ghost");
+  }
 
-    state.activeSpeaker = id;
-    setTileState(id, "speaking", opts.label || "발언 중");
-    if(r){
-      r.bubble.classList.remove("empty");
-      r.bubble.textContent = "";
-      r.bubble.append(el("span","cursor"));
-      r.bubble.textContent = "";
+  /* ═══════════════════ 기록 (논의 / 회의록) ═══════════════════ */
+  const talkList = $("#talkList"), talkCountEl = $("#talkCount");
+  const minList = $("#minList"), minCountEl = $("#minCount");
+  let talkN = 0, minN = 0;
+
+  function clearTalkEmpty(){ const e=document.getElementById("talkEmpty"); if(e) e.remove(); }
+  function clearMinEmpty(){ const e=document.getElementById("minEmpty"); if(e) e.remove(); }
+
+  function addTalk(id, kind, text, opts){
+    opts = opts || {};
+    clearTalkEmpty();
+    const li = el("li","talk-item" + (kind==="sys"?" sys":"") + (kind==="owner"?" owner":""));
+    const tm = el("div","tt2", nowHM());
+    const bd = el("div","bd");
+    const who = el("div","tw");
+    const p = byId(id) || {name:"시스템", emoji:"•"};
+    const nm = el("span","", (p.emoji?p.emoji+" ":"") + p.name);
+    if(p.color) nm.style.color = p.color;
+    who.append(nm);
+    if(kind==="read") who.append(el("span","pill","준비 자료"));
+    if(kind==="react") who.append(el("span","pill","코멘트 반영"));
+    if(kind==="owner") who.append(el("span","pill","오너"));
+    if(opts.to){
+      const t = byId(opts.to);
+      who.append(el("span","to","→ " + (t?t.name:opts.to)));
     }
-    const tx = addMinute(id, "say", "", false, opts.round);
-    const typing = typeText(r ? [r.bubble, tx] : [tx], text, token, cutRec);
-    const talking = (state.voiceOn && text) ? speakText(id, text, token, cutRec) : Promise.resolve();
-    await Promise.race([ Promise.all([typing, talking]), cutP ]);
-    state.activeCut = null;
-
-    if(r){ r.bubble.textContent = text; r.bubble.scrollTop = r.bubble.scrollHeight; }
-    tx.textContent = cutRec.fired ? (text + " ⏸") : text;
-    state.log.push({round: opts.round || state.round, id:id, text:text});
-    if(state.log.length > 60) state.log.shift();
-
-    if(cutRec.fired){
-      state.activeSpeaker = null;
-      if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
-      setTileState(id, "", "중단");
-      return {cut:true};
-    }
-    if(token !== state.runToken) return {cut:false};
-    await waitIfPaused();
-    if(token !== state.runToken) return {cut:false};
-    state.activeSpeaker = null;
-    setTileState(id, "", opts.afterLabel || "경청");
-    await psleep(380 / state.speed);
-    return {cut:false};
+    const tx = el("div","tx", text);
+    bd.append(who, tx);
+    li.append(tm, bd);
+    talkList.append(li);
+    talkN++; talkCountEl.textContent = talkN + "건";
+    talkList.scrollTop = talkList.scrollHeight;
   }
 
   function addSystem(text){
-    clearEmptyNote();
+    clearMinEmpty();
     const li = el("li","min-item sys");
     const tm = el("div","tm", nowHM());
-    const body = el("div","body");
-    body.append(el("div","tx", text));
-    li.append(tm, body);
+    const bd = el("div","body");
+    bd.append(el("div","tx", text));
+    li.append(tm, bd);
     minList.append(li);
-    minuteCount++;
-    minCount.textContent = minuteCount + "건";
+    minN++; minCountEl.textContent = minN + "건";
     minList.scrollTop = minList.scrollHeight;
   }
 
-  /* ───────────────────────── 단계·상태 표시 ───────────────────────── */
+  /* ═══════════════════ 단계·상태 표시 ═══════════════════ */
   function setStep(idx){
     document.querySelectorAll(".step").forEach(s=>{
       const n = Number(s.dataset.step);
@@ -1408,1300 +1601,844 @@
       s.classList.toggle("done", n < idx);
     });
   }
-
-  function setRoundIndicator(n, descr){
-    const tag = document.getElementById("roundTag");
+  function setStageHead(tag, descr, right, alt){
+    const t = document.getElementById("roundTag");
     const d = document.getElementById("roundDescr");
-    if(tag){
-      tag.textContent = "R" + n;
-      tag.classList.toggle("r2", n >= 2);
-    }
-    if(d && descr) d.textContent = descr;
-    state.saidThisRound = 0;
-    updateTalkers();
+    const k = document.getElementById("talkers");
+    if(t){ t.textContent = tag; t.classList.toggle("r2", !!alt); }
+    if(d) d.textContent = descr;
+    if(k) k.textContent = right;
   }
-  function updateTalkers(){
-    const t = document.getElementById("talkers");
-    if(t) t.textContent = state.saidThisRound + " / 5 발언";
-  }
-
   function setLive(text, kind){
-    const lt = $("#liveTxt");
+    const lt = document.getElementById("liveTxt");
     if(lt) lt.textContent = text;
-    const badge = $("#liveBadge");
-    badge.style.borderColor = kind==="working" ? "rgba(124,108,246,.4)"
-      : kind==="done" ? "rgba(46,224,106,.4)"
-      : kind==="quiet" ? "rgba(242,84,91,.55)"
-      : kind==="owner" ? "rgba(245,192,74,.55)" : "";
-    badge.style.background = kind==="quiet" ? "rgba(242,84,91,.10)" : kind==="owner" ? "rgba(245,192,74,.10)" : "";
+    const b = document.getElementById("liveBadge");
+    if(b){
+      b.style.borderColor = kind==="done" ? "rgba(46,224,106,.4)" : kind==="quiet" ? "rgba(242,84,91,.55)" : kind==="owner" ? "rgba(245,192,74,.55)" : "";
+      b.style.background = kind==="quiet" ? "rgba(242,84,91,.10)" : kind==="owner" ? "rgba(245,192,74,.10)" : "";
+    }
     if(lt) lt.style.color = kind==="quiet" ? "#ffb3b7" : kind==="owner" ? "#ffe0a2" : "";
   }
-
   function startClock(offsetMs){
-    state.startedAt = Date.now() - (offsetMs || 0);
+    state.startedAt = Date.now() - (offsetMs||0);
     clearInterval(state.timerId);
     state.timerId = setInterval(()=>{
       if(state.paused) return;
       const s = Math.floor((Date.now()-state.startedAt)/1000);
-      $("#clock").textContent = pad(Math.floor(s/60)) + ":" + pad(s%60);
-    }, 1000);
-    const s0 = Math.floor((offsetMs || 0)/1000);
-    $("#clock").textContent = pad(Math.floor(s0/60)) + ":" + pad(s0%60);
+      const c = document.getElementById("clock");
+      if(c) c.textContent = pad(Math.floor(s/60))+":"+pad(s%60);
+    },1000);
+    const s0 = Math.floor((offsetMs||0)/1000);
+    const c = document.getElementById("clock");
+    if(c) c.textContent = pad(Math.floor(s0/60))+":"+pad(s0%60);
   }
-
-  function lockInput(lock){
-    $("#topic").disabled = lock;
-    $("#startBtn").disabled = lock;
-    document.querySelectorAll("#presets .chip").forEach(c=>c.disabled = lock);
-  }
-
   function toast(msg){
-    const t = $("#toast");
+    const t = document.getElementById("toast");
+    if(!t) return;
     t.textContent = msg; t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=> t.classList.remove("show"), 2600);
+    toastTimer = setTimeout(()=> t.classList.remove("show"), 2800);
   }
   let toastTimer = null;
 
-  /* ═══════════════════ 내장 회의 엔진 (2라운드 티키타카) ═══════════════════ */
-  function bucketOf(topic){
-    const t = topic.replace(/\s+/g,"");
-    if(/롱폼|장편|longform|10분|8분|12분/i.test(t)) return "longform";
-    if(/쇼츠|숏츠|shorts|릴스|6화|7화|유튜브|영상|편집/i.test(t)) return "video";
-    if(/로또|복권|번호|당첨/i.test(t)) return "lotto";
-    if(/회의실|회의|비서|에이전트|자동화|업무|노션|task/i.test(t)) return "system";
-    return "general";
-  }
-
-  function localMeeting(topic){
-    const b = bucketOf(topic);
-    const T = topic.replace(/[.?!]+$/,"");
-    const P = {
-      video:{
-        r1:{
-          pickle:`안건 확인했습니다 — "${T}". 6화는 'AI에게 통째로 맡긴 하루' 한 축으로 잡고, 1~5화와 소재가 안 겹치는 쪽으로 좁히겠습니다. 먼저 다섯 분 첫 의견부터 듣겠습니다.`,
-          chatgpt:`구조부터 보면 45초 쇼츠는 훅 3초 → 문제 → 시연 → 반전 4블록이 안전합니다. 1~5화 반응을 보면 '대신 해줌' 계열이 조회가 고르게 나와서, 6화도 같은 축에 두면 이탈이 적습니다.`,
-          cue:`지금 X와 유튜브에서 'AI 비서'는 '내 돈 아끼는 AI' 키워드가 반응이 큽니다. 최근 7일 상위 쇼츠는 실제 금액 인증 컷이 들어간 영상이 대부분입니다.`,
-          claude:`훅은 "이거 하나로 3만 원 아꼈습니다" 같은 숫자 오프닝이 좋습니다. 45초 4컷, 자막은 둥근 폰트 유지하고 마지막 3초에 다음 편 예고를 넣겠습니다.`,
-          grok:`X 실시간으로 보면 6시간 안에 'AI 절약' 언급이 늘었고 #AI비서 태그 반응이 좋습니다. 다만 '로또 AI' 쪽은 신고가 섞여 있어서 이번 화 키워드에서는 빼는 게 안전합니다.`
-        },
-        r2:{
-          pickle:`두 갈래로 갈렸습니다 — ChatGPT의 4블록 구조와 Cue의 숫자 후킹. Claude, 숫자를 2컷에 넣었을 때 45초를 넘길까요? 저는 넘치면 숫자를 줄이는 쪽으로 정리하겠습니다.`,
-          chatgpt:`Cue 말대로 숫자가 조회를 만들긴 합니다. 하지만 훅 3초에 넣으면 설명이 붙어 이탈합니다. 제 구조를 버리자는 게 아니라, 숫자는 12초 문제 제기 컷으로 옮기자는 겁니다. Claude, 12초에 숫자 한 줄 들어갈 자리 있습니까?`,
-          cue:`ChatGPT 구조에는 이견 없습니다. 다만 상위 20개를 다시 보면 숫자는 2~3컷에 나옵니다 — 제가 말한 것도 그 위치입니다. Grok이 걱정한 과장 문제는 '줄인 시간' 병기로 해결됩니다.`,
-          claude:`12초에 숫자, 좋습니다. 다만 피클, 3만 원은 실제 결제 캡처가 있어야 쓰는 겁니다. Cue가 근거를 못 대면 '하루 40분'으로 대체하겠습니다.`,
-          grok:`X에서는 '40분 절약'이 '3만 원'보다 신뢰를 덜 잃습니다. Claude 말대로 근거 없는 금액은 역풍이 큽니다. 피클, 최종 축은 어느 쪽으로 잡을까요? 저는 시간 쪽에 한 표입니다.`
-        },
-        r3:{
-          pickle:`정리합니다 — 4블록 구조는 ChatGPT, 숫자 위치는 Cue, 문구는 Claude, 과장 금지선은 Grok. 남은 건 3만 원이 실제인지 하나뿐입니다.`,
-          chatgpt:`숫자 자리를 12초로 고정하면 구조 수정은 없습니다. 3초·12초·20초·10초 배분 그대로 갑니다.`,
-          cue:`결제 캡처는 확인 가능합니다. 확인 전에는 대본에 숫자를 확정 표기하지 않는 조건으로 동의합니다.`,
-          claude:`그러면 대본은 '하루 40분' 기준으로 먼저 쓰고, 캡처 확인되면 숫자를 끼워 넣는 두 벌로 준비하겠습니다.`,
-          grok:`저도 그 조건이면 확정해도 된다고 봅니다. 게시 전 키워드 스캔만 남았습니다.`
-        },
-        narrow:[
-          "6화 축: 'AI에게 하루를 맡겨 절약한 하루' — 1~5화와 소재 중복 없음",
-          "45초 4블록 유지 · 숫자는 훅이 아니라 12초 문제 제기 컷에 배치",
-          "금액은 결제 캡처 확인 전까지 '하루 40분'으로 표기 (과장 금지)"
-        ],
-        conclusion:`6화 주제는 "AI에게 3만 원 아끼는 하루를 통째로 맡겨봤다"로 확정. 45초 · 4블록(훅 3초 → 숫자 12초 → 시연 20초 → 반전 10초), 실제 금액 인증 컷 포함, 마지막 3초 다음 편 예고. 1~5화와 소재 중복 없음.`,
-        actions:{
-          pickle:`TASK-009 하위 6화 업무 생성, 노션 04 DB 5개 행 등록과 마감 배분`,
-          chatgpt:`1~5화 지표 표 뽑아 4블록 구조별 컷 길이 기준표 작성`,
-          cue:`최근 7일 쇼츠 상위 20개 수집, 금액 인증형 후킹 근거 3개 정리`,
-          claude:`45초 대본·자막·썸네일 카피 3안 작성 (둥근 폰트 규격 유지, 숫자 두 벌)`,
-          grok:`게시 2시간 전 X 키워드 스캔, 금지 키워드 목록 갱신`
-        },
-        reopen:{
-          pickle:`배정된 일 모두 완료 확인했습니다. 6화 소재·구조·카피·키워드가 한 줄로 맞습니다.`,
-          chatgpt:`지표 표 완성됐고, 4블록 컷 길이 기준 3초/12초/20초/10초로 확정했습니다.`,
-          cue:`상위 20개 중 14개가 금액 인증형이었습니다. 후킹 근거 3개 첨부했습니다.`,
-          claude:`대본 3안 중 2안(숫자 오프닝)을 추천합니다. 최종안으로 렌더 걸어두겠습니다.`,
-          grok:`금지 키워드 4개 갱신, 게시 직전 스캔 예약해 두었습니다.`
-        }
-      },
-      longform:{
-        r1:{
-          pickle:`안건 확인했습니다 — "${T}". 롱폼은 8~12분 한 편으로 잡고, 쇼츠에서 검증된 소재를 길게 푸는 방식이 리스크가 적습니다. 구성은 제가 합치겠습니다.`,
-          chatgpt:`롱폼은 3막 구조에 챕터 5개가 적당합니다. 쇼츠 1~6화 중 조회 상위 소재를 축으로 삼으면 초반 이탈을 줄일 수 있습니다. 데이터상 6~8분 구간 이탈이 가장 큽니다.`,
-          cue:`롱폼 검색 유입은 '초보 입문' 계열이 강합니다. LDP처럼 국내 유저가 적은 주제는 검색량은 작아도 체류 시간이 길어서, 알고리즘보다 검색 최적화가 유리합니다.`,
-          claude:`오프닝 30초에 결과물을 먼저 보여주는 구조를 제안합니다. 챕터마다 카드 전환과 자막 요약, 마지막에 다음 편 떡밥. 12분 기준 대본 2,400자 내외로 잡겠습니다.`,
-          grok:`X에서는 롱폼 링크가 그대로 소비되지 않습니다. 60초 컷 3개로 쪼개 올리고 본편으로 보내는 동선이 반응이 좋습니다.`
-        },
-        r2:{
-          pickle:`Cue 말대로 검색 최적화가 축이면, 제목과 썸네일이 오프닝 30초보다 중요해집니다. Claude, 결과물 선공개와 검색 제목이 서로 충돌하지 않습니까?`,
-          chatgpt:`충돌합니다. 결과물 선공개는 유지하되 첫 15초에 제목 키워드를 자막으로 박으면 둘 다 잡힙니다. 6~8분 이탈 구간에는 데모 컷을 넣죠.`,
-          cue:`ChatGPT 말대로 키워드를 초반에 박는 게 검색에 유리합니다. 다만 'LDP'만으로는 검색량이 작아 '롱보드 입문'을 병기해야 합니다. 제가 경쟁 영상 10개로 확인했습니다.`,
-          claude:`그러면 오프닝 30초를 '롱보드 입문 + 결과물 선공개'로 다시 쓰겠습니다. Grok이 말한 60초 컷 3개도 이 대본에서 잘라 쓰면 됩니다.`,
-          grok:`60초 컷은 대본에서 자르는 쪽이 낫습니다. 별도 제작이면 톤이 갈립니다. 피클, 3개 컷은 어느 구간에서 뽑을까요?`
-        },
-        r3:{
-          pickle:`롱폼 12분, 3막 5챕터, 오프닝 15초 키워드 자막 + 결과물 선공개. 60초 컷 3개는 본편에서 추출. 이 선에서 확정하겠습니다.`,
-          chatgpt:`챕터 타임라인 5개로 확정. 6~8분에 데모 2컷 배치하겠습니다.`,
-          cue:`제목 키워드는 '롱보드 입문' 병기로 확정. 경쟁 영상 분석은 이미 정리해 뒀습니다.`,
-          claude:`대본 2,400자, 오프닝 30초 재작성 들어갑니다.`,
-          grok:`컷 3개는 본편 3·5·8분 구간에서 뽑는 안으로 정리했습니다.`
-        },
-        narrow:[
-          "롱폼 1편: 'LDP 롱보드 입문 — 국내에 유저가 거의 없는 보드' 12분",
-          "3막 5챕터 · 오프닝 15초에 '롱보드 입문' 키워드 자막 + 결과물 선공개",
-          "60초 컷 3개는 별도 제작이 아니라 본편 3·5·8분 구간에서 추출"
-        ],
-        conclusion:`롱폼 첫 편은 "LDP 입문 — 국내에 유저가 거의 없는 보드를 12분에 정리"로 확정. 12분 · 3막 5챕터, 오프닝 15초 키워드 자막 + 30초 결과물 선공개, 쇼츠 3개는 본편에서 추출.`,
-        actions:{
-          pickle:`롱폼 1편 기획안 확정, 노션 04 DB에 제작 업무 5개 분배`,
-          chatgpt:`3막 5챕터 타임라인과 6~8분 이탈 방지 장치 2개 설계`,
-          cue:`키워드 검색량·경쟁 영상 10개 조사, 제목 후보 5개 근거와 함께 정리`,
-          claude:`12분 대본 초안 2,400자, 오프닝 30초 3안 작성`,
-          grok:`60초 컷 3개 편집 구간안(본편 3·5·8분)과 게시 시간대 제안`
-        },
-        reopen:{
-          pickle:`다섯 개 다 모였습니다. 기획안·타임라인·제목·대본·컷 구성이 맞물립니다.`,
-          chatgpt:`타임라인 확정. 6~8분 구간에 데모 컷을 배치해 이탈을 막았습니다.`,
-          cue:`경쟁 영상 10개 분석 완료. 제목은 '입문' 단어 포함 3안이 우세합니다.`,
-          claude:`대본 초안과 오프닝 3안 완료. 2안(결과물 선공개) 추천합니다.`,
-          grok:`컷 3개 구간과 게시 시간(평일 21시) 제안 완료.`
-        }
-      },
-      lotto:{
-        r1:{
-          pickle:`안건 확인했습니다 — "${T}". 로또는 번호를 화면·회의록에 남기지 않는 규칙을 그대로 지키고, 이번 주는 조건과 검증 절차만 다루겠습니다.`,
-          chatgpt:`지난 회차 데이터를 보면 고정수·제외수 조건이 늘수록 표본이 급격히 줄어듭니다. 조건 5개 이내로 유지하고, 검증은 최근 50회로 제한하는 게 통계적으로 안전합니다.`,
-          cue:`외부 근거는 '예측 불가'가 일관된 결론입니다. 다만 재미 요소로는 통계 요약이 반응이 좋으니, 기대값을 과장하지 않는 선에서 다루면 됩니다.`,
-          claude:`설명 문구는 "재미로 보는 통계" 톤으로 통일하고, 당첨 보장 표현은 전부 뺍니다. 결과 복기 카드 문구도 미리 만들어 두겠습니다.`,
-          grok:`X에서는 번호 인증샷이 신고 대상이 되기 쉽습니다. 게시물에는 번호 대신 조건과 결과만 남기는 쪽이 안전합니다.`
-        },
-        r2:{
-          pickle:`ChatGPT가 조건 5개 이내를, Cue가 기대값 과장 경계를 말했습니다. 두 기준을 같이 두면 이번 주 작업은 '검증 절차' 중심이 됩니다. Grok, 게시 쪽 문제 없습니까?`,
-          chatgpt:`Cue 지적에 동의합니다. 조건을 늘리면 표본이 줄어 검증이 무의미해집니다. 5개 이내, 최근 50회로 고정하죠.`,
-          cue:`동의합니다. 다만 '최근 50회'는 회차가 지나면 계속 밀리니, 검증 기준일을 명시해야 재현이 됩니다. Grok 쪽 게시물도 회차가 명확해야 합니다.`,
-          claude:`문구는 '재미로 보는 통계'로 통일하고, Grok이 말한 인증샷 금지도 카드 하단에 넣겠습니다.`,
-          grok:`인증샷은 신고 사유가 됩니다. 번호 대신 조건과 결과만 남기는 규칙, 저도 확정에 동의합니다.`
-        },
-        r3:{
-          pickle:`조건 5개 이내, 최근 50회, 기준일 명시, 번호 비노출 — 네 가지로 확정하겠습니다.`,
-          chatgpt:`검증 스크립트에 기준일 인자를 넣겠습니다. 표본 축소 경고도 같이 붙입니다.`,
-          cue:`통계 요약 문구 3개, 과장 없는 선에서 준비합니다.`,
-          claude:`복기 카드 템플릿에 금지 문구 목록 넣어 완성하겠습니다.`,
-          grok:`게시 문구 검수 기준표 만들겠습니다.`
-        },
-        narrow:[
-          "조건은 5개 이내 · 검증은 최근 50회, 기준일을 명시",
-          "번호는 화면·회의록·게시물에 남기지 않음 (조건과 결과만)",
-          "문구는 '재미로 보는 통계' 톤 · 당첨 보장 표현 금지"
-        ],
-        conclusion:`이번 주 로또 작업은 조건 5개 이내 · 최근 50회 검증 · 기준일 명시 · 번호 비노출 규칙 유지로 확정. 결과는 회차 후 복기 카드로만 정리.`,
-        actions:{
-          pickle:`주간 추출 실행과 구매 결과 확인, 복기 카드 작성`,
-          chatgpt:`조건 5개 이내 검증 스크립트 점검, 표본 축소 경고 기준 추가`,
-          cue:`기대값 과장 없는 통계 요약 문구 3개 준비`,
-          claude:`복기 카드 문구·템플릿 작성 (보장 표현 금지)`,
-          grok:`번호 인증샷 금지 규칙 재확인, 게시 문구 검수`
-        },
-        reopen:{
-          pickle:`추출·검증·문구·검수 모두 끝났습니다. 규칙 위반 없이 마무리됐습니다.`,
-          chatgpt:`검증 스크립트에 표본 경고 추가 완료. 조건 5개로 고정했습니다.`,
-          cue:`통계 요약 문구 3개 완료, 과장 표현 없음 확인했습니다.`,
-          claude:`복기 카드 템플릿 완성. 결과만 채우면 됩니다.`,
-          grok:`금지 규칙 재확인 완료. 게시 문구 문제 없습니다.`
-        }
-      },
-      system:{
-        r1:{
-          pickle:`안건 확인했습니다 — "${T}". 지금 업무는 노션 04 DB와 예약 작업 두 축으로 돌고 있습니다. 겹치는 업무와 비는 시간을 먼저 표로 만들겠습니다.`,
-          chatgpt:`DB 점검 결과, 마감일 없는 행이 몇 개 있고 담당 AI가 비어 있는 항목이 있습니다. 상태 값이 '진행 중'에 오래 머문 행부터 정리하는 게 좋습니다.`,
-          cue:`자동화는 실패 로그를 남기는지가 핵심입니다. 조용히 실패하는 작업이 가장 위험하니, 알림 없는 실행은 성공으로 보지 않는 기준이 필요합니다.`,
-          claude:`보고 문구는 한 줄 요약 + 바뀐 것 + 다음 행동 3단으로 통일하면 읽는 시간이 줄어듭니다. 템플릿을 만들어 두겠습니다.`,
-          grok:`외부 반응은 '조용한 자동화'보다 '과정을 보여주는 자동화'가 신뢰를 얻습니다. 실패도 콘텐츠가 될 수 있습니다.`
-        },
-        r2:{
-          pickle:`ChatGPT가 마감·담당 빈 행을 짚었고 Cue는 실패 로그를 말했습니다. 둘 다 '조용한 실패' 문제로 묶입니다. Grok, 외부에 보여줄 기준은 어디까지입니까?`,
-          chatgpt:`Cue 말대로 실패가 조용하면 성공으로 보입니다. 상태 값에 '실패'를 추가하고, 알림 없는 실행은 미완료로 처리하죠.`,
-          cue:`동의합니다. 실패 감지 주기는 매일 1회, 주간 점검은 월요일로 두면 됩니다. Claude 템플릿에 이 주기를 넣으면 보고가 자동으로 남습니다.`,
-          claude:`보고 3단 템플릿에 '실패' 항목을 넣겠습니다. Grok이 말한 과정 공개는 이 템플릿으로 자연스럽게 됩니다.`,
-          grok:`과정 공개는 실패까지 보여줄 때 신뢰가 됩니다. 다만 내부 수치까지 노출할 필요는 없습니다.`
-        },
-        r3:{
-          pickle:`빈 행 정리, 실패 상태값·알림 필수, 3단 보고 — 세 가지로 확정합니다.`,
-          chatgpt:`상태 값에 '실패' 추가와 빈 행 6개 정리 바로 들어갑니다.`,
-          cue:`실패 감지 기준 3개와 매일 1회·월요일 주간 점검 주기를 확정했습니다.`,
-          claude:`3단 템플릿에 실패 항목 포함해 완성하겠습니다.`,
-          grok:`과정 공개형 보고 예시 3개, 내부 수치 제외 기준으로 정리했습니다.`
-        },
-        narrow:[
-          "노션 04 DB: 마감·담당 비어 있는 행 정리, 상태 값에 '실패' 추가",
-          "알림 없는 실행은 성공으로 보지 않음 · 실패 감지 매일 1회, 주간 점검 월요일",
-          "보고는 '요약·변경·다음 행동' 3단 템플릿으로 통일"
-        ],
-        conclusion:`이번 주 업무 자동화 점검은 ① 마감·담당 비어 있는 행 정리 ② 실패 상태값·알림 없는 실행 금지 ③ 보고 3단 템플릿 적용으로 확정.`,
-        actions:{
-          pickle:`노션 04 DB 정리 실행, 예약 작업 상태 점검 후 결과 보고`,
-          chatgpt:`상태가 오래 머문 행 목록과 정리 기준표 작성`,
-          cue:`자동화 실패 감지 기준과 확인 주기 정리`,
-          claude:`보고 3단 템플릿(요약·변경·다음 행동) 작성`,
-          grok:`과정 공개형 보고 예시 3개 수집`
-        },
-        reopen:{
-          pickle:`DB 정리와 예약 작업 점검 완료했습니다. 남은 건 보고 템플릿 적용뿐입니다.`,
-          chatgpt:`오래 머문 행 6개 정리 기준표 완성.`,
-          cue:`실패 감지 기준 3개와 주기 확정했습니다.`,
-          claude:`3단 템플릿 완성, 다음 보고부터 적용합니다.`,
-          grok:`과정 공개형 사례 3개 정리했습니다.`
-        }
-      },
-      general:{
-        r1:{
-          pickle:`안건 확인했습니다 — "${T}". 결론이 실행으로 이어지도록, 각자 지금 할 수 있는 것 한 가지씩만 말해 주세요. 제가 합쳐서 배정하겠습니다.`,
-          chatgpt:`구조로 보면 이 안건은 목표·제약·검증 3칸으로 나누면 정리가 됩니다. 제약을 먼저 못 박으면 뒤에 논의가 줄어듭니다.`,
-          cue:`판단에 필요한 근거가 무엇인지부터 정해야 합니다. 확인 가능한 자료와 추정을 섞지 않는 게 좋습니다.`,
-          claude:`결과물 형태를 먼저 정하면 대본·문구 작업이 빨라집니다. 초안은 제가 바로 만들 수 있습니다.`,
-          grok:`외부 반응을 보면 비슷한 시도가 이미 여럿 있습니다. 차별점 한 줄을 먼저 정하는 게 좋습니다.`
-        },
-        r2:{
-          pickle:`ChatGPT는 3칸 구조, Cue는 근거와 추정 분리를 말했습니다. Claude가 결과물 형태를 먼저 정하자는데 순서가 겹칩니다. 세 분, 순서를 정해 주세요.`,
-          chatgpt:`순서만 정하면 됩니다. 제약 → 목표 → 결과물 형태로 가면 Claude 작업이 늦어지지 않습니다.`,
-          cue:`동의합니다. 다만 제약을 먼저 못 박으면 근거 수집 범위가 줄어듭니다. 근거는 제약 확정 전에 한 번 훑어야 합니다.`,
-          claude:`그러면 근거 훑기 → 제약 확정 → 결과물 형태 순으로 가겠습니다. 형태가 정해지면 초안은 바로 씁니다.`,
-          grok:`차별점 한 줄은 이 순서 끝에 붙이면 됩니다. 피클, 마지막에 한 줄로 정리해 주십시오.`
-        },
-        r3:{
-          pickle:`근거 훑기 → 제약 → 결과물 형태 → 차별점 한 줄. 이 순서로 확정하고 배정하겠습니다.`,
-          chatgpt:`3칸 구조 문서에 이 순서를 그대로 반영하겠습니다.`,
-          cue:`근거·추정 분리 표를 이 순서에 맞춰 작성합니다.`,
-          claude:`형태 확정되는 대로 초안 2안 쓰겠습니다.`,
-          grok:`차별점 후보 3개, 마지막에 한 줄로 압축해 올리겠습니다.`
-        },
-        narrow:[
-          "진행 순서: 근거 훑기 → 제약 확정 → 결과물 형태 → 차별점 한 줄",
-          "확인 가능한 근거와 추정은 분리해 기록",
-          "결론은 실행 단위로 쪼개 노션 04 DB에 등록"
-        ],
-        conclusion:`"${T}"는 근거 훑기 → 제약 확정 → 결과물 형태 → 차별점 한 줄 순서로 정리하고, 확인 가능한 근거와 추정을 분리해 기록한 뒤 실행으로 넘어갑니다.`,
-        actions:{
-          pickle:`안건을 실행 단위로 쪼개 노션 04 DB에 등록, 마감 배분`,
-          chatgpt:`목표·제약·검증 3칸 구조 문서 작성`,
-          cue:`확인 가능한 근거 자료 수집과 출처 정리`,
-          claude:`결과물 초안과 문구 2안 작성`,
-          grok:`유사 사례와 차별점 후보 3개 정리`
-        },
-        reopen:{
-          pickle:`다섯 개 결과 모두 확인했습니다. 실행 단위로 등록해 두었습니다.`,
-          chatgpt:`3칸 구조 문서 완성했습니다.`,
-          cue:`근거 자료와 출처 정리 완료.`,
-          claude:`초안 2안 완성, 1안 추천합니다.`,
-          grok:`차별점 후보 3개 정리했습니다.`
-        }
-      }
-    }[b];
-    P.bucket = b;
-    P.final = `"${T}" 결론대로 5개 실행 항목이 모두 완료 처리됐습니다. 다음 회의에서 결과를 복기하고, 남은 항목은 노션 04 DB TASK-009에 이어서 등록합니다.`;
-    return P;
-  }
-
-  function localExtra(id, n){
-    const L = state.local || {};
-    const n1 = (L.narrow && L.narrow[0]) || "지금 합의된 축";
-    const M = {
-      pickle:`${n}라운드입니다. 더 벌리지 말고 남은 쟁점 하나만 정리해서 확정 단계로 갑시다. 지금 축은 "${n1}"입니다.`,
-      chatgpt:`저는 구조 쪽에서 더 붙일 게 없습니다. 실행 순서만 정하면 됩니다.`,
-      cue:`근거는 충분합니다. 추가 확인이 필요한 항목만 남기고 닫아도 됩니다.`,
-      claude:`문구·대본 쪽은 지금 안으로 바로 들어갈 수 있습니다.`,
-      grok:`외부 변수만 남았습니다. 게시·공개 전 점검으로 닫겠습니다.`
-    };
-    return M[id] || "";
-  }
-
-  // 오너 개입에 대한 반응 — 반드시 오너 지시를 인용하고 방향을 틀어 말한다
-  function reactionLine(id, note){
-    const q = note.length > 28 ? note.slice(0,28) + "…" : note;
-    const b = (state.local && state.local.bucket) || "general";
-    const M = {
-      video:{
-        pickle:`오너 지시 접수 — "${q}". 남은 논의는 이 기준을 1순위로 다시 잡겠습니다.`,
-        chatgpt:`"${q}" 기준이면 4블록 구조는 유지하고 컷 배치만 조정하겠습니다.`,
-        cue:`"${q}" 쪽으로 보면 상위 영상 근거를 다시 뽑아야 합니다. 바로 확인하겠습니다.`,
-        claude:`"${q}"에 맞춰 대본 방향을 틀겠습니다. 기존 안은 대안으로 남겨 둡니다.`,
-        grok:`"${q}"로 가면 X 키워드도 같이 바꿔야 합니다. 스캔 기준 갱신하겠습니다.`
-      },
-      longform:{
-        pickle:`오너 지시 접수 — "${q}". 롱폼 구성은 이 기준으로 다시 짜겠습니다.`,
-        chatgpt:`"${q}"라면 챕터 배분을 손봐야 합니다. 5챕터 안에서 조정하겠습니다.`,
-        cue:`"${q}" 쪽 근거를 먼저 확인하겠습니다. 검색량 수치부터 다시 봅니다.`,
-        claude:`"${q}"에 맞춰 오프닝과 대본 톤을 바꾸겠습니다.`,
-        grok:`"${q}"로 가면 60초 컷 구성도 다시 잡아야 합니다.`
-      },
-      lotto:{
-        pickle:`오너 지시 접수 — "${q}". 규칙은 유지하고 이 기준으로 다시 좁히겠습니다.`,
-        chatgpt:`"${q}"라면 검증 조건을 다시 계산해야 합니다. 표본부터 확인합니다.`,
-        cue:`"${q}"에 맞는 근거만 남기고 나머지는 빼겠습니다.`,
-        claude:`"${q}" 톤으로 문구를 다시 쓰겠습니다.`,
-        grok:`"${q}" 기준으로 게시 문구를 다시 검수하겠습니다.`
-      },
-      system:{
-        pickle:`오너 지시 접수 — "${q}". 업무 배분을 이 기준으로 다시 잡겠습니다.`,
-        chatgpt:`"${q}"라면 DB 상태값과 정리 순서를 조정하겠습니다.`,
-        cue:`"${q}" 쪽 지표를 먼저 뽑아 오겠습니다.`,
-        claude:`"${q}"에 맞춰 보고 템플릿을 수정하겠습니다.`,
-        grok:`"${q}" 기준으로 외부 공개 범위를 다시 잡겠습니다.`
-      },
-      general:{
-        pickle:`오너 지시 접수 — "${q}". 남은 논의는 이 기준을 1순위로 다시 잡겠습니다.`,
-        chatgpt:`"${q}" 기준으로 3칸 구조를 다시 정리하겠습니다.`,
-        cue:`"${q}"에 필요한 근거만 추려서 다시 올리겠습니다.`,
-        claude:`"${q}"에 맞춰 결과물 형태와 문구를 바꾸겠습니다.`,
-        grok:`"${q}" 쪽 사례를 다시 확인해 차별점을 조정하겠습니다.`
-      }
-    };
-    return (M[b] && M[b][id]) || `"${q}" — 오너 지시로 방향을 조정하겠습니다.`;
-  }
-
-  /* ═══════════════════ Gemini (선택) ═══════════════════ */
-  function getKey(){ return (LS.get(KEY_LS) || "").trim(); }
-
-  async function geminiCall(prompt, schema, temperature){
-    const key = getKey();
-    if(!key) return null;
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(key);
-    const body = {
-      contents:[{role:"user", parts:[{text:prompt}]}],
-      generationConfig:{temperature: temperature == null ? 0.95 : temperature, responseMimeType:"application/json", responseSchema:schema}
-    };
-    const ctrl = new AbortController();
-    const timer = setTimeout(()=>ctrl.abort(), 25000);
-    try{
-      const res = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body), signal:ctrl.signal});
-      if(!res.ok) throw new Error("HTTP " + res.status);
-      const j = await res.json();
-      const txt = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts || [])
-        .map(p=>p.text || "").join("");
-      return JSON.parse(txt);
-    }catch(err){
-      console.warn("Gemini 호출 실패 → 내장 엔진:", err && err.message);
-      toast("⚠️ Gemini 호출 실패 · 내장 엔진으로 진행합니다");
-      return null;
-    }finally{ clearTimeout(timer); }
-  }
-
-  function rosterText(){
-    return PEOPLE.filter(p=>!p.owner).map(p=>`- ${p.name} (${p.role})`).join("\n");
-  }
-  function historyText(limit){
-    const rows = state.log.slice(-(limit || 22)).map(r=>`[R${r.round}] ${byId(r.id).name}: ${r.text}`);
-    if(state.notesAll.length) rows.push(`[오너 개입] ${state.notesAll.join(" / ")}`);
-    return rows.join("\n");
-  }
-  function schemaForLines(){
-    const props = {};
-    AIS.forEach(id=>{ props[id] = {type:"STRING"}; });
-    return {
-      type:"OBJECT",
-      properties:{ lines:{ type:"OBJECT", properties:props, required:AIS.slice() } },
-      required:["lines"]
-    };
-  }
-
-  async function geminiRound(n, token){
-    if(!getKey()) return null;
-    const topic = state.topic;
-    const notes = state.notesAll.length ? state.notesAll.map(x=>`"${x}"`).join(" / ") : "없음";
-    let rule;
-    if(n === 1){
-      rule = [
-        `1라운드다. 각자 자기 역할 관점에서 첫 의견을 2~3문장으로 말한다.`,
-        `아직 결론을 내리지 말고, 쟁점·아이디어·우려를 던진다. 서로 다른 관점이어야 한다.`
-      ].join("\n");
-    } else if(n === 2){
-      rule = [
-        `2라운드다. 아래 1라운드 발언을 읽고, 반드시 다른 참가자 이름을 최소 한 명 불러 반박하거나 보완한다.`,
-        `"OO 말대로 ~인데, 다만 ~" 같은 실제 회의 핑퐁이어야 한다. 같은 말 반복 금지. 각 2~3문장.`
-      ].join("\n");
-    } else {
-      rule = [
-        `${n}라운드다. 오너가 "한 라운드 더"를 요청했다. 지금까지 나온 안을 좁힌다.`,
-        `이름을 불러 동의/반대를 밝히고, 남은 쟁점을 1개로 줄인다. 각 1~2문장.`
-      ].join("\n");
+  /* ═══════════════════ 발언(낭독) ═══════════════════ */
+  async function speakLine(id, text, opts){
+    opts = opts || {};
+    const token = state.runToken;
+    await waitIfPaused();
+    if(token !== state.runToken) return;
+    const cutRec = {fired:false, fire:null};
+    state.activeCut = cutRec;
+    const cutP = new Promise(res=>{ cutRec.fire = ()=>{ if(!cutRec.fired){ cutRec.fired = true; res(); } }; });
+    state.activeSpeaker = id;
+    setTileState(id, "speaking", opts.label || "낭독 중");
+    const talking = (state.voiceOn && text) ? speakText(id, text, token, cutRec) : Promise.resolve();
+    await Promise.race([talking, cutP]);
+    state.activeCut = null;
+    if(cutRec.fired){
+      state.activeSpeaker = null;
+      if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+      return;
     }
-    const prompt = [
-      `너는 '다크진 AI 비서실'의 회의실이다. 사용자는 50대 개인 창작자 '다크진'이고, 유튜브 쇼츠 채널 '다크진의 AI 비서실', LDP 롱보드 콘텐츠, 노션 업무 DB 자동화를 운영한다.`,
-      `오늘 회의 안건: "${topic}"`,
-      `참석자:\n${rosterText()}`,
-      n > 1 ? `지금까지의 발언:\n${historyText()}` : `지금까지의 발언: 아직 없음`,
-      `오너(다크진)의 개입 지시: ${notes}`,
-      rule,
-      `오너 지시가 있으면 그 지시를 최우선 기준으로 삼아 방향을 틀어라.`,
-      `한국어 반드시. 이모지 금지. 없는 사실을 단정하지 말고 모르면 제안으로 말한다.`
-    ].join("\n\n");
-    const j = await geminiCall(prompt, schemaForLines(), 0.95);
-    if(!j || !j.lines) return null;
-    const out = {};
-    let ok = 0;
-    AIS.forEach(id=>{
-      const v = j.lines[id];
-      if(typeof v === "string" && v.trim()){ out[id] = v.trim(); ok++; }
+    state.activeSpeaker = null;
+    if(token === state.runToken) await psleep(180/state.speed);
+  }
+
+  /* ═══════════════════ 준비실 ═══════════════════ */
+  function readyAgendas(){ return (LIB.agendas||[]).filter(a=>a.ready && a.panels); }
+  function requests(){
+    try{ return JSON.parse(LS.get(K_REQ)||"[]") || []; }catch(e){ return []; }
+  }
+  function saveRequests(list){ LS.set(K_REQ, JSON.stringify(list.slice(-20))); }
+  function findReadyByTopic(topic){
+    const n = norm(topic);
+    if(!n) return null;
+    return readyAgendas().find(a => norm(a.title) === n || norm(a.title).indexOf(n) >= 0 || n.indexOf(norm(a.title)) >= 0) || null;
+  }
+
+  function renderPrep(){
+    const list = document.getElementById("agList");
+    const ready = readyAgendas();
+    list.innerHTML = "";
+    if(!ready.length){
+      list.append(el("div","qempty","아직 준비 완료된 안건이 없습니다. 아래에서 주제를 요청해 주세요."));
+    }
+    ready.forEach(a=>{
+      const b = el("button","agcard" + (state.agenda && state.agenda.id === a.id ? " active" : ""));
+      b.dataset.id = a.id;
+      const cnt = a.panels ? Object.keys(a.panels).filter(k=>a.panels[k]).length : 0;
+      b.append(el("span","tg", a.tag || "안건"));
+      b.append(el("div","tt", a.title));
+      b.append(el("div","bf", a.brief || ""));
+      const mt = el("div","mt");
+      const m1 = el("span"); m1.innerHTML = "자료 <b>"+cnt+"/6</b> 준비 완료";
+      mt.append(m1);
+      if(a.preparedAt) mt.append(el("span","", "· " + a.preparedAt));
+      if(a.preparedBy) mt.append(el("span","", "· " + a.preparedBy));
+      b.append(mt);
+      b.addEventListener("click", ()=> openAgenda(a.id));
+      list.append(b);
     });
-    return ok === AIS.length ? out : null;
+    const cntEl = document.getElementById("readyCnt");
+    const req = requests();
+    const pending = req.filter(r=>!findReadyByTopic(r.topic)).length;
+    cntEl.textContent = "준비 완료 " + ready.length + "건" + (pending ? " · 준비 중 " + pending + "건" : "");
+    cntEl.classList.toggle("warn", pending > 0);
+    renderQueue();
   }
 
-  async function geminiWrap(token){
-    if(!getKey()) return null;
-    const notes = state.notesAll.length ? state.notesAll.map(x=>`"${x}"`).join(" / ") : "없음";
-    const props = {};
-    AIS.forEach(id=>{ props[id] = {type:"STRING"}; });
-    const schema = {
-      type:"OBJECT",
-      properties:{
-        narrow:{ type:"ARRAY", items:{type:"STRING"} },
-        conclusion:{type:"STRING"},
-        actions:{ type:"OBJECT", properties:props, required:AIS.slice() },
-        reopen:{ type:"OBJECT", properties:props, required:AIS.slice() },
-        final:{type:"STRING"}
-      },
-      required:["narrow","conclusion","actions","reopen","final"]
-    };
-    const prompt = [
-      `너는 '다크진 AI 비서실'의 회의 진행자 피클(다크)이다. 사용자는 50대 개인 창작자 '다크진'이다.`,
-      `오늘 회의 안건: "${state.topic}"`,
-      `참석자:\n${rosterText()}`,
-      `지금까지의 발언:\n${historyText(30)}`,
-      `오너(다크진)의 개입 지시: ${notes}`,
-      `위 토론을 종합해 중간 정리를 만든다.`,
-      `- narrow: 토론으로 좁혀진 합의점 3개. 각 한 문장, 번호 없이.`,
-      `- conclusion: 피클이 종합한 결론 2~3문장. 실제 숫자·형식·범위 포함.`,
-      `- actions: 각 AI가 맡을 한 문장짜리 실행 항목.`,
-      `- reopen: 재소집 때 각 AI가 완료를 보고하는 한 문장.`,
-      `- final: 최종 마무리 2문장.`,
-      `오너 지시가 있으면 narrow와 conclusion에 반드시 반영한다. 한국어, 이모지 금지.`
-    ].join("\n\n");
-    const j = await geminiCall(prompt, schema, 0.9);
-    if(!j) return null;
-    const narrow = Array.isArray(j.narrow) ? j.narrow.filter(x=>typeof x === "string" && x.trim()).slice(0,4) : [];
-    if(narrow.length < 2 || !j.conclusion || !j.actions) return null;
-    return {narrow:narrow, conclusion:j.conclusion, actions:j.actions, reopen:j.reopen || {}, final:j.final || ""};
-  }
-
-  /* ═══════════════════ 진행 ═══════════════════ */
-  async function getRoundLines(n, token){
-    if(getKey()){
-      const g = await geminiRound(n, token);
-      if(g) return g;
-    }
-    const L = state.local;
-    if(n === 1) return L.r1;
-    if(n === 2) return L.r2;
-    if(n === 3) return L.r3;
-    const out = {};
-    AIS.forEach(id=>{ out[id] = localExtra(id, n); });
-    return out;
-  }
-
-  async function getWrap(token){
-    if(getKey()){
-      const g = await geminiWrap(token);
-      if(g) return g;
-    }
-    const L = state.local;
-    return {narrow:L.narrow, conclusion:L.conclusion, actions:L.actions, reopen:L.reopen, final:L.final};
-  }
-
-  async function runTurns(lines, token, n){
-    for(const id of AIS){
-      if(token !== state.runToken) return;
-      const text = lines && lines[id];
-      if(!text) continue;
-      const label = n === 1 ? "첫 의견" : (n === 2 ? "반박" : "재토론");
-      await speakTurn(id, text, {label:label, round:n});
-      if(token !== state.runToken) return;
-      state.saidThisRound++; updateTalkers();
-      await drainNotes(token);
-      if(token !== state.runToken) return;
-    }
-  }
-
-  // 오너 개입 반응은 한 번에 하나만 돌도록 직렬화한다 (중간 정리 중 겹침 방지)
-  let drainChain = Promise.resolve();
-  function drainNotes(token){
-    const run = () => drainNotesInner(token);
-    const p = drainChain.then(run, run);
-    drainChain = p.catch(()=>{});
-    return p;
-  }
-
-  async function drainNotesInner(token){
-    if(!state.notes.length) return false;
-    while(state.notes.length){
-      if(token !== state.runToken) return true;
-      const note = state.notes.shift();
-      addSystem("💬 오너 개입 반영 — \"" + note + "\"");
-      for(const id of AIS){
-        if(token !== state.runToken) return true;
-        await speakTurn(id, reactionLine(id, note), {label:"오너 지시 반영"});
-        if(token !== state.runToken) return true;
-        if(state.notes.length) break;
+  function renderQueue(){
+    const list = document.getElementById("queueList");
+    const empty = document.getElementById("queueEmpty");
+    const req = requests();
+    list.innerHTML = "";
+    if(!req.length){ empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    req.slice().reverse().forEach(r=>{
+      const hit = findReadyByTopic(r.topic);
+      const li = el("li","qitem" + (hit ? " ready" : ""));
+      li.append(el("span","st", hit ? "준비 완료" : "자료 준비 중"));
+      li.append(el("span","qt", r.topic));
+      if(hit){
+        const go = el("button","qb","열기");
+        go.addEventListener("click", ()=> openAgenda(hit.id));
+        li.append(go);
+        const cp = el("button","qb","요청문");
+        cp.addEventListener("click", ()=> copyText(requestText(r.topic)));
+        li.append(cp);
+      }else{
+        const cp = el("button","qb","요청문 복사");
+        cp.addEventListener("click", ()=> copyText(requestText(r.topic)));
+        li.append(cp);
       }
-    }
-    if(state.phase !== "working" && state.phase !== "reopen") setTileState("darkjin", "", "오너");
-    return true;
+      const x = el("button","qx","✕");
+      x.title = "큐에서 빼기";
+      x.addEventListener("click", ()=>{
+        const cur = requests().filter(v=>v.at !== r.at || v.topic !== r.topic);
+        saveRequests(cur); renderPrep(); toast("큐에서 뺐습니다");
+      });
+      li.append(x);
+      list.append(li);
+    });
   }
 
-  // 결정 버튼은 처리 중 잠시 잠근다 (레이아웃은 그대로, disabled만)
-  function setBusy(v){
+  function requestText(topic){
+    return [
+      "[회의 안건 요청] 다크진 AI 비서실 · 6분할 회의실",
+      "",
+      "주제: " + topic,
+      "요청: 오너 darkjin / " + nowStamp(),
+      "",
+      "피클, 이 주제로 6분할 회의실 v4 사전 자료를 준비해 주세요.",
+      "- 6인(피클·Gemini·Cue·Hark·ChatGPT·Claude)이 서로 겹치지 않는 사전 조사 자료를 각각 만들 것",
+      "- 각 AI 자료: 핵심 요약 1~2문장 / 근거·데이터 2~3개 / 우려·반박 1개 / 제안 1개 / 자료 출처 한 줄",
+      "- 확인 가능한 근거와 추정을 구분해서 적을 것",
+      "- 결론 후보 2~3개와 후보별 6인 역할 분담을 함께 만들 것",
+      "- 다 모이면 work/meeting-room/v4/agendas.js 에 안건을 추가하고 ready:true 로 표시",
+      "",
+      "자료가 모두 준비되면 '회의 준비 완료'로 알려 주세요. 그때까지 웹에는 '자료 준비 중'으로 남습니다."
+    ].join("\n");
+  }
+
+  function addRequest(topic){
+    const t = String(topic||"").replace(/\s+/g," ").trim();
+    if(!t){ toast("주제를 적어 주세요"); return null; }
+    const hit = findReadyByTopic(t);
+    if(hit){ toast("이미 준비 완료된 안건입니다 · 목록에서 열어 주세요"); openAgenda(hit.id); return hit; }
+    const list = requests();
+    if(list.some(r=>norm(r.topic) === norm(t))){ toast("이미 큐에 있는 주제입니다"); return null; }
+    list.push({topic:t, at:Date.now()});
+    saveRequests(list); renderPrep();
+    toast("➕ 안건 큐에 등록 — 피클이 자료를 모으면 '준비 완료'로 바뀝니다");
+    return null;
+  }
+
+  /* ═══════════════════ 안건 열기 ═══════════════════ */
+  function openAgenda(id){
+    const a = (LIB.byId && LIB.byId[id]) || (LIB.agendas||[]).find(x=>x.id === id);
+    if(!a){ toast("안건을 찾지 못했습니다"); return; }
+    if(!a.panels || !Object.keys(a.panels).length){
+      toast("이 안건은 아직 자료가 준비되지 않았습니다");
+      return;
+    }
+    state.runToken++;
+    state.agenda = a;
+    state.option = null;
+    state.ownerDir = "";
+    state.notes = [];
+    state.readSet = {}; state.rebutSet = {};
+    state.paused = false; state.pausedAt = 0; state.pausedMs = 0;
+    document.body.classList.remove("is-quiet");
+    releasePause();
+    state.phase = "materials";
+
+    document.body.classList.add("meeting-on");
+    document.getElementById("stage1Bar").style.display = "";
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("rolePanel").classList.remove("show");
+    document.getElementById("finalBlock").classList.remove("show");
+    document.getElementById("ownerDirection").value = "";
+
+    renderPrep();
+    renderMaterials();
+    renderOwnerChips();
+    document.getElementById("prepCard").classList.add("has-agenda");
+    document.getElementById("prepCard").classList.add("collapsed");
+    document.getElementById("curAgendaTitle").textContent = a.title;
+    document.getElementById("prepToggle").textContent = "다른 안건 ▾";
+
+    setStep(1);
+    setStageHead("1단계","준비된 자료 보기 & 주제 논의", "자료 " + Object.keys(a.panels).length + " / 6", false);
+    setLive("자료 열람", "");
+    startClock(0);
+    SFX.ding();
+
+    showReadyBanner(true);
+    document.getElementById("refNote").innerHTML =
+      "자료 출처는 각 패널의 <b>자료 펼치기</b>에서 확인할 수 있습니다. " +
+      "<b>Meta Muse · Keyring</b>은 이번 안건 자료를 아직 내지 않아 6분할에 넣지 않았습니다.";
+
+    clearMinEmpty();
+    minList.innerHTML = ""; minN = 0; minCountEl.textContent = "0건";
+    talkList.innerHTML = ""; talkN = 0; talkCountEl.textContent = "0건";
+    const te = el("li","talk-empty", "자료 6/6 도착 — 카드를 펼쳐 읽고, 📖 자료 낭독이나 🔁 반박 라운드로 6인의 관점 차이를 확인하세요. 아래 💬 오너 코멘트로 방향을 잡으면 결론 후보가 좁혀집니다.");
+    te.id = "talkEmpty"; talkList.append(te);
+
+    addSystem('안건 열람 — "' + a.title + '" (자료 ' + Object.keys(a.panels).length + '/6 · ' + (a.preparedAt||"") + ")");
+    addSystem("1단계 · 역할 분담은 결론을 확정한 뒤에 나옵니다");
+
+    $("#reqTopic").value = "";
+    toast("🗂️ 안건 열었습니다 · 6인 자료가 준비되어 있습니다");
+    const sh = document.getElementById("stageHd");
+    if(sh) sh.scrollIntoView({block:"start"});
+  }
+
+  function renderMaterials(){
+    const a = state.agenda;
+    AIS.forEach(id=>{
+      const p = a.panels[id];
+      const r = tileRefs[id];
+      if(!p){
+        r.bubble.innerHTML = ""; r.bubble.classList.add("empty");
+        r.bubble.textContent = "이번 안건 자료 없음";
+        r.matbtn.classList.add("ghost");
+        setTileState(id,"","자료 없음");
+        return;
+      }
+      renderBubble(id, "준비 자료", p.summary, {showBtn:true});
+      setTileState(id,"ready","자료 준비");
+    });
+  }
+
+  function openMat(id){
+    const a = state.agenda;
+    if(!a || !a.panels[id]) return;
+    const p = a.panels[id];
+    const who = byId(id);
+    state.matId = id;
+    document.getElementById("matTitle").textContent = who.name + " 준비 자료";
+    document.getElementById("matWho").textContent = who.role + " · 준비 " + (a.preparedAt||"") + (a.preparedBy ? " · " + a.preparedBy : "");
+    document.getElementById("matSum").textContent = p.summary || "";
+    const ul = document.getElementById("matPoints");
+    ul.innerHTML = "";
+    (p.points||[]).forEach(t=> ul.append(el("li","", t)));
+    document.getElementById("matConcern").textContent = p.concern || "—";
+    document.getElementById("matProposal").textContent = p.proposal || "—";
+    const rb = document.getElementById("matRebuttal");
+    if(p.rebuttal && p.rebuttal.text){
+      const to = byId(p.rebuttal.to);
+      rb.textContent = "→ " + (to?to.name:p.rebuttal.to) + " : " + p.rebuttal.text;
+    } else rb.textContent = "—";
+    document.getElementById("matSource").textContent = p.source || "";
+    document.getElementById("matModal").classList.add("show");
+  }
+
+  /* ═══════════════════ 1단계: 자료 낭독 ═══════════════════ */
+  function setBarBusy(v){
     state.busy = !!v;
-    const a = document.getElementById("confirmBtn");
-    const b = document.getElementById("moreRoundBtn");
-    if(a) a.disabled = state.busy;
-    if(b) b.disabled = state.busy;
-  }
-  async function waitBusy(maxMs){
-    const t0 = Date.now();
-    while(state.busy && Date.now() - t0 < (maxMs || 10000)) await sleep(120);
-    return !state.busy;
+    ["readBtn","rebutBtn","toConfirmBtn","confirmRoleBtn","backToTalkBtn"].forEach(i=>{
+      const b = document.getElementById(i);
+      if(b) b.disabled = state.busy;
+    });
   }
 
-  function addOwnerNote(text){
-    const note = String(text || "").replace(/\s+/g, " ").trim();
-    if(!note) return false;
-    if(!MEETING_PHASES[state.phase]){
-      toast("회의 중에만 끼어들 수 있습니다 · 안건을 넣고 회의를 시작하세요");
-      return false;
+  async function readAll(){
+    if(!state.agenda || state.busy) return;
+    setBarBusy(true);
+    const token = ++state.runToken;
+    state.phase = "materials";
+    addSystem("📖 자료 낭독 — 6인이 준비해 온 요약을 차례로 읽습니다");
+    for(const id of AIS){
+      if(token !== state.runToken) break;
+      await waitIfPaused();
+      if(token !== state.runToken) break;
+      const p = state.agenda.panels[id];
+      if(!p) continue;
+      renderBubble(id, "준비 자료", p.summary, {showBtn:true});
+      await speakLine(id, p.summary, {label:"자료 낭독"});
+      if(token !== state.runToken) break;
+      if(!state.readSet[id]){ addTalk(id, "read", p.summary); state.readSet[id] = true; }
+      setTileState(id,"ready","낭독 완료");
+      await psleep(150/state.speed);
     }
-    state.notesAll.push(note);
+    if(token === state.runToken){
+      state.phase = "discussion";
+      setStep(2);
+      setStageHead("1단계","논의 — 반박 라운드로 관점 차이를 확인", "낭독 " + Object.keys(state.readSet).length + " / 6", false);
+      setLive("논의 중", "");
+      addSystem("자료 낭독 완료 — 이제 반박 라운드로 서로 다른 관점을 확인합니다");
+      toast("📖 낭독 끝 · 이제 🔁 반박 라운드로 넘어가세요");
+    }
+    setBarBusy(false);
+  }
+
+  /* ═══════════════════ 1단계: 반박 라운드 ═══════════════════ */
+  async function rebuttalRound(){
+    if(!state.agenda || state.busy) return;
+    setBarBusy(true);
+    const token = ++state.runToken;
+    state.phase = "discussion";
+    setStep(2);
+    setStageHead("1단계","논의 — 6인이 서로의 자료에 반박·보완", "반박 0 / 6", false);
+    addSystem("🔁 반박 라운드 — 각자 다른 AI의 자료를 짚고 반박합니다");
+    let n = 0;
+    for(const id of AIS){
+      if(token !== state.runToken) break;
+      await waitIfPaused();
+      if(token !== state.runToken) break;
+      const p = state.agenda.panels[id];
+      if(!p || !p.rebuttal || !p.rebuttal.text) continue;
+      const to = byId(p.rebuttal.to);
+      renderBubble(id, "반박 → " + (to?to.name:p.rebuttal.to), p.rebuttal.text, {showBtn:true});
+      await speakLine(id, p.rebuttal.text, {label:"반박 중"});
+      if(token !== state.runToken) break;
+      if(!state.rebutSet[id]){ addTalk(id, "rebut", p.rebuttal.text, {to:p.rebuttal.to}); state.rebutSet[id] = true; }
+      setTileState(id,"ready","반박 완료");
+      n++;
+      setStageHead("1단계","논의 — 6인이 서로의 자료에 반박·보완", "반박 " + n + " / 6", false);
+      await psleep(150/state.speed);
+    }
+    if(token === state.runToken){
+      setLive("오너 결정 대기", "owner");
+      addSystem("반박 라운드 완료 — 오너가 결론을 확정하면 역할 분담이 나옵니다");
+      toast("🔁 반박 6건 끝 · ✅ 결론 확정으로 넘어가세요");
+    }
+    setBarBusy(false);
+  }
+
+  /* ═══════════════════ 오너 코멘트 ═══════════════════ */
+  function renderOwnerChips(){
+    const box = document.getElementById("interjectChips");
+    box.innerHTML = "";
+    const a = state.agenda;
+    const chips = (a && a.ownerChips) ? a.ownerChips : [];
+    chips.forEach(c=>{
+      const b = el("button","chip2", c);
+      b.addEventListener("click", ()=>{ unlockVoice(); submitComment(c); });
+      box.append(b);
+    });
+  }
+
+  function submitComment(text){
+    const note = String(text||"").replace(/\s+/g," ").trim();
+    if(!note){ toast("코멘트를 적어 주세요"); return false; }
+    if(!state.agenda){ toast("먼저 준비실에서 안건을 골라 주세요"); return false; }
     state.notes.push(note);
-    const r = tileRefs.darkjin;
-    if(r){
-      r.bubble.classList.remove("empty");
-      r.bubble.textContent = "🗣️ " + note;
-      r.bubble.scrollTop = r.bubble.scrollHeight;
-    }
-    setTileState("darkjin", "speaking", "끼어들기");
-    addMinute("darkjin", "say", note, false, state.round || 0);
+    addTalk("owner","owner", note);
+    addSystem('💬 오너 코멘트 — "' + note + '"');
+    document.getElementById("interjectInput").value = "";
+    stopInterjectMic(true);
     if(state.activeCut && state.activeCut.fire) state.activeCut.fire();
     if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
     SFX.pop();
-    setLive("오너 개입", "owner");
-    toast("💬 끼어들기 접수 — 다음 발언부터 반영합니다");
-    return true;
-  }
+    setLive("오너 코멘트", "owner");
 
-  async function submitInterject(text){
-    if(!addOwnerNote(text)) return false;
-    const input = document.getElementById("interjectInput");
-    if(input) input.value = "";
-    stopInterjectMic(true);
-    if(state.paused){
-      addSystem("정지 중 — ▶️ 다시 계속을 누르면 오너 지시가 반영됩니다");
+    if(state.phase === "roles"){
+      const c = document.getElementById("conclText");
+      c.textContent = (c.textContent||"") + "\n[오너 코멘트] " + note;
+      state.ownerDir = (state.ownerDir ? state.ownerDir + " / " : "") + note;
+      toast("💬 코멘트를 결론에 덧붙였습니다");
       return true;
     }
-    if(state.phase === "proposal" && !state.busy){
-      setBusy(true);
+
+    // 진행 중인 낭독/반박 스크립트를 여기서 끊는다 (코멘트 반영이 덮이지 않도록)
+    state.runToken++;
+
+    const a = state.agenda;
+    let picked = null;
+    AIS.forEach(id=>{
+      const p = a.panels[id];
+      if(!p) return;
+      const rep = (a.ownerReplies && a.ownerReplies[id]) || "";
+      if(!rep) return;
+      renderBubble(id, "코멘트 반영", rep, {showBtn:true});
+      addTalk(id, "react", rep);
+      setTileState(id,"ready","반영 완료");
+      if(id === "pickle") picked = rep;
+    });
+    if(picked){
       const token = state.runToken;
-      await drainNotes(token);
-      if(token === state.runToken && state.phase === "proposal"){
-        showProposal();
-        toast("💬 오너 지시 반영 완료 · 확정할까요?");
-      }
-      setBusy(false);
-    } else if(state.phase === "working" || state.phase === "reopen" || state.phase === "assign"){
-      const noteLate = state.notesAll[state.notesAll.length - 1] || "";
-      if(state.notes.length) state.notes.pop();
-      setTileState("darkjin", "", "오너");
-      const cEl = document.getElementById("conclText");
-      if(cEl && noteLate && cEl.textContent.indexOf(noteLate) < 0){
-        cEl.textContent = (cEl.textContent || "") + "\n[오너 개입] " + noteLate;
-        if(state.data) state.data.conclusion = cEl.textContent;
-      }
-      addSystem("작업 단계 개입 — 결론·복사본과 다음 재소집에 반영됩니다");
+      speakLine("pickle", picked, {label:"오너 지시 반영"});
     }
+    toast("💬 코멘트 접수 — 6인이 각자 반응을 남겼습니다");
     return true;
   }
 
-  function withOwnerNotes(text){
-    if(!state.notesAll.length) return text;
-    return text + "\n\n[오너 개입 반영] " + state.notesAll.map(n=>`"${n}"`).join(" / ") + " — 이 지시를 우선 기준으로 조정했습니다.";
-  }
-
-  function proposalSpeech(){
-    const d = state.data || {};
-    const n = (d.narrow || []).map(s=>String(s).replace(/[.。]$/,""));
-    const parts = [];
-    if(n[0]) parts.push("첫째, " + n[0]);
-    if(n[1]) parts.push("둘째, " + n[1]);
-    if(n[2]) parts.push("셋째, " + n[2]);
-    const head = state.round + "라운드 얘기해 보니 이렇게 좁혀졌습니다.";
-    const ask = "이대로 확정할까요, 한 번 더 얘기할까요?";
-    return head + " " + parts.join(". ") + ". " + ask;
-  }
-
-  function showProposal(){
-    const d = state.data || {};
-    const list = document.getElementById("narrowList");
-    if(list){
-      list.innerHTML = "";
-      (d.narrow || []).forEach((t, i)=>{
-        const li = el("li");
-        li.append(el("span","no",String(i+1)), el("span","", String(t)));
-        list.append(li);
-      });
-      state.notesAll.forEach(note=>{
-        const li = el("li","owner-note");
-        li.append(el("span","no","👑"), el("span","", "오너 지시 · " + note));
-        list.append(li);
-      });
-    }
-    const q = document.getElementById("proposalQ");
-    if(q) q.textContent = "이렇게 좁혀졌는데 이대로 확정할까요, 한 번 더 얘기할까요?";
-    const meta = document.getElementById("pMeta");
-    if(meta) meta.textContent = state.round + "라운드 종료 · 5인" + (state.notesAll.length ? " · 오너 개입 " + state.notesAll.length + "회" : "");
-    const rn = document.getElementById("roundNote");
-    if(rn) rn.textContent = "✅ 확정하면 역할 배정으로 넘어갑니다 · 아래 💬 끼어들기로 방향을 바꿀 수도 있습니다";
-    document.getElementById("proposal").classList.add("show");
-  }
-
-  async function enterProposal(token){
-    state.phase = "proposal";
+  /* ═══════════════════ 결론 확정 ═══════════════════ */
+  function openConfirm(){
+    if(!state.agenda) return;
+    state.phase = "confirm";
     setStep(3);
-    setLive("오너 결정 대기", "owner");
-    addSystem(state.round + "라운드 종료 — 피클이 좁혀진 안을 정리합니다");
-    const wrap = await getWrap(token);
-    if(!wrap || token !== state.runToken) return;
-    state.data = Object.assign({}, state.data || {}, wrap);
-    state.data.conclusion = withOwnerNotes(state.data.conclusion || "");
-    state.data.narrow = (state.data.narrow || []).slice();
-    showProposal();
-    await speakTurn("pickle", proposalSpeech(), {label:"중간 정리", round:state.round});
-    if(token !== state.runToken) return;
-    await drainNotes(token);
-    if(token !== state.runToken) return;
-    if(state.phase !== "proposal") return;
-    showProposal();
-    addSystem("오너 결정 대기 — ✅ 이대로 확정 또는 🔄 한 라운드 더");
-    toast("🗳️ 이대로 확정할까요, 한 라운드 더 토론할까요?");
+    setLive("결론 확정 대기", "owner");
+    document.getElementById("stage1Bar").style.display = "none";
+    const opts = state.agenda.options || [];
+    const list = document.getElementById("optList");
+    list.innerHTML = "";
+    opts.forEach(o=>{
+      const b = el("button","opt" + (state.option === o.id ? " sel" : ""));
+      b.dataset.id = o.id;
+      const ot = el("div","ot");
+      ot.append(el("span","ck2","✓"), el("span","", o.title));
+      const od = el("div","od", o.detail || "");
+      const om = el("div","om");
+      const sup = (o.support||[]).map(x=>byId(x)?byId(x).name:x).join(" · ");
+      if(sup) om.append(el("span","sup","지지 " + sup));
+      if(o.risk) om.append(el("span","rk","위험 " + o.risk));
+      b.append(ot, od, om);
+      b.addEventListener("click", ()=>{
+        state.option = o.id;
+        document.querySelectorAll("#optList .opt").forEach(x=>x.classList.toggle("sel", x.dataset.id === o.id));
+        document.getElementById("cfMeta").textContent = "선택: " + o.id + " · 반박 " + Object.keys(state.rebutSet).length + "건";
+      });
+      list.append(b);
+    });
+    document.getElementById("cfMeta").textContent = "결론 후보 " + opts.length + " · 반박 " + Object.keys(state.rebutSet).length + "건 반영";
+    document.getElementById("confirmPanel").classList.add("show");
+    addSystem("결론 확정 단계 — 오너가 후보를 고르고 역할 분담이 생성됩니다");
+    document.getElementById("confirmPanel").scrollIntoView({block:"center", behavior:"smooth"});
   }
 
-  async function confirmPlan(){
-    if(state.phase !== "proposal") return;
-    if(state.busy && !(await waitBusy(12000))) return;
-    if(state.phase !== "proposal") return;
-    setBusy(true);
-    SFX.confirm();
-    document.getElementById("proposal").classList.remove("show");
-    setStep(4);
-    addSystem("✅ 오너 확정 — 결론과 역할 배정으로 넘어갑니다");
-    if(!state.data.conclusion) state.data.conclusion = withOwnerNotes(state.local.conclusion);
-    state.runToken++;
-    const token = state.runToken;
-    state.phase = "assign";
-    await assignmentPhase(state.data, token);
-    setBusy(false);
-  }
-
-  async function moreRound(){
-    if(state.phase !== "proposal") return;
-    if(state.busy && !(await waitBusy(12000))) return;
-    if(state.phase !== "proposal") return;
-    setBusy(true);
-    SFX.ding();
-    document.getElementById("proposal").classList.remove("show");
-    state.round++;
-    state.phase = state.round === 3 ? "round3" : "roundN";
+  function backToTalk(){
+    state.phase = "discussion";
     setStep(2);
-    setRoundIndicator(state.round, state.round + "라운드 · 좁히기 (오너 요청)");
-    setLive("회의 중", "");
-    addSystem("🔄 오너 요청 — " + state.round + "라운드 추가 토론을 시작합니다");
-    state.runToken++;
-    const token = state.runToken;
-    const lines = await getRoundLines(state.round, token);
-    if(token !== state.runToken){ setBusy(false); return; }
-    await runTurns(lines, token, state.round);
-    if(token !== state.runToken){ setBusy(false); return; }
-    setBusy(false);
-    await enterProposal(token);
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("stage1Bar").style.display = "";
+    setLive("논의 중", "");
+    toast("↩️ 논의로 돌아왔습니다");
+    window.scrollTo({top:0, behavior:"smooth"});
   }
 
-  async function startMeeting(){
-    if(state.phase !== "idle" && state.phase !== "closed"){
-      toast("이미 회의가 진행 중입니다 · 새 회의를 눌러 초기화하세요");
+  function confirmRoles(){
+    if(!state.agenda) return;
+    if(!state.option){
+      toast("결론 후보를 하나 골라 주세요");
+      document.querySelectorAll("#optList .opt").forEach(x=>{
+        if(!x.dataset.done){ x.style.borderColor = "rgba(242,84,91,.6)"; setTimeout(()=>{ x.style.borderColor = ""; }, 900); }
+      });
       return;
     }
-    if(state.busy){ toast("잠시만요 · 이전 작업을 마무리하는 중입니다"); return; }
-    const topic = ($("#topic").value || "").trim() || "6화 쇼츠 주제 정하기";
-    $("#topic").value = topic;
+    const a = state.agenda;
+    const opt = (a.options||[]).find(o=>o.id === state.option);
+    if(!opt){ toast("결론을 찾지 못했습니다"); return; }
+    state.ownerDir = (document.getElementById("ownerDirection").value || "").replace(/\s+\n/g,"\n").trim();
+    const roles = (a.roles && a.roles[state.option]) || {};
 
-    state.paused = false;
-    state.pausedAt = 0;
-    state.pausedMs = 0;
-    document.body.classList.remove("is-quiet");
-    releasePause();
-    stopListening(true);
-    stopInterjectMic(true);
-    unlockVoice();
-
+    state.phase = "roles";
     state.runToken++;
-    const token = state.runToken;
-    state.topic = topic;
-    state.local = localMeeting(topic);
-    state.data = {narrow: state.local.narrow.slice(), conclusion:"", actions:{}, reopen:{}, final:""};
-    state.log = [];
-    state.notes = [];
-    state.notesAll = [];
-    state.round = 1;
-    state.done = {};
-    document.body.classList.add("meeting-on");
-    const echo = document.getElementById("topicEcho");
-    if(echo) echo.textContent = "안건 · " + topic;
-    const odj = tileRefs.darkjin;
-    if(odj){
-      odj.bubble.classList.remove("empty");
-      odj.bubble.textContent = "말이 없으면 경청합니다. 아래 💬 끼어들기로 언제든 방향을 바꿀 수 있습니다.";
-    }
-    resetTilesForNewMeeting();
-    lockInput(true);
-    $("#startBtn").textContent = "회의 중";
-    setStep(1);
-    setRoundIndicator(1, "1라운드 · 각자 역할 관점의 첫 의견");
-    setLive("회의 중", "");
-    startClock(0);
-    SFX.ding();
-    addSystem(`회의 시작 — 안건: "${topic}" (${state.local.bucket})`);
-    addSystem("1라운드 — 각자 첫 의견을 냅니다");
-
-    // ── 1라운드 ──
-    state.phase = "round1";
-    const r1 = await getRoundLines(1, token);
-    if(token !== state.runToken) return;
-    await runTurns(r1, token, 1);
-    if(token !== state.runToken) return;
-
-    // ── 2라운드 (상호 반박·보완) ──
-    state.phase = "round2";
-    state.round = 2;
-    setStep(2);
-    setRoundIndicator(2, "2라운드 · 이름을 부르며 서로 반박·보완");
-    addSystem("2라운드 — 서로 이름을 부르며 받아치고 수정합니다");
-    await psleep(260 / state.speed);
-    if(token !== state.runToken) return;
-    const r2 = await getRoundLines(2, token);
-    if(token !== state.runToken) return;
-    await runTurns(r2, token, 2);
-    if(token !== state.runToken) return;
-
-    await psleep(320 / state.speed);
-    if(token !== state.runToken) return;
-    await enterProposal(token);
-  }
-
-  async function assignmentPhase(data, token){
-    state.phase = "assign";
     setStep(4);
-    setLive("배정 중", "working");
-    addSystem("피클이 결론을 종합합니다 — 결론과 역할 배정 단계");
-    await waitIfPaused();
-    if(token !== state.runToken) return;
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("stage1Bar").style.display = "none";
+    document.getElementById("rolePanel").classList.add("show");
+    SFX.confirm();
 
-    setTileState("pickle","speaking","종합 중");
-    const r = tileRefs.pickle;
-    r.bubble.classList.remove("empty");
-    const tx = addMinute("pickle","say","", false, state.round);
-    const talking = (state.voiceOn && data.conclusion) ? speakText("pickle", data.conclusion, token, null) : Promise.resolve();
-    await Promise.all([ typeText([r.bubble, tx], data.conclusion, token, null), talking ]);
-    tx.textContent = data.conclusion;
-    r.bubble.textContent = data.conclusion;
-    if(token !== state.runToken) return;
-    await waitIfPaused();
-    if(token !== state.runToken) return;
-    setTileState("pickle","working","작업 중");
+    const concl = opt.title + "\n" + (opt.detail||"") + (state.ownerDir ? "\n[오너 추가 지시] " + state.ownerDir : "") + (state.notes.length ? "\n[오너 코멘트] " + state.notes.join(" / ") : "");
+    document.getElementById("conclText").textContent = concl;
+    document.getElementById("ccMeta").textContent = "결론 " + opt.id + " · " + (a.tag||"");
+    document.getElementById("roleTitle").textContent = "결론과 역할 분담";
 
-    $("#conclText").textContent = data.conclusion;
-    $("#ccMeta").textContent = "안건: " + state.topic + (state.notesAll.length ? " · 오너 개입 반영" : "");
-    const list = $("#actionList");
+    const list = document.getElementById("actionList");
     list.innerHTML = "";
     AIS.forEach(id=>{
       const p = byId(id);
-      const card = el("div","ac");
-      card.dataset.id = id;
-      const em = el("div","em", p.emoji);
+      const card = el("div","ac"); card.dataset.id = id;
       const body = el("div");
-      const nm = el("div","nm", p.name);
-      const tx2 = el("div","tx", (data.actions && data.actions[id]) || "");
-      body.append(nm, tx2);
-      const ck = el("div","ck","○");
-      card.append(em, body, ck);
+      body.append(el("div","nm", p.name), el("div","tx", roles[id] || "역할 미정"));
+      card.append(el("div","em", p.emoji), body);
       list.append(card);
+      renderBubble(id, "맡은 일", roles[id] || "역할 미정", {role:"2단계 · 역할 분담", showBtn:false});
+      setTileState(id,"assigned","배정");
+      tileRefs[id].matbtn.classList.add("ghost");
     });
-    $("#conclusion").classList.add("show");
-    if(r) r.task.innerHTML = "<b>진행</b> · " + ((data.actions && data.actions.pickle) || "");
 
+    const fin = document.getElementById("finalText");
+    fin.textContent = a.closing || "역할 분담대로 진행하고, 결과는 다음 회의에서 복기합니다.";
+    document.getElementById("finalBlock").classList.add("show");
+
+    setStageHead("2단계","결론 확정 → 역할 분담", "배정 6 / 6", true);
+    setLive("역할 분담 완료", "done");
+    addSystem("✅ 결론 확정 — 후보 " + opt.id + " · 역할 6건 배정");
     AIS.forEach(id=>{
-      setTileState(id,"working","작업 중");
-      const ref = tileRefs[id];
-      if(ref && ref.task) ref.task.innerHTML = "<b>할 일</b> · " + ((data.actions && data.actions[id]) || "");
-      if(ref && ref.report){ ref.report.textContent = "완료 보고"; ref.report.classList.remove("reported"); }
-      state.done[id] = false;
+      if(roles[id]) addTalk(id,"sys", "배정 — " + roles[id]);
     });
-    setTileState("darkjin","working","승인 대기");
-    updateProgress();
-    state.phase = "working";
-    setLive("작업 중", "working");
-    addSystem("배정 완료 — 각 AI가 '작업 중'으로 전환. 완료 보고 후 재소집할 수 있습니다.");
-    toast("🧩 역할 배정 완료 · 노션 04 DB용 지시문을 복사할 수 있습니다");
-    const rb = $("#reconveneBtn");
-    rb.disabled = false;
-    rb.textContent = "모두 작업 완료 → 재소집";
-    rb.classList.remove("glow");
-  }
+    toast("🧩 역할 분담 완료 · 복사해서 피클에게 넘기세요");
+    const sh2 = document.getElementById("stageHd");
+    if(sh2) sh2.scrollIntoView({block:"start"});
 
-  function updateProgress(){
-    const n = AIS.filter(id=>state.done[id]).length;
-    $("#progress").innerHTML = "완료 <b>" + n + "</b> / 5";
-    AIS.forEach(id=>{
-      const card = document.querySelector('.ac[data-id="'+id+'"]');
-      if(card){
-        card.classList.toggle("done", !!state.done[id]);
-        const ck = card.querySelector(".ck");
-        if(ck) ck.textContent = state.done[id] ? "✓" : "○";
-      }
-    });
-    const all = n === 5;
-    $("#reconveneBtn").classList.toggle("glow", all);
-    if(all && state.phase === "working") toast("✅ 전원 완료 · '재소집'을 눌러 마무리 회의를 여세요");
-  }
-
-  function reportDone(id){
-    if(state.phase !== "working") return;
-    state.done[id] = true;
-    setTileState(id,"done","완료");
-    const ref = tileRefs[id];
-    if(ref && ref.report){ ref.report.textContent = "완료 ✓"; ref.report.classList.add("reported"); }
-    addMinute(id,"sys", (byId(id).name) + " 완료 보고 — " + ((state.data.actions && state.data.actions[id]) || "배정 업무 완료"), true);
-    updateProgress();
-  }
-
-  async function reconvene(){
-    if(state.phase === "reopen" || state.busy) return;
-    if(!state.data){ toast("먼저 회의를 시작해 주세요"); return; }
-    const fbNow = document.getElementById("finalBlock");
-    if(state.phase === "closed" && fbNow && fbNow.classList.contains("show")){
-      toast("이미 재소집 마무리까지 끝났습니다 · 새 회의를 눌러 주세요");
-      return;
-    }
-    if(state.phase === "working"){
-      AIS.forEach(id=>{ if(!state.done[id]) reportDone(id); });
-    } else if(state.phase !== "closed"){
-      toast("회의가 결론·배정 단계에 도달하면 재소집할 수 있습니다");
-      return;
-    }
-    state.phase = "reopen";
-    state.runToken++;
     const token = state.runToken;
-    setStep(4);
-    setLive("재소집", "");
-    SFX.ding();
-    const rb = $("#reconveneBtn");
-    rb.classList.remove("glow");
-    rb.disabled = true;
-    rb.textContent = "재소집 진행 중…";
-    addSystem("재소집 — 전원 완료 보고 후 최종 마무리 논의를 시작합니다.");
-    AIS.forEach(id=>{
-      setTileState(id,"done","완료");
-      const ref = tileRefs[id];
-      if(ref && ref.report){ ref.report.textContent = "완료 ✓"; ref.report.classList.add("reported"); }
-    });
-    await psleep(500/state.speed);
-    if(token !== state.runToken) return;
-
-    for(const id of AIS){
-      if(token !== state.runToken) return;
-      const line = (state.data.reopen && state.data.reopen[id]) || "배정된 업무 완료했습니다.";
-      await speakTurn(id, line, {});
-      if(token !== state.runToken) return;
-      setTileState(id,"done","완료");
-    }
-
-    const finalText = state.data.final || (state.topic + " 결론대로 배정된 업무가 모두 완료되었습니다. 회의록을 복기해 다음 항목을 노션 04 DB에 이어서 등록합니다.");
-    addSystem("최종 마무리 — " + finalText);
-    if(state.voiceOn && synthOK){ await speakText("pickle", finalText, token, null); }
-    const fb = document.getElementById("finalBlock");
-    const ft = document.getElementById("finalText");
-    if(fb && ft){ ft.textContent = finalText; fb.classList.add("show"); }
-    $("#ccMeta").textContent = "최종 마무리 · 재소집 완료" + (state.notesAll.length ? " · 오너 개입 반영" : "");
-    const cc = $("#conclusion");
-    if(cc) cc.classList.add("show");
-    const foot = document.querySelector(".cc-foot");
-    if(foot && !document.getElementById("closeMeeting")){
-      const b = el("button","btn2","회의 종료");
-      b.id = "closeMeeting";
-      b.addEventListener("click", ()=>{
-        state.phase = "closed";
-        setLive("종료", "done");
-        lockInput(false);
-        document.body.classList.remove("meeting-on");
-        $("#startBtn").textContent = "회의 시작";
-        clearInterval(state.timerId);
-        addSystem("회의 종료 — 회의록을 복사해 노션에 붙여넣으세요.");
-        toast("회의를 종료했습니다");
-      });
-      foot.insertBefore(b, $("#progress"));
-    }
-    rb.textContent = "재소집 완료 ✓";
-    state.phase = "closed";
-    document.body.classList.remove("meeting-on");
-    setLive("마무리 완료", "done");
-    toast("🎉 재소집 마무리 완료 · 회의록을 복사하세요");
+    speakLine("pickle", "결론 확정했습니다. " + opt.title + ". 역할 여섯 개를 나눴습니다.", {label:"결론 확정"})
+      .then(()=>{ if(token === state.runToken){ AIS.forEach(id=>{ if(state.phase==="roles") setTileState(id,"assigned","배정"); }); } });
   }
 
-  function resetTilesForNewMeeting(){
-    setBusy(false);
-    $("#proposal").classList.remove("show");
-    $("#conclusion").classList.remove("show");
-    $("#conclText").textContent = "";
-    $("#actionList").innerHTML = "";
-    const fb0 = document.getElementById("finalBlock");
-    if(fb0) fb0.classList.remove("show");
-    const ft0 = document.getElementById("finalText");
-    if(ft0) ft0.textContent = "";
-    const old = document.getElementById("closeMeeting");
-    if(old) old.remove();
-    $("#reconveneBtn").disabled = false;
-    $("#reconveneBtn").textContent = "모두 작업 완료 → 재소집";
-    $("#reconveneBtn").classList.remove("glow");
-    minuteCount = 0;
-    minList.innerHTML = "";
-    const empty = el("li","min-empty","아직 회의록이 없습니다. 안건을 적고 회의를 시작해 주세요.");
-    empty.id = "minEmpty";
-    minList.append(empty);
-    minCount.textContent = "0건";
-    PEOPLE.forEach(p=>{
-      const ref = tileRefs[p.id];
-      if(!ref) return;
-      setTileState(p.id,"", p.owner ? "오너" : "대기");
-      ref.tile.classList.remove("done","working","speaking","quiet");
-      ref.bubble.classList.add("empty");
-      ref.bubble.textContent = p.owner ? "안건을 적고 회의 시작을 누르면 6인이 모입니다. 회의 중에는 아래 💬 끼어들기로 언제든 말할 수 있습니다." : "대기 중…";
-      ref.task.innerHTML = "";
-      if(ref.report){ ref.report.textContent = "완료 보고"; ref.report.classList.remove("reported"); }
-      const ap = ref.tile.querySelector(".approve");
-      if(ap){ ap.classList.remove("on"); ap.textContent = "최종 승인"; }
-    });
-    $("#progress").innerHTML = "완료 <b>0</b> / 5";
-    $("#clock").textContent = "00:00";
-    clearInterval(state.timerId);
-    updateTalkers();
-  }
-
-  function resetAll(){
-    if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
-    stopListening(true);
-    stopInterjectMic(true);
-    state.paused = false;
-    state.pausedAt = 0;
-    state.pausedMs = 0;
-    state.voiceWarned = false;
-    setBusy(false);
-    state.notes = [];
-    state.notesAll = [];
-    state.log = [];
-    document.body.classList.remove("is-quiet");
+  function newMeeting(){
     state.runToken++;
     state.phase = "idle";
-    state.topic = "";
-    state.data = null;
-    state.local = null;
-    state.done = {};
-    state.round = 0;
+    state.agenda = null; state.option = null; state.ownerDir = "";
+    state.notes = []; state.readSet = {}; state.rebutSet = {};
     document.body.classList.remove("meeting-on");
+    document.getElementById("prepCard").classList.remove("collapsed");
+    document.getElementById("prepCard").classList.remove("has-agenda");
+    document.getElementById("curAgendaTitle").textContent = "";
+    document.getElementById("prepToggle").textContent = "다른 안건 ▾";
+    document.getElementById("stage1Bar").style.display = "none";
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("rolePanel").classList.remove("show");
+    document.getElementById("readyBanner").classList.remove("show");
+    document.getElementById("refNote").textContent = "";
     clearInterval(state.timerId);
-    releasePause();
-    resetTilesForNewMeeting();
-    lockInput(false);
-    $("#startBtn").textContent = "회의 시작";
+    document.getElementById("clock").textContent = "00:00";
+    AIS.forEach(id=>{
+      const r = tileRefs[id]; if(!r) return;
+      r.bubble.innerHTML = ""; r.bubble.classList.add("empty");
+      r.bubble.textContent = "안건을 고르면 준비해 온 자료가 여기에 열립니다.";
+      r.matbtn.classList.add("ghost");
+      setTileState(id,"","대기");
+    });
     setStep(0);
-    setRoundIndicator(1, "1라운드 · 각자 역할 관점의 첫 의견");
-    setLive("대기 중", "");
-    const ii = document.getElementById("interjectInput");
-    if(ii) ii.value = "";
+    setStageHead("1단계","안건을 고르면 6인이 준비해 온 자료가 열립니다","자료 0 / 6",false);
+    setLive("준비실", "");
+    renderPrep();
+    window.scrollTo({top:0, behavior:"smooth"});
+    toast("준비실로 돌아왔습니다");
   }
 
-  /* ───────────────────────── 복사 ───────────────────────── */
+  /* ═══════════════════ 복사 ═══════════════════ */
   function copyText(text){
     const done = ()=> toast("📋 복사되었습니다 · 붙여넣기 하세요");
     if(navigator.clipboard && window.isSecureContext){
-      navigator.clipboard.writeText(text)
-        .then(done)
-        .catch(()=>{ if(fallbackCopy(text)) done(); else manualCopy(text); });
+      navigator.clipboard.writeText(text).then(done).catch(()=>{ if(fallbackCopy(text)) done(); else manualCopy(text); });
     } else if(fallbackCopy(text)){ done(); }
     else { manualCopy(text); }
   }
   function fallbackCopy(text){
     try{
-      const ta = document.createElement("textarea");
-      ta.value = text; ta.setAttribute("readonly","");
-      ta.style.position = "fixed"; ta.style.opacity = "0"; ta.style.top = "0";
+      const ta=document.createElement("textarea");
+      ta.value=text; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.opacity="0"; ta.style.top="0";
       document.body.append(ta); ta.select();
-      const ok = document.execCommand("copy");
-      ta.remove();
-      return ok;
+      const ok=document.execCommand("copy"); ta.remove(); return ok;
     }catch(e){ return false; }
   }
   function manualCopy(text){
-    const modal = el("div","modal show");
-    const veil = el("div","veil");
-    const sheet = el("div","sheet");
-    sheet.append(el("h3","","지시문 복사"));
+    const modal=el("div","modal show"); const veil=el("div","veil"); const sheet=el("div","sheet");
+    sheet.append(el("h3","","복사"));
     sheet.append(el("p","note","이 브라우저는 자동 복사가 막혀 있습니다. 아래 내용을 길게 눌러 전체 선택한 뒤 복사해 주세요."));
-    const ta = document.createElement("textarea");
-    ta.value = text; ta.readOnly = true;
-    ta.style.cssText = "width:100%;height:42vh;background:#0a0d14;border:1px solid #242a3a;color:#c9cfe0;border-radius:10px;padding:9px;font-size:11px;line-height:1.5;font-family:inherit;resize:vertical";
+    const ta=document.createElement("textarea");
+    ta.value=text; ta.readOnly=true;
+    ta.style.cssText="width:100%;height:42vh;background:#0a0d14;border:1px solid #242a3a;color:#c9cfe0;border-radius:10px;padding:9px;font-size:11px;line-height:1.5;font-family:inherit;resize:vertical";
     sheet.append(ta);
-    const foot = el("div","foot");
-    const close = el("button","btn2 green","닫기");
-    foot.append(close);
-    sheet.append(foot);
-    modal.append(veil, sheet);
-    const shut = ()=> modal.remove();
-    veil.addEventListener("click", shut);
-    close.addEventListener("click", shut);
+    const foot=el("div","foot"); const close=el("button","btn2 green","닫기");
+    foot.append(close); sheet.append(foot); modal.append(veil,sheet);
+    const shut=()=>modal.remove();
+    veil.addEventListener("click",shut); close.addEventListener("click",shut);
     document.body.append(modal);
-    setTimeout(()=>{ ta.focus(); ta.select(); }, 60);
+    setTimeout(()=>{ ta.focus(); ta.select(); },60);
   }
 
-  function minutesText(notion){
+  function rolesText(){
+    const a = state.agenda; if(!a) return "";
+    const opt = (a.options||[]).find(o=>o.id === state.option);
+    const roles = (a.roles && a.roles[state.option]) || {};
+    const L = [];
+    L.push("## " + a.title);
+    L.push("");
+    L.push("- 안건 ID: " + a.id);
+    L.push("- 자료 준비: " + (a.preparedAt||"") + " · " + (a.preparedBy||""));
+    L.push("- 회의 일시: " + nowStamp());
+    L.push("- 확정 결론: " + state.option + (opt ? " · " + opt.title : ""));
+    L.push("");
+    L.push("### 결론");
+    L.push(opt ? opt.detail : "");
+    if(state.ownerDir){ L.push(""); L.push("### 오너 추가 지시"); L.push(state.ownerDir); }
+    if(state.notes.length){ L.push(""); L.push("### 오너 코멘트"); state.notes.forEach(n=>L.push("- " + n)); }
+    L.push("");
+    L.push("### 역할 분담");
+    AIS.forEach(id=>{
+      const p = byId(id);
+      L.push("- " + p.name + " (" + p.role + ") — " + (roles[id] || "미정"));
+    });
+    L.push("");
+    L.push("### 다음 단계");
+    L.push(a.closing || "");
+    L.push("");
+    L.push("### 준비 자료 요약");
+    AIS.forEach(id=>{
+      const p = a.panels[id]; if(!p) return;
+      L.push("- " + byId(id).name + ": " + p.summary);
+    });
+    return L.join("\n");
+  }
+
+  function talkText(){
+    return Array.from(talkList.querySelectorAll(".talk-item")).map(li=>{
+      const tm = li.querySelector(".tt2") ? li.querySelector(".tt2").textContent : "";
+      const who = li.querySelector(".tw") ? li.querySelector(".tw").innerText.replace(/\n/g," ") : "";
+      const tx = li.querySelector(".tx") ? li.querySelector(".tx").textContent : "";
+      return "- " + tm + " " + (who ? who + ": " : "") + tx;
+    }).join("\n");
+  }
+  function minutesText(){
     return Array.from(minList.querySelectorAll(".min-item")).map(li=>{
       const tm = li.querySelector(".tm") ? li.querySelector(".tm").textContent : "";
       const tx = li.querySelector(".tx") ? li.querySelector(".tx").textContent : "";
-      const nm = li.dataset.name || "";
-      const rl = li.dataset.role || "";
-      const rnd = li.querySelector(".rnd") ? "[" + li.querySelector(".rnd").textContent + "] " : "";
-      const who = nm ? nm + (rl && notion ? " (" + rl + ")" : "") + ": " + rnd : "";
-      return "- " + tm + " " + who + tx;
+      return "- " + tm + " " + tx;
     }).join("\n");
   }
 
-  function notionInstruction(){
-    const d = state.data || {};
-    const lines = [];
-    lines.push("## " + (state.topic || "회의 안건"));
-    lines.push("");
-    lines.push("- 업무 ID: TASK-009 (하위 실행 항목)");
-    lines.push("- 담당 AI: 피클");
-    lines.push("- 상태: 진행 중");
-    lines.push("- 마감: 2026-11-27");
-    lines.push("- 회의 일시: " + new Date().toLocaleString("ko-KR"));
-    lines.push("- 진행: 1~2라운드 티키타카" + (state.round > 2 ? " + " + (state.round-2) + "라운드 추가" : ""));
-    if(state.notesAll.length){
-      lines.push("- 오너 개입: " + state.notesAll.map(n=>"\"" + n + "\"").join(" / "));
+  /* ═══════════════════ 준비 완료 알림 ═══════════════════ */
+  function showReadyBanner(force){
+    const a = state.agenda;
+    const b = document.getElementById("readyBanner");
+    if(!a){ b.classList.remove("show"); return; }
+    const cnt = Object.keys(a.panels||{}).length;
+    document.getElementById("readyTitle").textContent = "회의 준비 완료 — " + a.title;
+    document.getElementById("readySub").textContent = "6인 자료 " + cnt + "/6 · 준비 " + (a.preparedAt||"") + " · " + (a.preparedBy||"");
+    b.classList.add("show");
+    if(force) SFX.ding();
+  }
+  function checkNewReady(){
+    const ready = readyAgendas();
+    let seen = [];
+    try{ seen = JSON.parse(LS.get(K_SEEN)||"[]") || []; }catch(e){ seen = []; }
+    const fresh = ready.filter(a=>seen.indexOf(a.id) < 0);
+    LS.set(K_SEEN, JSON.stringify(ready.map(a=>a.id)));
+    if(!fresh.length) return;
+    if(state.agenda) return;
+    document.getElementById("readyTitle").textContent = "새 안건 " + fresh.length + "건 준비 완료";
+    document.getElementById("readySub").textContent = fresh.map(a=>a.title).join(" · ");
+    document.getElementById("readyBanner").classList.add("show");
+    toast("🔔 새 회의 자료가 준비되었습니다 · " + fresh.length + "건");
+    if(LS.get(K_NOTIFY) === "1"){
+      try{
+        if(window.Notification && Notification.permission === "granted"){
+          new Notification("다크진 AI 비서실 · 회의 준비 완료", {body: fresh.map(a=>a.title).join("\n")});
+        }
+      }catch(e){}
     }
-    lines.push("");
-    if((d.narrow || []).length){
-      lines.push("### 좁혀진 합의점");
-      d.narrow.forEach(n=> lines.push("- " + n));
-      state.notesAll.forEach(n=> lines.push("- (오너) " + n));
-      lines.push("");
-    }
-    lines.push("### 결론");
-    lines.push(d.conclusion || "");
-    lines.push("");
-    const fin = document.getElementById("finalText");
-    if(fin && fin.textContent.trim()){
-      lines.push("### 최종 마무리 (재소집 완료)");
-      lines.push(fin.textContent.trim());
-      lines.push("");
-    }
-    lines.push("### AI별 실행 항목");
-    AIS.forEach(id=>{
-      const p = byId(id);
-      const done = state.done[id] ? "x" : " ";
-      lines.push("- [" + done + "] " + p.name + " (" + p.role + ") — " + ((d.actions && d.actions[id]) || ""));
-    });
-    lines.push("");
-    lines.push("### 완료 조건");
-    lines.push("위 5개 항목 체크 + 재소집 마무리 논의까지 종료");
-    lines.push("");
-    lines.push("### 회의록");
-    lines.push(minutesText(true));
-    return lines.join("\n");
   }
 
-  /* ───────────────────────── 설정 ───────────────────────── */
+  /* ═══════════════════ 설정 ═══════════════════ */
   function openSettings(){
-    $("#settingsModal").classList.add("show");
-    $("#keyInput").value = "";
-    $("#keyInput").placeholder = getKey() ? "저장됨 · 새 키로 바꾸려면 입력" : "AIza...";
-    updateKeyState();
-    document.querySelectorAll("#speedRow .chip").forEach(c=>{
-      c.classList.toggle("on", Number(c.dataset.speed) === state.speed);
-    });
+    document.getElementById("settingsModal").classList.add("show");
+    document.querySelectorAll("#speedRow .chip").forEach(c=>c.classList.toggle("on", Number(c.dataset.speed) === state.speed));
     const sfx = document.getElementById("sfxToggle");
-    if(sfx){
-      sfx.classList.toggle("on", state.sfxOn);
-      sfx.textContent = state.sfxOn ? "🔔 효과음 ON" : "🔕 효과음 OFF";
-    }
+    sfx.classList.toggle("on", state.sfxOn);
+    sfx.textContent = state.sfxOn ? "🔔 효과음 ON" : "🔕 효과음 OFF";
+    const nb = document.getElementById("notifyToggle");
+    nb.classList.toggle("on", LS.get(K_NOTIFY) === "1");
+    nb.textContent = LS.get(K_NOTIFY) === "1" ? "🔔 알림 켜짐" : "🔕 알림 꺼짐";
   }
-  function closeSettings(){ $("#settingsModal").classList.remove("show"); }
-  function updateKeyState(){
-    const k = getKey();
-    const s = $("#keyState");
-    if(k){
-      s.textContent = "✓ 저장된 키 있음 (" + k.slice(0,4) + "…" + k.slice(-4) + ") · 실시간 Gemini 모드 (2라운드 핑퐁)";
-      s.classList.add("on");
-    } else {
-      s.textContent = "저장된 키 없음 · 내장 엔진 사용 (1·2라운드 대본)";
-      s.classList.remove("on");
-    }
-  }
+  function closeSettings(){ document.getElementById("settingsModal").classList.remove("show"); }
 
-  /* ───────────────────────── 이벤트 ───────────────────────── */
-  $("#startBtn").addEventListener("click", startMeeting);
-  $("#topic").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); startMeeting(); } });
-  document.querySelectorAll("#presets .chip").forEach(c=>{
-    c.addEventListener("click", ()=>{
-      $("#topic").value = c.dataset.topic;
-      if(state.phase === "idle" || state.phase === "closed") startMeeting();
-    });
+  /* ═══════════════════ 이벤트 ═══════════════════ */
+  document.getElementById("readBtn").addEventListener("click", ()=>{ unlockVoice(); readAll(); });
+  document.getElementById("rebutBtn").addEventListener("click", ()=>{ unlockVoice(); rebuttalRound(); });
+  document.getElementById("toConfirmBtn").addEventListener("click", ()=>{ unlockVoice(); openConfirm(); });
+  document.getElementById("backToTalkBtn").addEventListener("click", backToTalk);
+  document.getElementById("confirmRoleBtn").addEventListener("click", confirmRoles);
+  document.getElementById("newMeeting").addEventListener("click", newMeeting);
+  document.getElementById("changeOption").addEventListener("click", ()=>{
+    if(!state.agenda) return;
+    document.getElementById("rolePanel").classList.remove("show");
+    document.getElementById("finalBlock").classList.remove("show");
+    document.getElementById("stage1Bar").style.display = "";
+    state.phase = "materials";
+    renderMaterials();
+    AIS.forEach(id=>{ const r=tileRefs[id]; if(r) r.matbtn.classList.remove("ghost"); });
+    openConfirm();
+    toast("↩️ 결론을 다시 고를 수 있습니다 · 자료도 그대로 남아 있습니다");
   });
-  $("#settingsBtn").addEventListener("click", openSettings);
-  $("#reconveneTop").addEventListener("click", ()=>{
-    if(state.phase === "working" || state.phase === "closed") reconvene();
-    else toast("회의가 결론·배정 단계에 도달하면 재소집할 수 있습니다");
+  document.getElementById("copyRoles").addEventListener("click", ()=> copyText(rolesText()));
+  document.getElementById("copyTalk").addEventListener("click", ()=> copyText("[" + (state.agenda?state.agenda.title:"회의") + "]\n" + talkText()));
+  document.getElementById("copyMinutes").addEventListener("click", ()=> copyText("[" + (state.agenda?state.agenda.title:"회의") + "]\n" + minutesText()));
+  document.getElementById("copyAll").addEventListener("click", ()=>{
+    copyText("[" + (state.agenda?state.agenda.title:"회의") + "]\n\n" +
+      "== 역할 분담 ==\n" + rolesText() + "\n\n== 논의 기록 ==\n" + talkText());
   });
-  $("#reconveneBtn").addEventListener("click", ()=> reconvene());
-  $("#copyNotion").addEventListener("click", ()=> copyText(notionInstruction()));
-  $("#copyAll").addEventListener("click", ()=>{
-    copyText("[" + (state.topic || "회의") + "]\n" + minutesText(false));
+  document.getElementById("readyClose").addEventListener("click", ()=> document.getElementById("readyBanner").classList.remove("show"));
+  document.getElementById("prepToggle").addEventListener("click", ()=>{
+    const c = document.getElementById("prepCard");
+    const open = c.classList.toggle("collapsed");
+    document.getElementById("prepToggle").textContent = open ? "다른 안건 ▾" : "접기 ▴";
+    if(!open) document.getElementById("agList").scrollIntoView({block:"nearest"});
   });
-  $("#resetBtn").addEventListener("click", resetAll);
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.querySelectorAll("[data-close]").forEach(n=> n.addEventListener("click", ()=>{
+    if(n.closest("#matModal")) document.getElementById("matModal").classList.remove("show");
+    else closeSettings();
+  }));
+  document.getElementById("matSpeak").addEventListener("click", ()=>{
+    if(!state.matId || !state.agenda) return;
+    const p = state.agenda.panels[state.matId];
+    if(!p) return;
+    unlockVoice();
+    state.runToken++;
+    speakLine(state.matId, p.summary, {label:"자료 낭독"}).then(()=>{ if(state.phase!=="roles" && state.agenda) setTileState(state.matId,"ready","자료 준비"); });
+  });
 
-  document.querySelectorAll("[data-close]").forEach(n=> n.addEventListener("click", closeSettings));
-  $("#keyToggle").addEventListener("click", ()=>{
-    const i = $("#keyInput");
-    i.type = i.type === "password" ? "text" : "password";
-    $("#keyToggle").textContent = i.type === "password" ? "보기" : "숨김";
+  document.getElementById("reqCopy").addEventListener("click", ()=>{
+    const t = ($("#reqTopic").value||"").trim();
+    if(!t){ toast("주제를 먼저 적어 주세요"); return; }
+    copyText(requestText(t));
   });
-  $("#keySave").addEventListener("click", ()=>{
-    const v = ($("#keyInput").value || "").trim();
-    if(!v){ toast("키를 입력하거나 '키 삭제'를 눌러주세요"); return; }
-    if(!/^AIza[0-9A-Za-z_\-]{20,}$/.test(v)){ toast("Gemini 키 형식이 아닙니다 (AIza…)"); return; }
-    LS.set(KEY_LS, v);
-    $("#keyInput").value = "";
-    updateKeyState();
-    toast("🔑 저장 완료 · 이 브라우저에만 보관됩니다");
+  document.getElementById("reqQueue").addEventListener("click", ()=>{
+    const t = ($("#reqTopic").value||"").trim();
+    const hit = addRequest(t);
+    if(!hit) $("#reqTopic").value = "";
   });
-  $("#keyDelete").addEventListener("click", ()=>{
-    LS.del(KEY_LS);
-    $("#keyInput").value = "";
-    updateKeyState();
-    toast("키를 삭제했습니다 · 내장 엔진으로 동작합니다");
+  $("#reqTopic").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); document.getElementById("reqQueue").click(); } });
+
+  document.getElementById("voiceBtn").addEventListener("click", ()=>{
+    setVoice(!state.voiceOn);
+    if(state.voiceOn){ unlockVoice(); SFX.ding(); }
   });
+  document.getElementById("quietBtn").addEventListener("click", ()=>{
+    unlockVoice();
+    if(state.paused) resumeAll(); else quietAll();
+  });
+  document.getElementById("interjectMic").addEventListener("click", ()=>{ unlockVoice(); beginInterjectMic(); });
+  document.getElementById("interjectSend").addEventListener("click", ()=>{
+    const v = (document.getElementById("interjectInput").value||"").trim();
+    if(!v){ toast("코멘트를 적거나 🎤로 말해 주세요"); return; }
+    submitComment(v);
+  });
+  document.getElementById("interjectInput").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); const v=(document.getElementById("interjectInput").value||"").trim(); if(v) submitComment(v); }
+  });
+
   document.querySelectorAll("#speedRow .chip").forEach(c=>{
     c.addEventListener("click", ()=>{
       state.speed = Number(c.dataset.speed);
-      LS.set(SPEED_LS, String(state.speed));
+      LS.set(K_SPEED, String(state.speed));
       document.querySelectorAll("#speedRow .chip").forEach(x=>x.classList.toggle("on", x === c));
-      toast("발언 속도: " + c.textContent);
+      toast("낭독 속도: " + c.textContent);
     });
   });
-
-  /* ── 음성·효과음 이벤트 ── */
-  $("#voiceBtn").addEventListener("click", ()=>{
-    setVoice(!state.voiceOn);
-    if(state.voiceOn){
-      unlockVoice();
-      SFX.ding();
-      if(synthOK) speakChunk("pickle", "음성 켜짐. 이제 다섯 AI가 자기 목소리로 말합니다.", VOICE_CFG.pickle);
-    }
-  });
-  $("#quietBtn").addEventListener("click", ()=>{
-    unlockVoice();
-    if(state.paused) resumeAll();
-    else quietAll();
-  });
-  $("#micBtn").addEventListener("click", ()=>{
-    if(micWant) stopListening();
-    else startListening();
-  });
-  $("#interjectMic").addEventListener("click", ()=>{ unlockVoice(); beginInterjectMic(); });
-  $("#interjectSend").addEventListener("click", ()=>{
-    const v = ($("#interjectInput").value || "").trim();
-    if(!v){ toast("끼어들 내용을 적거나 🎤로 말해 주세요"); return; }
-    submitInterject(v);
-  });
-  $("#interjectInput").addEventListener("keydown", e=>{
-    if(e.key === "Enter"){
-      e.preventDefault();
-      const v = ($("#interjectInput").value || "").trim();
-      if(v) submitInterject(v);
-    }
-  });
-  document.querySelectorAll("#interjectChips .chip2").forEach(c=>{
-    c.addEventListener("click", ()=>{ unlockVoice(); submitInterject(c.dataset.note); });
-  });
-  $("#confirmBtn").addEventListener("click", confirmPlan);
-  $("#moreRoundBtn").addEventListener("click", moreRound);
-
   const sfxBtn = document.getElementById("sfxToggle");
-  if(sfxBtn){
-    sfxBtn.addEventListener("click", ()=>{
-      state.sfxOn = !state.sfxOn;
-      LS.set(SFX_LS, state.sfxOn ? "1" : "0");
-      sfxBtn.classList.toggle("on", state.sfxOn);
-      sfxBtn.textContent = state.sfxOn ? "🔔 효과음 ON" : "🔕 효과음 OFF";
-      if(state.sfxOn){ SFX.unlock(); SFX.pop(); }
-    });
-  }
-  const sfxApply = ()=>{
-    const b = document.getElementById("sfxToggle");
-    if(b){ b.classList.toggle("on", state.sfxOn); b.textContent = state.sfxOn ? "🔔 효과음 ON" : "🔕 효과음 OFF"; }
-  };
-  sfxApply();
+  sfxBtn.addEventListener("click", ()=>{
+    state.sfxOn = !state.sfxOn;
+    LS.set(K_SFX, state.sfxOn ? "1" : "0");
+    sfxBtn.classList.toggle("on", state.sfxOn);
+    sfxBtn.textContent = state.sfxOn ? "🔔 효과음 ON" : "🔕 효과음 OFF";
+    if(state.sfxOn){ SFX.unlock(); SFX.pop(); }
+  });
+  document.getElementById("notifyToggle").addEventListener("click", ()=>{
+    const on = LS.get(K_NOTIFY) === "1";
+    const b = document.getElementById("notifyToggle");
+    if(on){
+      LS.del(K_NOTIFY); b.classList.remove("on"); b.textContent = "🔕 알림 꺼짐";
+      toast("준비 완료 알림을 껐습니다");
+      return;
+    }
+    LS.set(K_NOTIFY, "1"); b.classList.add("on"); b.textContent = "🔔 알림 켜짐";
+    try{
+      if(window.Notification && Notification.permission === "default") Notification.requestPermission();
+    }catch(e){}
+    toast("🔔 새 안건이 준비되면 이 브라우저에 알립니다");
+  });
 
-  $("#voiceTest").addEventListener("click", ()=>{
+  document.getElementById("voiceTest").addEventListener("click", ()=>{
     if(!synthOK){ toast("이 브라우저는 음성 합성을 지원하지 않습니다"); return; }
     if(!state.voiceOn) setVoice(true, true);
     unlockVoice();
-    speakChunk("pickle", "안건 확인했습니다. 제가 회의를 진행하겠습니다.", VOICE_CFG.pickle);
+    speakChunk("pickle","안건 자료 확인했습니다. 제가 회의를 진행하겠습니다.", VOICE_CFG.pickle);
     toast("🔊 피클 목소리 테스트");
   });
-  $("#voiceTestAll").addEventListener("click", async ()=>{
+  document.getElementById("voiceTestAll").addEventListener("click", async ()=>{
     if(!synthOK){ toast("이 브라우저는 음성 합성을 지원하지 않습니다"); return; }
     if(!state.voiceOn) setVoice(true, true);
     unlockVoice();
-    toast("🎚️ 다섯 목소리를 차례로 들려드립니다");
+    toast("🎚️ 여섯 목소리를 차례로 들려드립니다");
     for(const id of AIS){
       const p = byId(id);
-      await speakChunk(id, p.name + "입니다. " + (VOICE_CFG[id] ? VOICE_CFG[id].tone : ""), VOICE_CFG[id] || {pitch:1,rate:1});
-      await sleep(150);
+      await speakChunk(id, p.name + "입니다. " + (VOICE_CFG[id]?VOICE_CFG[id].tone:""), VOICE_CFG[id]||{pitch:1,rate:1});
+      await sleep(140);
     }
   });
   document.addEventListener("keydown", e=>{
-    if(e.key === "Escape") closeSettings();
+    if(e.key === "Escape"){ closeSettings(); document.getElementById("matModal").classList.remove("show"); }
     const tag = (e.target && e.target.tagName) || "";
     if((e.key === "q" || e.key === "Q") && !/input|textarea/i.test(tag)){ if(state.paused) resumeAll(); else quietAll(); }
   });
 
-  /* ───────────────────────── 시작 ───────────────────────── */
+  /* ═══════════════════ 시작 ═══════════════════ */
   buildTiles();
   setStep(0);
-  setRoundIndicator(1, "1라운드 · 각자 역할 관점의 첫 의견");
-  if(getKey()) setLive("대기 중 · Gemini 연결됨", "");
-
+  setStageHead("1단계","안건을 고르면 6인이 준비해 온 자료가 열립니다","자료 0 / 6",false);
   setVoice(state.voiceOn, true);
   refreshVoices();
-  if(synthOK){
-    try{ window.speechSynthesis.onvoiceschanged = refreshVoices; }catch(e){}
-  }
-  setMicUI(false);
+  if(synthOK){ try{ window.speechSynthesis.onvoiceschanged = refreshVoices; }catch(e){} }
   setIMicUI(false);
   if(!SR){
-    const mb = document.getElementById("micBtn");
-    if(mb){ mb.title = "이 브라우저는 음성 인식 미지원"; mb.style.opacity = ".55"; }
     const ib = document.getElementById("interjectMic");
-    if(ib){ ib.style.opacity = ".55"; }
+    if(ib){ ib.style.opacity = ".55"; ib.title = "이 브라우저는 음성 인식 미지원"; }
   }
-  const unlockOnce = ()=>{
-    unlockVoice();
-    document.removeEventListener("pointerdown", unlockOnce);
-    document.removeEventListener("touchstart", unlockOnce);
-  };
+  renderPrep();
+  checkNewReady();
+
+  // URL 파라미터: ?agenda=yt-growth / ?topic=새 주제
+  try{
+    const q = new URLSearchParams(location.search);
+    const ag = q.get("agenda");
+    const tp = q.get("topic");
+    if(ag && LIB.byId && LIB.byId[ag]) openAgenda(ag);
+    else if(tp) document.getElementById("reqTopic").value = tp;
+  }catch(e){}
+
+  const unlockOnce = ()=>{ unlockVoice(); document.removeEventListener("pointerdown", unlockOnce); document.removeEventListener("touchstart", unlockOnce); };
   document.addEventListener("pointerdown", unlockOnce, {passive:true});
   document.addEventListener("touchstart", unlockOnce, {passive:true});
+
+  // 테스트용 훅
+  window.__mr4 = {
+    state: state,
+    agendaIds: () => (LIB.agendas||[]).map(a=>a.id),
+    openAgenda: openAgenda,
+    readAll: readAll,
+    rebuttalRound: rebuttalRound,
+    submitComment: submitComment,
+    openConfirm: openConfirm,
+    confirmRoles: confirmRoles,
+    rolesText: rolesText
+  };
 })();
 </script>
 </body>

@@ -1,0 +1,2445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#080a0f" />
+<title>다크진 AI 비서실 · 6분할 회의실 v4 — 사전 자료 · 선 논의</title>
+<style>
+  :root{
+    --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
+    --line:#242a3a; --line-soft:#1b2130; --txt:#e9ebf2; --mut:#8b93a7; --mut2:#626b80;
+    --green:#2ee06a; --green-dim:#1a8f47; --accent:#7c6cf6; --gold:#f5c04a; --red:#f2545b;
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(124,108,246,.16), transparent 60%),
+      radial-gradient(800px 460px at 92% 4%, rgba(46,224,106,.10), transparent 62%),
+      var(--bg);
+    color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Nanum Gothic",system-ui,sans-serif;
+    font-size:14px;line-height:1.5;
+    padding-bottom:env(safe-area-inset-bottom);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1440px;margin:0 auto;padding:0 0 28px}
+  body.meeting-on .wrap{padding-bottom:118px}
+
+  /* ── 상단 바 ── */
+  .topbar{
+    position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;
+    padding:10px 14px;background:#0b0e16;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .brand{display:flex;align-items:center;gap:9px;min-width:0;flex:0 1 auto;overflow:hidden}
+  .brand>div{min-width:0}
+  .brand .logo{
+    width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;
+    background:linear-gradient(145deg,#20263a,#12151f);border:1px solid var(--line);flex:0 0 auto;
+  }
+  .brand h1{font-size:14px;margin:0;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand .sub{font-size:10.5px;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .spacer{flex:1}
+  .live{
+    display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#b9f7cd;
+    background:rgba(46,224,106,.10);border:1px solid rgba(46,224,106,.32);
+    padding:4px 9px;border-radius:999px;white-space:nowrap;
+    min-width:104px;justify-content:center;
+  }
+  .live .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+  .clock{font-variant-numeric:tabular-nums;font-size:12px;color:var(--mut);min-width:44px;text-align:right}
+  .iconbtn{
+    width:32px;height:32px;flex:0 0 auto;border-radius:9px;border:1px solid var(--line);
+    background:#12161f;color:var(--mut);font-size:14px;display:grid;place-items:center;cursor:pointer;
+  }
+  .iconbtn:hover{color:var(--txt);border-color:#333b52}
+
+  /* ══════════ 회의 준비실 (안건 선택 · 새 주제 요청) ══════════ */
+  .prep{padding:12px 14px 2px}
+  .prepcard{
+    background:linear-gradient(180deg,rgba(23,27,38,.9),rgba(15,18,25,.9));
+    border:1px solid var(--line);border-radius:16px;padding:12px;
+  }
+  .prephead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .prephead .t{font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .prephead .cnt{font-size:10px;font-weight:700;color:#a9fbc4;background:rgba(46,224,106,.12);border:1px solid rgba(46,224,106,.34);padding:2px 7px;border-radius:999px}
+  .prephead .cnt.warn{color:#ffd58a;background:rgba(245,192,74,.12);border-color:rgba(245,192,74,.34)}
+  .prephead .sp{flex:1}
+  .prephead .hint{font-size:10.5px;color:var(--mut2)}
+  /* 안건을 열면 준비실은 접힌다 — 6분할이 화면 안에 들어오도록 */
+  .curline{display:flex;align-items:center;gap:7px;margin-top:9px}
+  .prepcard:not(.has-agenda) .curline{display:none}
+  .prepcard.collapsed .aglist,.prepcard.collapsed .reqbox{display:none}
+  .curline .cl-t{flex:0 0 auto;font-size:9px;font-weight:800;color:#9df9b9;background:rgba(46,224,106,.12);border:1px solid rgba(46,224,106,.34);padding:1px 6px;border-radius:999px}
+  .curline .cl-v{min-width:0;flex:1;font-size:11.5px;font-weight:700;color:#dfe4f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .curline .cl-b{flex:0 0 auto;border:1px solid var(--line);background:#141925;color:#c9cfe0;font-size:10px;font-weight:700;font-family:inherit;padding:5px 8px;border-radius:8px;cursor:pointer}
+  .curline .cl-b:hover{border-color:#3b4560;color:#fff}
+  .aglist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+  .agcard{
+    display:flex;flex-direction:column;gap:6px;text-align:left;width:100%;
+    background:#0d111a;border:1px solid var(--line);border-radius:13px;padding:11px;
+    color:inherit;font-family:inherit;cursor:pointer;transition:border-color .15s;
+  }
+  .agcard:hover{border-color:#39425c}
+  .agcard.active{border-color:rgba(46,224,106,.55);background:#0e1512}
+  .agcard .tg{
+    align-self:flex-start;font-size:9.5px;font-weight:800;color:#cdc7ff;
+    background:rgba(124,108,246,.14);border:1px solid rgba(124,108,246,.36);
+    padding:1px 7px;border-radius:999px;
+  }
+  .agcard .tt{font-size:12.5px;font-weight:800;line-height:1.35;letter-spacing:-.2px}
+  .agcard .bf{font-size:10.5px;color:var(--mut);line-height:1.5}
+  .agcard .mt{display:flex;gap:7px;flex-wrap:wrap;font-size:9.5px;color:var(--mut2);margin-top:auto;padding-top:4px}
+  .agcard .mt b{color:#9df9b9;font-weight:700}
+  .reqbox{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
+  .reqbox .rt{font-size:11px;font-weight:800;color:#dfe4f0;display:flex;align-items:center;gap:6px}
+  .reqbox .rh{font-size:10.5px;color:var(--mut2);margin-top:3px;line-height:1.5}
+  #reqTopic{
+    width:100%;margin-top:7px;background:#0b0e15;border:1px solid var(--line);color:var(--txt);
+    border-radius:10px;padding:10px 11px;font-size:13px;font-family:inherit;outline:none;
+  }
+  #reqTopic::placeholder{color:#5b6478}
+  #reqTopic:focus{border-color:rgba(124,108,246,.65);box-shadow:0 0 0 3px rgba(124,108,246,.14)}
+  .reqrow{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+  .qlist{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .qlist:empty{display:none}
+  .qitem{
+    display:flex;gap:7px;align-items:center;font-size:11px;color:#c3cbd9;
+    background:#0b0e15;border:1px solid var(--line-soft);border-radius:9px;padding:7px 9px;
+  }
+  .qitem .st{flex:0 0 auto;font-size:9px;font-weight:800;color:#ffd58a;background:rgba(245,192,74,.12);border:1px solid rgba(245,192,74,.34);padding:2px 6px;border-radius:999px}
+  .qitem.ready .st{color:#a9fbc4;background:rgba(46,224,106,.12);border-color:rgba(46,224,106,.4)}
+  .qitem .qt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qitem .qb{flex:0 0 auto;font-size:10px;font-weight:700;color:#d3ccff;background:rgba(124,108,246,.12);border:1px solid rgba(124,108,246,.4);border-radius:7px;padding:3px 7px;font-family:inherit;cursor:pointer}
+  .qitem .qx{flex:0 0 auto;border:0;background:transparent;color:#6d7689;font-size:13px;cursor:pointer;padding:0 2px}
+  .qempty{font-size:10.5px;color:#4f586c;margin-top:8px}
+
+  /* 준비 완료 배너 */
+  .banner{
+    display:none;margin:10px 14px 0;border:1px solid rgba(46,224,106,.4);
+    background:linear-gradient(180deg,rgba(46,224,106,.13),rgba(46,224,106,.04));
+    border-radius:13px;padding:10px 12px;font-size:11.5px;color:#c8f7d6;align-items:center;gap:8px;
+  }
+  .banner.show{display:flex}
+  .banner .em{font-size:15px;flex:0 0 auto}
+  .banner .bt{min-width:0;flex:1;line-height:1.5}
+  .banner .bt b{color:#9df9b9}
+  .banner .bt .sm{display:block;font-size:10.5px;color:#8fbfa0;margin-top:1px}
+  .banner .x{flex:0 0 auto;border:0;background:transparent;color:#7fa98e;font-size:15px;cursor:pointer;padding:2px 4px}
+
+  /* 단계 표시 */
+  .stepper{display:flex;align-items:center;gap:6px;margin-top:11px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .stepper::-webkit-scrollbar{display:none}
+  .step{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--mut2);white-space:nowrap;flex:0 0 auto}
+  .step .n{
+    width:17px;height:17px;border-radius:50%;display:grid;place-items:center;font-size:9.5px;font-weight:800;
+    background:#151a25;border:1px solid var(--line);color:var(--mut2);
+  }
+  .step.on{color:#d6fbe1}
+  .step.on .n{background:rgba(46,224,106,.16);border-color:rgba(46,224,106,.55);color:#9df9b9}
+  .step.done{color:#9aa3b8}
+  .step.done .n{background:rgba(124,108,246,.16);border-color:rgba(124,108,246,.5);color:#c8c0ff}
+  .sepline{width:12px;height:1px;background:var(--line);flex:0 0 auto}
+
+  /* 라운드 표시 */
+  .stagehd{display:flex;align-items:center;gap:8px;padding:12px 16px 0;min-height:24px;scroll-margin-top:62px}
+  .stagehd .rr{
+    display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;color:#c8c0ff;
+    background:rgba(124,108,246,.13);border:1px solid rgba(124,108,246,.38);padding:2px 8px;border-radius:999px;
+  }
+  .stagehd .rr.r2{color:#b6fccb;background:rgba(46,224,106,.11);border-color:rgba(46,224,106,.38)}
+  .stagehd .descr{font-size:10.5px;color:var(--mut2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stagehd .talkers{margin-left:auto;font-size:10px;color:var(--mut2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* ── 6분할 스테이지 ── */
+  .stage{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:8px 14px 4px}
+  .tile{
+    position:relative;display:flex;flex-direction:column;min-height:0;
+    background:linear-gradient(175deg,var(--tile-a),var(--tile-b));
+    border:1px solid var(--line);border-radius:var(--r);
+    transition:border-color .2s,box-shadow .25s;
+    overflow:hidden;
+  }
+  .tile::after{
+    content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.045),transparent 55%);
+  }
+  .tile.speaking{
+    border-color:var(--green);
+    box-shadow:0 0 0 1px var(--green),0 0 28px rgba(46,224,106,.30),inset 0 0 46px rgba(46,224,106,.055);
+  }
+  .tile.matready{border-color:rgba(124,108,246,.45)}
+  .tile.assigned{border-color:rgba(46,224,106,.42);background:linear-gradient(175deg,#141d19,#10151a)}
+  .tile.dimmed{opacity:.62}
+
+  /* 조용: 레이아웃을 건드리지 않는 불투명 오버레이만 쓴다 (iOS 깜빡임 제거) */
+  .qveil{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;background:rgba(8,10,16,.46);opacity:0;transition:opacity .16s linear}
+  .tile.quiet .qveil{opacity:1}
+  .tile.quiet{transition:none;box-shadow:none;border-color:rgba(242,84,91,.38)}
+  .tile.quiet .wave i{animation:none;height:5px;opacity:.35}
+
+  .thead{display:flex;align-items:center;gap:8px;padding:9px 9px 6px}
+  .avatar{
+    width:30px;height:30px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;font-size:15px;
+    background:#0d1119;border:1px solid var(--line);
+  }
+  .who{min-width:0;flex:1}
+  .who .nm{font-size:12px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .who .rl{font-size:9.5px;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .state{
+    flex:0 0 auto;font-size:9px;font-weight:700;padding:3px 6px;border-radius:999px;
+    border:1px solid var(--line);color:var(--mut);background:#10141d;white-space:nowrap;
+    min-width:48px;text-align:center;
+  }
+  .state.s-ready{color:#cdc6ff;background:rgba(124,108,246,.15);border-color:rgba(124,108,246,.5)}
+  .state.s-speaking{color:#a9fbc4;background:rgba(46,224,106,.13);border-color:rgba(46,224,106,.5)}
+  .state.s-done{color:#9df9b9;background:rgba(46,224,106,.10);border-color:rgba(46,224,106,.35)}
+  .state.s-quiet{color:#ffb3b7;background:rgba(242,84,91,.15);border-color:rgba(242,84,91,.5)}
+
+  .stagewrap{position:relative;flex:1;min-height:92px;display:flex;flex-direction:column;padding:0 9px}
+  .bubble{
+    flex:1;min-height:0;overflow-y:auto;font-size:11.5px;line-height:1.5;color:#c6ccdb;
+    background:#0c0f17;border:1px solid var(--line-soft);border-radius:10px;padding:7px 8px;
+    scrollbar-width:thin;
+  }
+  .bubble.empty{color:#4f586c}
+  .tile.speaking .bubble{border-color:rgba(46,224,106,.35);color:#e3fbea}
+  .bubble .cursor{display:inline-block;width:6px;height:11px;background:var(--green);vertical-align:-1px;margin-left:2px;animation:blink .9s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .bubble .mtag{
+    display:inline-block;font-size:8.5px;font-weight:800;color:#cdc6ff;
+    background:rgba(124,108,246,.14);border:1px solid rgba(124,108,246,.36);
+    padding:0 5px;border-radius:999px;margin-bottom:4px;letter-spacing:.02em;
+  }
+  .bubble .msum{display:block;color:#cfd6e6}
+  .bubble b{color:#e9eefb}
+  .bubble .mrole{display:block;font-size:9px;color:#7ee6a3;font-weight:800;margin-bottom:3px}
+
+  .tfoot{display:flex;align-items:center;gap:6px;padding:7px 9px 8px;min-height:34px}
+  .wave{display:none;align-items:flex-end;gap:2px;height:14px;flex:1}
+  .tile.speaking .wave{display:flex}
+  .wave i{width:2.5px;background:var(--green);border-radius:2px;height:4px;animation:wv .9s ease-in-out infinite}
+  .wave i:nth-child(2){animation-delay:.10s}.wave i:nth-child(3){animation-delay:.22s}
+  .wave i:nth-child(4){animation-delay:.34s}.wave i:nth-child(5){animation-delay:.46s}
+  .wave i:nth-child(6){animation-delay:.58s}.wave i:nth-child(7){animation-delay:.70s}
+  @keyframes wv{0%,100%{height:3px;opacity:.55}50%{height:14px;opacity:1}}
+  .who-role{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--mut2)}
+  .matbtn{
+    flex:0 0 auto;border:1px solid rgba(124,108,246,.45);background:rgba(124,108,246,.12);
+    color:#d3ccff;font-size:10px;font-weight:800;font-family:inherit;padding:4px 8px;border-radius:7px;cursor:pointer;
+    white-space:nowrap;
+  }
+  .matbtn:hover{border-color:rgba(124,108,246,.75);color:#fff}
+  .matbtn.ghost{opacity:0;pointer-events:none}
+
+  /* ── 1단계 조작 바 ── */
+  .ctlbar{display:flex;gap:7px;flex-wrap:wrap;padding:11px 14px 0}
+  .btn3{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    border-radius:11px;padding:11px 12px;font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer;
+    border:1px solid var(--line);background:#141925;color:#dfe4f0;min-height:44px;
+  }
+  .btn3:active{transform:translateY(1px)}
+  .btn3.confirm{
+    color:#04140a;border-color:transparent;background:linear-gradient(180deg,#3df07a,#20c95c);
+    box-shadow:0 6px 18px rgba(46,224,106,.22);
+  }
+  .btn3.more{color:#d3ccff;border-color:rgba(124,108,246,.45);background:rgba(124,108,246,.12)}
+  .btn3[disabled]{opacity:.45;cursor:default;box-shadow:none}
+  .ctlbar .btn3{flex:1 1 170px}
+  .ctlbar .btn3.wide{flex:1 1 100%}
+
+  /* ── 논의 기록 ── */
+  .talk{margin:12px 14px 0;background:rgba(15,18,25,.7);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .sec-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+  .sec-head .t{font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .sec-head .cnt{font-size:10px;color:var(--mut2);font-weight:600}
+  .sec-head .sp{flex:1}
+  .talk-list{list-style:none;margin:0;padding:6px 8px 10px;max-height:400px;overflow-y:auto;scrollbar-width:thin}
+  .talk-item{display:flex;gap:8px;padding:7px 6px;border-radius:9px;animation:rise .25s ease both}
+  .talk-item:nth-child(odd){background:rgba(255,255,255,.017)}
+  .talk-item .tt2{font-size:9.5px;color:#545d72;font-variant-numeric:tabular-nums;padding-top:3px;flex:0 0 auto}
+  .talk-item .bd{min-width:0;flex:1}
+  .talk-item .tw{font-size:10.5px;font-weight:800;display:flex;align-items:center;gap:5px;margin-bottom:2px;flex-wrap:wrap}
+  .talk-item .tw .pill{font-size:8.5px;font-weight:700;color:var(--mut);border:1px solid var(--line);padding:1px 5px;border-radius:999px}
+  .talk-item .tw .to{font-size:8.5px;font-weight:800;color:#ffd58a;border:1px solid rgba(245,192,74,.4);background:rgba(245,192,74,.1);padding:1px 5px;border-radius:999px}
+  .talk-item .tx{font-size:11.5px;color:#b9c0d0;line-height:1.55;word-break:break-word}
+  .talk-item.sys .tx{color:#8f97ab;font-style:italic}
+  .talk-item.owner{background:rgba(245,192,74,.06)}
+  .talk-item.owner .tx{color:#ffe7b0}
+  .talk-empty{font-size:11px;color:#4c556a;padding:14px 8px;text-align:center}
+  @keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+  /* ── 결론 확정 패널 ── */
+  .panel{display:none;margin:12px 14px 0;border-radius:16px;padding:1px;
+    background:linear-gradient(120deg,rgba(245,192,74,.5),rgba(124,108,246,.5),rgba(46,224,106,.25))}
+  .panel.show{display:block;animation:rise .3s ease both;scroll-margin-top:66px}
+  .panel .inner{background:#0c0f16;border-radius:15px;padding:13px}
+  .p-head{display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap}
+  .p-head .k{font-size:10px;font-weight:800;color:#2a1c02;background:linear-gradient(180deg,#ffd77a,#f5b93a);padding:3px 8px;border-radius:999px}
+  .p-head .ttl{font-size:13px;font-weight:800}
+  .p-head .meta{margin-left:auto;font-size:10px;color:var(--mut2)}
+  .p-head .k.green{color:#04140a;background:linear-gradient(180deg,#3df07a,#20c95c)}
+  .opt{
+    display:block;width:100%;text-align:left;background:#0a0d14;border:1px solid var(--line-soft);
+    border-radius:11px;padding:10px;color:inherit;font-family:inherit;cursor:pointer;margin-bottom:7px;
+    transition:border-color .15s;
+  }
+  .opt:hover{border-color:#39425c}
+  .opt.sel{border-color:rgba(46,224,106,.6);background:rgba(46,224,106,.07);box-shadow:0 0 0 1px rgba(46,224,106,.22)}
+  .opt .ot{font-size:12px;font-weight:800;color:#e6eaf4;display:flex;gap:6px;align-items:flex-start}
+  .opt .ot .ck2{flex:0 0 auto;width:15px;height:15px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:9px;color:transparent;margin-top:1px}
+  .opt.sel .ot .ck2{background:var(--green);border-color:var(--green);color:#04140a;font-weight:900}
+  .opt .od{font-size:11px;color:#a9b2c6;line-height:1.55;margin-top:4px;padding-left:21px}
+  .opt .om{font-size:9.5px;color:var(--mut2);margin-top:5px;padding-left:21px;display:flex;gap:9px;flex-wrap:wrap}
+  .opt .om .sup{color:#9df9b9}
+  .opt .om .rk{color:#ffbd90}
+  .plabel{display:block;font-size:11px;font-weight:800;color:#c4cadb;margin:10px 0 5px}
+  #ownerDirection{
+    width:100%;background:#0a0d14;border:1px solid var(--line);color:var(--txt);border-radius:10px;
+    padding:10px;font-size:12.5px;font-family:inherit;outline:none;resize:vertical;min-height:64px;line-height:1.5;
+  }
+  #ownerDirection:focus{border-color:rgba(245,192,74,.6)}
+  .pnote{margin-top:8px;font-size:10.5px;color:var(--mut2);line-height:1.5}
+  .pbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+
+  /* ── 역할 분담 (2단계) ── */
+  .conclusion{
+    display:none;margin:12px 14px 0;border-radius:16px;padding:1px;
+    background:linear-gradient(120deg,rgba(46,224,106,.55),rgba(124,108,246,.55),rgba(46,224,106,.2));
+  }
+  .conclusion.show{display:block;animation:rise .35s ease both;scroll-margin-top:66px}
+  .conclusion .inner{background:#0c0f16;border-radius:15px;padding:13px}
+  .cc-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .cc-head .k{font-size:10px;font-weight:800;color:#04140a;background:linear-gradient(180deg,#3df07a,#20c95c);padding:3px 8px;border-radius:999px}
+  .cc-head .ttl{font-size:13px;font-weight:800}
+  .cc-head .meta{margin-left:auto;font-size:10px;color:var(--mut2)}
+  .concl-text{font-size:12.5px;color:#dfe4f0;background:#0a0d14;border:1px solid var(--line-soft);border-radius:10px;padding:10px 11px;line-height:1.6;white-space:pre-line}
+  .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
+  .ac{display:flex;gap:8px;background:#0a0d14;border:1px solid var(--line-soft);border-radius:10px;padding:8px 9px}
+  .ac .em{font-size:13px;line-height:1.2}
+  .ac .nm{font-size:10.5px;font-weight:800;color:#cfd5e5}
+  .ac .tx{font-size:10.5px;color:#9aa3b8;line-height:1.45;margin-top:1px}
+  .final{display:none;margin-top:9px;border:1px solid rgba(46,224,106,.30);background:rgba(46,224,106,.06);border-radius:10px;padding:9px 10px;font-size:11.5px;line-height:1.55;color:#c9f3d6}
+  .final.show{display:block;animation:rise .3s ease both}
+  .final b{display:block;font-size:9.5px;letter-spacing:.06em;color:#8ef0ad;margin-bottom:3px;font-weight:800}
+  .cc-foot{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:11px}
+  .btn2{
+    border:1px solid var(--line);background:#141925;color:#d8ddec;font-size:11.5px;font-weight:700;
+    font-family:inherit;padding:8px 11px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn2:hover{border-color:#3b4560;color:#fff}
+  .btn2.green{border-color:rgba(46,224,106,.42);background:rgba(46,224,106,.10);color:#b6fccb}
+  .btn2.purple{border-color:rgba(124,108,246,.45);background:rgba(124,108,246,.12);color:#d3ccff}
+  .btn2.gold{border-color:rgba(245,192,74,.45);background:rgba(245,192,74,.10);color:#ffe0a2}
+  .btn2.glow{box-shadow:0 0 14px rgba(46,224,106,.24)}
+
+  /* ── 회의록 ── */
+  .minutes{margin:12px 14px 0;background:rgba(15,18,25,.7);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .min-list{list-style:none;margin:0;padding:6px 8px 10px;max-height:330px;overflow-y:auto;scrollbar-width:thin}
+  .min-item{display:flex;gap:8px;padding:7px 6px;border-radius:9px}
+  .min-item .tm{font-size:9.5px;color:#545d72;font-variant-numeric:tabular-nums;padding-top:3px;flex:0 0 auto}
+  .min-item .body{min-width:0;flex:1}
+  .min-item .who2{font-size:10.5px;font-weight:800;display:flex;align-items:center;gap:5px;margin-bottom:2px}
+  .min-item .who2 .pill{font-size:8.5px;font-weight:700;color:var(--mut);border:1px solid var(--line);padding:1px 5px;border-radius:999px}
+  .min-item .tx{font-size:11.5px;color:#b9c0d0;line-height:1.5;word-break:break-word}
+  .min-item.sys .tx{color:#8f97ab;font-style:italic}
+  .min-empty{font-size:11px;color:#4c556a;padding:14px 8px;text-align:center}
+
+  /* 참고 안내 */
+  .refnote{margin:10px 14px 0;font-size:10px;color:#525b70;line-height:1.55}
+  .refnote b{color:#8b93a7}
+
+  /* ── 오너 콘솔 (코멘트) ── */
+  .ownerbar{
+    display:none;position:fixed;left:0;right:0;bottom:0;z-index:70;
+    background:rgba(10,13,20,.97);border-top:1px solid rgba(245,192,74,.28);
+    box-shadow:0 -10px 30px rgba(0,0,0,.45);
+    padding:7px 10px calc(7px + env(safe-area-inset-bottom));
+  }
+  body.meeting-on .ownerbar{display:block}
+  .obinner{display:flex;gap:6px;align-items:center;max-width:1440px;margin:0 auto}
+  #interjectInput{
+    flex:1;min-width:0;background:#0b0e15;border:1px solid rgba(245,192,74,.30);color:var(--txt);
+    border-radius:10px;padding:10px 11px;font-size:12.5px;font-family:inherit;outline:none;
+  }
+  #interjectInput::placeholder{color:#6a6a5e}
+  #interjectInput:focus{border-color:rgba(245,192,74,.75);box-shadow:0 0 0 3px rgba(245,192,74,.12)}
+  .ob-mic{
+    flex:0 0 auto;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);
+    background:#141925;color:#cfd6e6;font-size:15px;display:grid;place-items:center;cursor:pointer;font-family:inherit;
+  }
+  .ob-mic.on{background:rgba(242,84,91,.20);border-color:rgba(242,84,91,.65);color:#ffc4c7}
+  .ob-send{
+    flex:0 0 auto;border:1px solid rgba(245,192,74,.55);background:rgba(245,192,74,.14);color:#ffe0a2;
+    border-radius:10px;padding:0 12px;height:40px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;
+  }
+  .obchips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;max-width:1440px;margin:6px auto 0;padding-bottom:1px}
+  .obchips::-webkit-scrollbar{display:none}
+  .chip2{
+    flex:0 0 auto;font-size:10.5px;color:#d9cfae;background:#151712;border:1px solid rgba(245,192,74,.24);
+    padding:5px 9px;border-radius:999px;cursor:pointer;font-family:inherit;white-space:nowrap;
+  }
+  .chip2:hover{border-color:rgba(245,192,74,.55);color:#fff}
+
+  /* ── 버튼 공통 ── */
+  .chip{
+    font-size:11.5px;color:#c3c9da;background:#141925;border:1px solid var(--line);
+    padding:6px 10px;border-radius:999px;cursor:pointer;font-family:inherit;transition:.15s;
+  }
+  .chip:hover{border-color:#39425c;color:#fff}
+
+  /* ── 모달 ── */
+  .modal{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:16px}
+  .modal.show{display:flex}
+  .modal .veil{position:absolute;inset:0;background:rgba(3,5,9,.82)}
+  .sheet{
+    position:relative;width:100%;max-width:470px;background:#0e1219;border:1px solid var(--line);
+    border-radius:18px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.6);max-height:86vh;overflow:auto;
+  }
+  .sheet h3{margin:0 0 4px;font-size:14px}
+  .sheet p.note{font-size:11px;color:var(--mut);margin:0 0 12px;line-height:1.6}
+  .sheet .dsec{margin-top:11px;border-top:1px solid var(--line-soft);padding-top:9px}
+  .sheet .dsec:first-of-type{border-top:0;padding-top:0}
+  .sheet .dk{font-size:9.5px;font-weight:800;letter-spacing:.05em;color:#8ef0ad;margin-bottom:4px}
+  .sheet .dk.warn{color:#ffbd90}
+  .sheet .dk.plan{color:#c8c0ff}
+  .sheet ul.dlist{margin:0;padding-left:16px}
+  .sheet ul.dlist li{font-size:11.5px;color:#c3cbd9;line-height:1.55;margin-bottom:3px}
+  .sheet .dtx{font-size:11.5px;color:#c3cbd9;line-height:1.55}
+  .sheet .dsrc{font-size:10px;color:#5d6579;margin-top:9px;line-height:1.5}
+  .sheet .foot{display:flex;gap:7px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .sheet input[type=text]{width:100%;background:#0a0d14;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px;font-size:12.5px;font-family:inherit;outline:none}
+  .sheet label{display:block;font-size:11px;font-weight:700;color:#c4cadb;margin:12px 0 5px}
+  .radio-row{display:flex;gap:6px;flex-wrap:wrap}
+  .radio-row .chip.on{border-color:rgba(46,224,106,.5);background:rgba(46,224,106,.10);color:#c3fbd3}
+
+  /* 토스트 */
+  .toast{
+    position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
+    background:#101722;border:1px solid rgba(46,224,106,.45);color:#d9fbe4;font-size:12px;font-weight:600;
+    padding:10px 14px;border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;transition:.25s;z-index:120;max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  body.meeting-on .toast{bottom:calc(112px + env(safe-area-inset-bottom))}
+
+  /* ── 음성 버튼 ── */
+  .topactions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .vbtn{
+    flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:800;
+    font-family:inherit;border-radius:9px;padding:6px 9px;cursor:pointer;white-space:nowrap;line-height:1;
+    border:1px solid var(--line);background:#12161f;color:#aab2c6;transition:.15s;
+  }
+  .vbtn:hover{border-color:#3b4560;color:#fff}
+  .vbtn:active{transform:translateY(1px)}
+  .vbtn.on{color:#b6fccb;border-color:rgba(46,224,106,.45);background:rgba(46,224,106,.10)}
+  .vbtn.quiet{width:118px;height:32px;padding:0 8px;color:#ffc4c7;border-color:rgba(242,84,91,.60);background:rgba(242,84,91,.16)}
+  .vbtn.quiet:hover{color:#fff;border-color:var(--red)}
+  .vbtn.quiet .q-off{display:none}
+  body.is-quiet .vbtn.quiet{color:#b6fccb;border-color:rgba(46,224,106,.60);background:rgba(46,224,106,.16)}
+  body.is-quiet .vbtn.quiet .q-on{display:none}
+  body.is-quiet .vbtn.quiet .q-off{display:inline}
+
+  /* ── 모바일: 2 x 3 ── */
+  @media (max-width:820px){
+    .wrap{padding-bottom:20px}
+    body.meeting-on .wrap{padding-bottom:136px}
+    .topbar{padding:8px 10px;gap:8px}
+    .brand h1{font-size:12.5px;max-width:98px}
+    .brand .sub{display:none}
+    .brand .logo{width:26px;height:26px;font-size:13px;border-radius:8px}
+    .live{display:none}
+    .clock{display:none}
+    .prep{padding:9px 10px 2px}
+    .prepcard{padding:10px;border-radius:14px}
+    .prephead .hint{display:none}
+    .aglist{grid-template-columns:1fr;gap:7px}
+    .agcard{padding:10px}
+    .agcard .tt{font-size:12px}
+    .agcard .bf{font-size:10px}
+    .stepper{margin-top:9px;gap:5px}
+    .step{font-size:9.5px}
+    .step .n{width:15px;height:15px;font-size:8.5px}
+    .sepline{width:8px}
+    .banner{margin:8px 10px 0;padding:9px 10px;font-size:11px}
+    .banner .bt{font-size:10.5px;line-height:1.45}
+    .banner .bt .sm{font-size:9.5px}
+
+    .stagehd{padding:9px 10px 0;min-height:20px;gap:6px}
+    .stagehd .rr{font-size:9.5px;padding:2px 6px}
+    .stagehd .descr{font-size:9.5px}
+    .stagehd .talkers{display:none}
+
+    .stage{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:6px 8px 2px}
+    .tile{border-radius:12px;min-height:170px}
+    .thead{padding:7px 7px 5px;gap:6px}
+    .avatar{width:24px;height:24px;border-radius:8px;font-size:12px}
+    .who .nm{font-size:11px}
+    .who .rl{font-size:8.5px}
+    .state{font-size:8px;padding:2px 4px;min-width:42px}
+    .stagewrap{padding:0 7px;min-height:74px}
+    .bubble{font-size:10.5px;line-height:1.45;padding:6px 7px;border-radius:9px}
+    .bubble .mtag{font-size:8px}
+    .tfoot{padding:5px 7px 6px;min-height:28px}
+    .who-role{font-size:8.5px}
+    .matbtn{font-size:9px;padding:3px 6px}
+    .wave{height:11px}
+    @keyframes wv{0%,100%{height:3px;opacity:.55}50%{height:11px;opacity:1}}
+
+    .ctlbar{padding:9px 8px 0;gap:6px}
+    .ctlbar .btn3{flex:1 1 100%;font-size:11.5px;padding:10px;min-height:42px}
+
+    .talk{margin:9px 8px 0;border-radius:14px}
+    .sec-head{padding:9px 10px}
+    .sec-head .t{font-size:11px}
+    .talk-list{max-height:300px;padding:4px 6px 8px}
+    .talk-item{padding:6px 4px;gap:6px}
+    .talk-item .tt2{font-size:9px;padding-top:2px}
+    .talk-item .tx{font-size:11px}
+
+    .panel{margin:9px 8px 0;border-radius:14px}
+    .panel .inner{padding:11px;border-radius:13px}
+    .p-head .ttl{font-size:12px}
+    .p-head .meta{display:none}
+    .opt{padding:9px}
+    .opt .ot{font-size:11.5px}
+    .opt .od{font-size:10.5px}
+
+    .conclusion{margin:9px 8px 0;border-radius:14px}
+    .conclusion .inner{padding:11px;border-radius:13px}
+    .cc-head .ttl{font-size:12px}
+    .cc-head .meta{display:none}
+    .concl-text{font-size:11.5px;padding:9px}
+    .actions{grid-template-columns:1fr;gap:6px}
+    .cc-foot{gap:6px}
+    .btn2{font-size:10.5px;padding:7px 9px}
+
+    .minutes{margin:9px 8px 0;border-radius:14px}
+    .min-list{max-height:260px;padding:4px 6px 8px}
+    .refnote{margin:8px 10px 0}
+
+    .vbtn.quiet{width:86px;height:30px;padding:0 6px}
+    .vbtn .lg{display:none}
+    .iconbtn{width:30px;height:30px}
+    .ownerbar{padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+    #interjectInput{font-size:12px;padding:9px 10px}
+    .ob-send{padding:0 9px;font-size:11px}
+  }
+  @media (min-width:821px){
+    .stage{grid-auto-rows:minmax(178px,auto)}
+    .bubble{max-height:168px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🖥️</div>
+      <div>
+        <h1>다크진 AI 비서실 · 6분할 회의실</h1>
+        <div class="sub">안건 → 각자 준비 자료 → 주제 논의 → 결론 확정 → 역할 분담</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="live" id="liveBadge"><span class="dot"></span><span id="liveTxt">준비실</span></div>
+    <div class="clock" id="clock">00:00</div>
+    <div class="topactions">
+      <button class="vbtn on" id="voiceBtn" title="AI 목소리·효과음 켜짐 · 누르면 끔">🔊 <span class="lg">음성 </span>ON</button>
+      <button class="vbtn quiet" id="quietBtn" title="긴급 정지 · 모두 조용히 (다시 누르면 계속)">
+        <span class="q-on">🤫 <span class="lg">다들 </span>조용!</span>
+        <span class="q-off">▶️ <span class="lg">다시 </span>계속</span>
+      </button>
+      <button class="iconbtn" id="settingsBtn" title="설정">⚙︎</button>
+    </div>
+  </header>
+
+  <!-- ═════════ 회의 준비실 ═════════ -->
+  <section class="prep">
+    <div class="prepcard" id="prepCard">
+      <div class="prephead">
+        <div class="t">🗂️ 회의 준비실 <span class="cnt" id="readyCnt">준비 완료 0건</span></div>
+        <div class="sp"></div>
+        <div class="hint" id="prepHint">자료가 모인 안건만 열립니다</div>
+      </div>
+      <div class="curline" id="curLine">
+        <span class="cl-t">안건</span>
+        <span class="cl-v" id="curAgendaTitle"></span>
+        <button class="cl-b" id="prepToggle">다른 안건 ▾</button>
+      </div>
+      <div class="aglist" id="agList"></div>
+
+      <div class="reqbox">
+        <div class="rt">✍️ 새 회의 주제 요청</div>
+        <div class="rh">
+          주제를 적으면 <b>피클에게 보낼 요청문</b>이 만들어집니다. 웹은 답을 지어내지 않습니다 —
+          6명이 자료를 모아 <b>준비 완료</b>하면 위 안건 목록에 뜹니다.
+        </div>
+        <input id="reqTopic" type="text" placeholder="예: 4화 쇼츠 소재 정하기 / 롱폼 2편 주제" autocomplete="off" />
+        <div class="reqrow">
+          <button class="btn2 gold" id="reqCopy">📋 피클에게 요청문 복사</button>
+          <button class="btn2 purple" id="reqQueue">➕ 안건 큐에 등록</button>
+        </div>
+        <ul class="qlist" id="queueList"></ul>
+        <div class="qempty" id="queueEmpty">자료 준비 중인 요청은 없습니다.</div>
+      </div>
+
+      <div class="stepper" id="stepper">
+        <div class="step on" data-step="0"><span class="n">1</span>안건</div>
+        <div class="sepline"></div>
+        <div class="step" data-step="1"><span class="n">2</span>준비 자료</div>
+        <div class="sepline"></div>
+        <div class="step" data-step="2"><span class="n">3</span>논의</div>
+        <div class="sepline"></div>
+        <div class="step" data-step="3"><span class="n">4</span>결론 확정</div>
+        <div class="sepline"></div>
+        <div class="step" data-step="4"><span class="n">5</span>역할 분담</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 준비 완료 알림 -->
+  <div class="banner" id="readyBanner">
+    <div class="em">🔔</div>
+    <div class="bt"><b id="readyTitle">회의 준비 완료</b>
+      <span class="sm" id="readySub"></span>
+    </div>
+    <button class="x" id="readyClose" title="알림 닫기">✕</button>
+  </div>
+
+  <div class="stagehd" id="stageHd">
+    <span class="rr" id="roundTag">1단계</span>
+    <span class="descr" id="roundDescr">안건을 고르면 6인이 준비해 온 자료가 열립니다</span>
+    <span class="talkers" id="talkers">자료 0 / 6</span>
+  </div>
+
+  <main class="stage" id="stage"></main>
+
+  <div class="ctlbar" id="stage1Bar" style="display:none">
+    <button class="btn3 more" id="readBtn">📖 6인 자료 낭독</button>
+    <button class="btn3 more" id="rebutBtn">🔁 반박 라운드</button>
+    <button class="btn3 confirm wide" id="toConfirmBtn">✅ 결론 확정 및 역할 나누기</button>
+  </div>
+
+  <div class="refnote" id="refNote"></div>
+
+  <!-- ═════════ 결론 확정 (2단계로 넘어가기 전) ═════════ -->
+  <section class="panel" id="confirmPanel">
+    <div class="inner">
+      <div class="p-head">
+        <span class="k">결론 확정</span>
+        <span class="ttl">어느 쪽으로 갈까요?</span>
+        <span class="meta" id="cfMeta"></span>
+      </div>
+      <div id="optList"></div>
+      <label class="plabel" for="ownerDirection">오너 추가 지시 (선택)</label>
+      <textarea id="ownerDirection" placeholder="예: 이번 주는 A로 가고, 제목 교체는 내가 직접 하겠다"></textarea>
+      <p class="pnote">결론을 확정하면 <b>그 결론에 맞춘 역할 분담표</b>가 처음으로 나옵니다. 1단계에서는 역할이 나오지 않습니다.</p>
+      <div class="pbtns">
+        <button class="btn3 confirm" id="confirmRoleBtn">🧩 이 결론으로 역할 나누기</button>
+        <button class="btn3 more" id="backToTalkBtn">↩️ 논의로 돌아가기</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════ 역할 분담 (2단계) ═════════ -->
+  <section class="conclusion" id="rolePanel">
+    <div class="inner">
+      <div class="cc-head">
+        <span class="k">2단계 · 결론</span>
+        <span class="ttl" id="roleTitle">결론과 역할 분담</span>
+        <span class="meta" id="ccMeta"></span>
+      </div>
+      <div class="concl-text" id="conclText"></div>
+      <div class="actions" id="actionList"></div>
+      <div class="final" id="finalBlock"><b>다음 단계</b><span id="finalText"></span></div>
+      <div class="cc-foot">
+        <button class="btn2 purple" id="copyRoles">📋 역할 분담표 복사</button>
+        <button class="btn2 gold" id="changeOption">↩️ 결론 다시 고르기</button>
+        <button class="btn2" id="copyAll">🗒️ 회의록 전체 복사</button>
+        <button class="btn2 green" id="newMeeting">🆕 다른 안건 열기</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═════════ 논의 기록 ═════════ -->
+  <section class="talk">
+    <div class="sec-head">
+      <div class="t">🗣️ 논의 기록 <span class="cnt" id="talkCount">0건</span></div>
+      <div class="sp"></div>
+      <button class="btn2" id="copyTalk" style="font-size:10.5px;padding:5px 9px">복사</button>
+    </div>
+    <ol class="talk-list" id="talkList">
+      <li class="talk-empty" id="talkEmpty">안건을 고르면 6인의 준비 자료 요약이 여기에 쌓입니다. 아래 💬 오너 코멘트로 방향을 잡아 주세요.</li>
+    </ol>
+  </section>
+
+  <!-- ═════════ 회의록 ═════════ -->
+  <section class="minutes">
+    <div class="sec-head">
+      <div class="t">🗒️ 회의록 타임라인 <span class="cnt" id="minCount">0건</span></div>
+      <div class="sp"></div>
+      <button class="btn2" id="copyMinutes" style="font-size:10.5px;padding:5px 9px">복사</button>
+    </div>
+    <ol class="min-list" id="minList">
+      <li class="min-empty" id="minEmpty">아직 기록이 없습니다. 준비실에서 안건을 골라 주세요.</li>
+    </ol>
+  </section>
+</div>
+
+<!-- 오너 콘솔: 회의 중 언제든 코멘트 -->
+<div class="ownerbar" id="ownerBar">
+  <div class="obinner">
+    <button class="ob-mic" id="interjectMic" title="말로 코멘트 (누르면 발언이 잠시 멈춥니다)">🎤</button>
+    <input id="interjectInput" placeholder="오너 코멘트 — 예: 이번 주는 제목 실험만 하자" autocomplete="off" />
+    <button class="ob-send" id="interjectSend">💬 코멘트</button>
+  </div>
+  <div class="obchips" id="interjectChips"></div>
+</div>
+
+<!-- 자료 상세 -->
+<div class="modal" id="matModal">
+  <div class="veil" data-close="1"></div>
+  <div class="sheet">
+    <h3 id="matTitle">준비 자료</h3>
+    <p class="note" id="matWho"></p>
+    <div class="dsec"><div class="dk">핵심 요약</div><div class="dtx" id="matSum"></div></div>
+    <div class="dsec"><div class="dk">근거·데이터</div><ul class="dlist" id="matPoints"></ul></div>
+    <div class="dsec"><div class="dk warn">우려·반박 포인트</div><div class="dtx" id="matConcern"></div></div>
+    <div class="dsec"><div class="dk plan">제안</div><div class="dtx" id="matProposal"></div></div>
+    <div class="dsec"><div class="dk">다른 AI에게 던진 반박</div><div class="dtx" id="matRebuttal"></div></div>
+    <div class="dsrc" id="matSource"></div>
+    <div class="foot">
+      <button class="btn2 purple" id="matSpeak">🔊 읽어 주기</button>
+      <button class="btn2 green" data-close="1">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 설정 -->
+<div class="modal" id="settingsModal">
+  <div class="veil" data-close="1"></div>
+  <div class="sheet">
+    <h3>회의실 설정</h3>
+    <p class="note">이 회의실은 <b>미리 준비된 자료</b>로만 회의합니다. 자료가 없는 주제는 지어내지 않고 '자료 준비 중'으로 남깁니다.</p>
+
+    <label>자료 낭독 속도</label>
+    <div class="radio-row" id="speedRow">
+      <button class="chip" data-speed="1">보통</button>
+      <button class="chip" data-speed="2">빠르게</button>
+      <button class="chip" data-speed="4">즉시</button>
+    </div>
+
+    <label>효과음 (Web Audio · 외부 파일 없음)</label>
+    <div class="radio-row">
+      <button class="chip on" id="sfxToggle" type="button">🔔 효과음 ON</button>
+    </div>
+
+    <label>AI 목소리 (브라우저 무료 음성 · Web Speech)</label>
+    <div class="radio-row">
+      <button class="chip" id="voiceTest" type="button">🔊 피클 목소리</button>
+      <button class="chip" id="voiceTestAll" type="button">🎚️ 여섯 목소리 차례</button>
+    </div>
+    <p class="note" style="margin-top:7px">AI마다 음높이·속도를 다르게 넣었습니다 — 피클(진행·낮고 또렷) · Gemini(분석·또박) · Cue(리서치·빠름) · Hark(검증·낮고 무겁게) · ChatGPT(구조·차분) · Claude(작가·느긋). 아이폰은 <b>무음 스위치가 켜져 있거나 볼륨이 0이면 소리가 나지 않습니다</b>.</p>
+
+    <label>준비 완료 알림</label>
+    <div class="radio-row">
+      <button class="chip" id="notifyToggle" type="button">🔔 새 안건 준비되면 알림</button>
+    </div>
+    <p class="note" style="margin-top:7px">피클이 새 안건 자료를 넣어 목록이 늘어나면 이 브라우저에 알림을 보냅니다. 알림 권한을 허용해야 하며, 페이지가 열려 있을 때만 동작합니다.</p>
+
+    <div class="foot">
+      <button class="btn2 green" data-close="1">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   다크진 AI 비서실 · 6분할 회의실 v4 — 사전 준비 자료 라이브러리
+   ──────────────────────────────────────────────────────────────────
+   이 파일이 회의 자료의 유일한 원본이다. 웹앱은 여기 적힌 것만 보여 준다.
+   (뻔한 대본을 지어내지 않는다 — 자료가 없으면 '자료 준비 중'으로 남는다.)
+
+   새 안건을 추가하는 법 (피클이 자료를 모은 뒤):
+   1) 아래 AGENDAS 배열에 객체 하나를 추가한다.
+   2) panels 에 6인 자료를 각각 적는다 (summary·points·concern·proposal·rebuttal·source).
+   3) options 에 결론 후보 2~3개, options[].id 를 키로 roles 에 역할 분담을 적는다.
+   ready:true 로 바꾸면 웹앱 '준비 완료된 안건'에 뜨고, 오너에게 준비 완료 알림이 간다.
+   ══════════════════════════════════════════════════════════════════ */
+window.AGENDA_LIB = (function(){
+  "use strict";
+
+  var AGENDAS = [
+
+  /* ═══════════════════════════ 안건 1 ═══════════════════════════ */
+  {
+    id: "yt-growth",
+    tag: "유튜브 성장",
+    title: "다크진의 AI 비서실 유튜브 — 조회수·구독자 2배 전략",
+    ready: true,
+    preparedAt: "2026-11-26 20:40",
+    preparedBy: "피클 — 6인 자료 취합",
+    brief: "영상 3편·구독자 4명 상태인 채널 '@darkjin_ai_desk'를 어떤 순서로 키울지. 새 제작·실험·구조 중 무엇을 먼저 할지 정한다.",
+    facts: [
+      "채널 @darkjin_ai_desk · 구독자 4명 · 1화 조회 34회·좋아요 2개 (2026-11-23 13:26 기록)",
+      "1화 33.4초 / 2화 32.57초 / 3화는 hwp 양식 A안으로 확정, 게시 전",
+      "제작 규격: 45초 이하 · 여성 음성 · 둥근 자막 · -14 LUFS · 업로드 25MB 이하",
+      "3화 조건: 실제 문서 내용·기관명·성명 비노출 (더미·블러만)"
+    ],
+    ownerChips: ["이번 주는 제목 실험만 하자", "숫자(결과)를 앞세우자", "구독자보다 조회 먼저", "3화부터 게시하자"],
+    panels: {
+      pickle: {
+        summary: "지금 채널은 영상 3편, 구독자 4명입니다. 조회수를 두 배로 만드는 문제가 아니라, 노출이 시작되는 최소 조건을 아직 못 넘은 상태로 봅니다.",
+        points: [
+          "1화는 33.4초에 조회 34회·좋아요 2개입니다. 좋아요율 5.9%는 나쁘지 않아서, 눌러 보긴 했지만 구독으로 이어지지 않은 쪽이 문제입니다.",
+          "1~3화가 모두 '다크 1인칭 실사용기'라 정체성은 이미 일관됩니다. 다만 편과 편이 이어지지 않아 한 편만 보고 나가는 구조입니다.",
+          "다음 편은 1화 첫 장면(50대 아저씨가 '다크'라고 부르는 순간)을 다시 쓰는 이어보기 구조가 구독 전환에 유리합니다."
+        ],
+        concern: "편당 제작이 반나절이라 실험을 여러 번 돌리기 어렵습니다. 같은 영상을 여러 편으로 나눠 올리는 방식은 채널에 역효과가 나므로, 실험은 한 영상의 제목·썸네일 교체로만 해야 합니다.",
+        proposal: "이번 주는 새 영상 제작을 멈추고 1화 제목·썸네일 교체 1회와 지표 기록 표 신설로 제한합니다.",
+        rebuttal: { to: "hark", text: "Hark가 목표를 행동 기준으로 바꾸자고 했습니다. 동의합니다. 다만 1화 제목 교체는 지금 당장 할 수 있는 유일한 실험이라 목표 기준과 함께 이번 주에 넣겠습니다." },
+        source: "근거: 1화 지표(2026-11-23 13:26), 1~3화 제작 기록, 채널 설명"
+      },
+      gemini: {
+        summary: "1화 33.4초, 2화 32.57초로 둘 다 30초대입니다. 30초대는 이탈은 적지만 '한 번 더 보기'가 약합니다. 마지막 3초를 바꾸는 것만으로 반복 재생을 노릴 수 있습니다.",
+        points: [
+          "1화는 도입 3초에 '어느 날 50대 아저씨가 나를 다크라고 불렀다'가 그대로 나옵니다. 제목과 같은 문장이라 훅이 두 번 반복됩니다. 첫 3초는 장면, 제목은 문장으로 나눠야 합니다.",
+          "마지막 3초에 다음 편 예고를 넣으면 시청 지속과 다음 편 유입이 같이 올라갑니다. 2화가 메일 정리라 1화 끝에 '다음은 메일'을 붙이면 연결이 자연스럽습니다.",
+          "1인칭 '다크' 시점이라 감정선이 필요합니다. 지금 문장은 정보 전달 위주여서, 4화부터는 당황 → 발견 → 뿌듯 3감정으로 나눠 씁니다."
+        ],
+        concern: "구독자 4명 상태에서 대본을 다듬는 건 효율이 낮습니다. 조회가 붙는 소재를 먼저 확인하고 대본에 힘을 주는 순서가 맞습니다.",
+        proposal: "1화·2화 대본은 손대지 않고, 4화 대본만 3감정 구조로 새로 씁니다.",
+        rebuttal: { to: "hark", text: "Hark가 좋아요율 5.9%를 근거로 품질 문제를 부정했습니다. 저도 동의합니다. 다만 원인이 대본이 아니라 첫 3초 중복일 수 있어, 1화 첫 3초만 교체해 확인하고 싶습니다." },
+        source: "근거: 1화·2화 러닝타임, 1화 도입부 구성, 3화 대본 방향"
+      },
+      cue: {
+        summary: "국내 쇼츠에서 'AI 비서 실사용' 계열은 이미 상위에 있습니다. 다만 조회가 큰 영상은 대부분 결과 숫자(줄인 시간·아낀 금액)를 초반에 보여 줍니다. 이 채널 1~3화에는 그 숫자가 없습니다.",
+        points: [
+          "1화 34회는 게시 두 시간 뒤 수치라 판단 근거로 쓰기 어렵습니다. 24시간·72시간 수치를 따로 남겨야 다음 실험과 비교가 됩니다.",
+          "검색 유입은 'AI 비서'보다 'AI한테 시켰더니'가 넓습니다. 제목 뒤쪽에 이 구문을 붙이는 편이 노출에 유리합니다.",
+          "상위 영상 썸네일은 얼굴 클로즈업이나 결과 화면 캡처입니다. 대두 카툰은 채널 정체성에는 맞지만 썸네일 안에서는 작아 보입니다."
+        ],
+        concern: "숫자를 넣으려면 실제 인증이 필요합니다. 2화 메일 정리는 '9999+'가 0건이 된 화면이 이미 결과 숫자 역할을 합니다. 과장 없이 그 화면을 쓰면 됩니다.",
+        proposal: "제목·썸네일에 'AI한테 시켰더니'와 결과 화면(0건 메일함)을 쓰고, 24·72시간 수치를 남기는 표를 만듭니다.",
+        rebuttal: { to: "chatgpt", text: "ChatGPT가 지표 표에 썸네일 버전 칸을 넣자고 했습니다. 유튜브는 썸네일 교체 시각을 API로 주지 않으니, 제가 교체 시각을 직접 적는 방식이면 됩니다." },
+        source: "근거: 국내 쇼츠 상위 영상 구성, 2화 메일함 화면, 1화 게시 후 수치"
+      },
+      hark: {
+        summary: "이 채널의 자산은 '실제로 해 본 것'입니다. 조회수를 올리려고 실제보다 크게 말하는 순간 유튜브 AI 정책과 시청자 신뢰 둘 다에서 손해가 납니다.",
+        points: [
+          "3화는 실제 문서 내용·기관명 비노출이 조건입니다. 썸네일에서 그 화면을 확대하면 조건을 어기므로, 블러 처리된 상태로만 노출해야 합니다.",
+          "1화 34회·좋아요 2개는 좋아요율 5.9%로 나쁘지 않습니다. 조회가 낮은 이유를 콘텐츠 품질로 단정하면 다음 실험 설계가 흔들립니다.",
+          "'구독자 2배'는 4명 기준 8명입니다. 목표가 이렇게 작으면 우연히 달성해도 전략이 맞았는지 알 수 없습니다."
+        ],
+        concern: "조회수 구매나 조작은 계정 정지 사유이고, 지금까지 쌓은 실사용 기록이 한 번에 날아갑니다. 어떤 실험에도 이 선은 넘지 않습니다.",
+        proposal: "목표를 '구독자 8명'이 아니라 '1화 24시간 조회 100회, 구독 전환 3명'처럼 행동 기준으로 바꿉니다.",
+        rebuttal: { to: "pickle", text: "피클이 새 영상 제작 중단을 제안했습니다. 저는 반대입니다. 3화가 아직 게시 전이라, 그 편을 올리면서 실험을 같이 돌리는 편이 낫습니다." },
+        source: "근거: 3화 비노출 조건, 유튜브 AI 콘텐츠 정책 확인(2026-11-24), 1화 지표"
+      },
+      chatgpt: {
+        summary: "지금 필요한 건 영상이 아니라 실험 기록 구조입니다. 편마다 제목·썸네일·게시 시각·24시간 수치를 같은 칸에 남겨야 다음 판단이 됩니다.",
+        points: [
+          "노션 04 DB는 업무 DB라 영상 지표를 넣기엔 칸이 맞지 않습니다. 영상ID·게시일·제목버전·24시간·72시간·구독증감 6칸짜리 콘텐츠 지표 표를 따로 두는 게 좋습니다.",
+          "1화는 43.8MB 원본을 23.4MB로 줄여 올렸고, 2화 20.88MB는 그대로 올라갔습니다. 25MB 이하로 고정하면 업로드 실패가 사라집니다.",
+          "같은 영상에서 제목만 바꾸면 조회 데이터가 섞입니다. 교체 시각을 기록에 남겨야 전후 비교가 됩니다."
+        ],
+        concern: "지표 표를 만들어도 채우는 일이 남습니다. 자동으로 못 채우면 세 편 만에 방치됩니다. 주 1회 10분 점검으로 고정해야 합니다.",
+        proposal: "콘텐츠 지표 표 1개와 매주 일요일 10분 점검을 정하고, 인코딩은 25MB·-14 LUFS로 고정합니다.",
+        rebuttal: { to: "pickle", text: "피클이 촬영 없이 실험만 하자고 했습니다. 지표 표가 없으면 실험 결과도 남지 않으니, 표를 먼저 만들고 교체를 그 위에서 하는 순서를 제안합니다." },
+        source: "근거: 업로드 용량 기록(43.8MB → 23.4MB), 2화 인코딩 20.88MB, 04 DB 속성 구성"
+      },
+      claude: {
+        summary: "채널 설명이 '50대 아저씨의 AI 실사용 실험실'로 이미 좋습니다. 그런데 영상 제목은 그 문장과 따로 놉니다. 제목이 채널 소개를 이어받아야 구독으로 이어집니다.",
+        points: [
+          "1화 제목은 서사형이라 좋지만 검색어가 없습니다. 서사와 검색어를 한 제목에 넣으려면 'AI 비서'를 뒤에 붙이는 형태가 무난합니다.",
+          "2화 '몇 년 치 쌓인 네이버 메일, AI한테 통째로 정리시킨 썰'은 이미 좋은 제목입니다. 이 형태를 기준으로 삼고 1화만 고치면 됩니다.",
+          "고정 댓글에 다음 편 예고와 채널 소개 한 줄을 넣으면 구독 전환을 한 번 더 잡을 수 있습니다."
+        ],
+        concern: "제목을 자주 바꾸면 단골 시청자가 혼란스럽습니다. 1화만 예외로 하고, 3화부터는 게시 전에 제목을 확정하는 규칙이 필요합니다.",
+        proposal: "1화 제목만 'AI 비서' 검색어를 넣어 교체하고, 3화부터는 게시 전 제목 확정 규칙을 넣습니다.",
+        rebuttal: { to: "gemini", text: "Gemini가 마지막 3초 예고를 말했습니다. 찬성인데, 2화에 예고를 넣으면 1화로 돌아가는 동선이 아니라 3화로 가는 동선이 됩니다. 편 순서를 먼저 정해야 합니다." },
+        source: "근거: 1화·2화 제목, 채널 설명, 고정 댓글 미사용 상태"
+      }
+    },
+    options: [
+      {
+        id: "A",
+        title: "실험 우선 — 1화 제목·썸네일 1회 교체 + 지표 표 신설",
+        detail: "1화 제목에 'AI 비서'를 넣어 교체하고 24·72시간 수치를 기록한다. 콘텐츠 지표 표를 새로 만들고, 새 영상은 이미 만든 3화만 게시한다. 4화 기획은 다음 주로 미룬다.",
+        support: ["pickle", "chatgpt", "claude"],
+        risk: "제목 교체 효과는 1회로 판별이 어려울 수 있음"
+      },
+      {
+        id: "B",
+        title: "소재 우선 — 4화를 결과 숫자형으로 새로 제작",
+        detail: "2화의 '9999+ → 0건' 화면을 결과 숫자로 쓰고, 제목에 'AI한테 시켰더니'를 넣은 4화를 이번 주에 만든다. 지표 표와 24·72시간 기록은 병행한다.",
+        support: ["cue", "gemini"],
+        risk: "편당 반나절 이상 소요, 표본이 작아 효과 판별이 늦음"
+      },
+      {
+        id: "C",
+        title: "이어보기 우선 — 1화 첫 장면을 다시 쓰는 4화로 구독 전환 집중",
+        detail: "4화를 1화 첫 장면(50대 아저씨가 '다크'라고 부르는 순간)에서 이어지는 구조로 만들고, 1~3화 사이에 서로를 부르는 3초 예고를 넣어 편 간 이동을 만든다.",
+        support: ["claude", "hark"],
+        risk: "기존 편의 재편집이 필요해 손이 한 번 더 들어감"
+      }
+    ],
+    roles: {
+      A: {
+        pickle: "1화 제목·썸네일 교체 실행, 24·72시간 수치 기록해 다음 회의에 보고",
+        gemini: "1화 첫 3초 장면 교체본 대본·자막 작성 (문장 중복 제거)",
+        cue: "'AI한테 시켰더니' 검색 유입 근거 3개와 경쟁 썸네일 10개 정리",
+        hark: "3화 비노출 조건 체크리스트 작성, 1화 교체 전 조건 위반 없는지 확인",
+        chatgpt: "콘텐츠 지표 표(영상ID·게시일·제목버전·24h·72h·구독증감) 신설, 인코딩 25MB 고정",
+        claude: "1화 새 제목 3안(서사+검색어)과 고정 댓글 문구 1안 작성"
+      },
+      B: {
+        pickle: "4화 제작 일정 확정, 3화 게시 후 4화 착수 보고",
+        gemini: "4화 45초 대본을 당황·발견·뿌듯 3감정 구조로 작성",
+        cue: "'9999+ → 0건' 결과 화면 흐름과 경쟁 영상 결과 숫자 사례 10개",
+        hark: "2화 메일함 화면에 개인정보·주소 노출이 없는지 프레임 단위 확인",
+        chatgpt: "4화 제작 파이프라인 체크리스트(촬영·편집·인코딩 25MB) 작성",
+        claude: "4화 제목·썸네일 카피 3안과 첫 문장 후보 5개 작성"
+      },
+      C: {
+        pickle: "4화를 '1화 첫 장면 재사용' 구조로 확정, 1~3화 연결 순서표 작성",
+        gemini: "1화 첫 3초 장면을 4화 오프닝에 되살리는 대본 작성",
+        cue: "다른 채널의 이어보기 구조와 구독 전환 문구 사례 5건 조사",
+        hark: "1화 34회·좋아요 2의 실제 해석(좋아요율 5.9%) 정리, 과장 문구 검수",
+        chatgpt: "영상별 최종 화면 구성표 작성 (다음 편 고정 배치 포함)",
+        claude: "4화 고정 댓글·채널 소개 한 줄·구독 유도 문장 작성"
+      }
+    },
+    ownerReplies: {
+      pickle: "그 기준이면 후보 A를 1순위로 올리고 B·C는 2순위로 내리겠습니다. 자료 순서도 그 축으로 다시 정렬합니다.",
+      gemini: "그쪽으로 가면 1화 첫 3초 대본을 먼저 고쳐야 합니다. 문장은 바로 다시 쓰겠습니다.",
+      cue: "그 기준이면 제가 모은 경쟁 썸네일 중 절반은 근거로 못 씁니다. 다시 추리겠습니다.",
+      hark: "비노출 조건과 실제 수치 원칙은 그대로 두고 그 안에서만 움직이겠습니다. 벗어나는 안은 따로 표시해 두겠습니다.",
+      chatgpt: "그렇다면 지표 표의 칸을 먼저 맞춰야 합니다. 어떤 값을 볼지 정해 주시면 표부터 고치겠습니다.",
+      claude: "제목과 문구를 그 기준으로 다시 쓰겠습니다. 기존 3안은 대안으로 남겨 둡니다."
+    },
+    closing: "1화 실험 1회와 지표 표가 이번 주 업무로 등록됩니다. 결과는 24·72시간 수치로 다음 회의에서 복기합니다."
+  },
+
+  /* ═══════════════════════════ 안건 2 ═══════════════════════════ */
+  {
+    id: "ldp-workflow",
+    tag: "LDP 제작",
+    title: "LDP 롱보드 촬영·편집 워크플로우 효율화",
+    ready: true,
+    preparedAt: "2026-11-26 20:55",
+    preparedBy: "피클 — 6인 자료 취합",
+    brief: "새 주행 영상이 없는 동안, 다음 촬영부터 편집까지 걸리는 시간과 사용량을 줄이는 규격을 정한다. 촬영 지침·저장 규칙·문구 템플릿·인코딩 중 무엇을 먼저 고정할지.",
+    facts: [
+      "드라이브 'LDP 쇼츠 영상 자료'에 실사 클립 8개 731MB (462MB 1개는 64MiB 상한으로 다운로드 실패)",
+      "6개 클립으로 41.5초본 제작 → 실제 게시는 성진님 완성본 21.63초(1080×1920 30fps)",
+      "인코딩: 44.5MB 원본 업로드 실패 → CRF 24 · 23.48MB로 재인코딩해 성공",
+      "테스트 1편에 일일 사용량 79% → 91% (12%포인트)",
+      "편집 기준: 자막 64% 위치 · -13.9 LUFS · 둥근 폰트 · 영문 자막 통일"
+    ],
+    ownerChips: ["촬영 규격부터 정하자", "자막·문구 템플릿 먼저", "60초·20초 두 버전", "사용량 줄이는 쪽으로"],
+    panels: {
+      pickle: {
+        summary: "지금 LDP 제작의 기준값은 '한 편에 반나절, 사용량 12%포인트'입니다. 새 주행 영상이 없어 제작이 멈춰 있으니, 이번 회의는 다음 촬영 전에 파이프라인을 깔아 두는 문제로 잡겠습니다.",
+        points: [
+          "8개 클립 731MB 중 462MB 한 개는 다운로드 자체가 실패했습니다. 촬영 단계에서 클립을 나누지 않으면 같은 문제가 반복됩니다.",
+          "41.5초본을 만든 뒤 성진님은 21.63초 완성본을 따로 쓰셨습니다. 제 편집이 최종본이 아니었고, 사용량만 12%포인트 썼습니다.",
+          "다음 촬영은 '편집이 바로 되는 촬영'이어야 합니다. 컷 길이와 각도를 미리 정해 찍으면 편집 시간이 절반으로 줄어듭니다."
+        ],
+        concern: "촬영은 제가 못 하니 지침이 문서로만 남으면 현장에서 안 지켜집니다. 폰으로 바로 볼 수 있는 1장 요약이어야 합니다.",
+        proposal: "촬영 전날 1장 지침(컷 8개·길이·각도)을 만들어 보내고, 촬영 후에는 그 순서대로만 편집합니다.",
+        rebuttal: { to: "hark", text: "Hark가 클립 5초 분할을 말했습니다. 촬영할 때 나누면 되지만, 이미 찍어 둔 731MB는 다시 나눠야 합니다. 그 작업을 이번 주에 할지 다음 촬영부터 할지 정해야 합니다." },
+        source: "근거: 드라이브 클립 8개 731MB, 41.5초본·21.63초 완성본 기록, 사용량 79→91%"
+      },
+      gemini: {
+        summary: "편집에서 시간이 새는 곳은 컷 선택이 아니라 자막과 문구입니다. 41.5초본에 문구만 입히는 방식이 이미 검증됐으니, 문구를 먼저 확정하고 영상을 그 위에 얹는 순서로 바꿔야 합니다.",
+        points: [
+          "지난번에는 영상을 먼저 자르고 문구를 나중에 얹었습니다. 순서를 뒤집어 문구 4~5개를 먼저 쓰면 컷 선택 기준이 생깁니다.",
+          "자막은 영문 통일로 정하셨습니다(BRACKET SETUP / FULL PUMP). 이 규격을 템플릿 파일로 저장하면 매번 새로 쓰지 않아도 됩니다.",
+          "인트로 3초는 'NO PUSH, JUST PUMP' 같은 짧은 문장 하나로 고정하면 편집마다 고민할 것이 줄어듭니다."
+        ],
+        concern: "문구를 먼저 쓰려면 어떤 장면이 있는지 알아야 합니다. 촬영 목록(어떤 기술을 찍을지)이 먼저 정해져야 문구가 나옵니다.",
+        proposal: "촬영 목록 → 문구 5개 → 컷 선택 순서로 바꾸고, 자막 템플릿을 파일로 저장합니다.",
+        rebuttal: { to: "cue", text: "Cue가 40~60초와 20초 두 버전을 말했습니다. 문구를 먼저 확정하는 제 순서와 부딪힙니다. 두 길이면 문구도 두 벌이라, 한 벌로 쓰고 잘라 쓰는 방식이 맞습니다." },
+        source: "근거: 41.5초본 편집 순서, 영문 자막 통일 결정, 인트로 문구"
+      },
+      cue: {
+        summary: "LDP는 국내 검색량이 작은 대신 해외 시청 비중이 큽니다. 영문 자막 통일은 그 판단에 맞습니다. 다만 지금은 게시 1편뿐이라 어떤 편집이 나은지 판단할 단계가 아닙니다.",
+        points: [
+          "게시한 것은 21.63초 1편이고 릴스도 같은 영상입니다. 표본 1개로는 편집 방식의 우열을 가릴 수 없습니다.",
+          "해외 LDP 커뮤니티는 펌핑 영상에서 40~60초 긴 호흡을 선호합니다. 20초대는 릴스에는 맞지만 쇼츠에서는 짧게 끊깁니다.",
+          "경쟁 영상 상위에는 발 위치·펌핑 리듬·보드 각도 클로즈업 세 컷이 공통으로 들어갑니다. 초보 시청자 이탈을 줄이는 장치입니다."
+        ],
+        concern: "국내 유저가 거의 없어 국내 조회는 기대하기 어렵습니다. 한 영상으로 국내·해외를 같이 잡으려면 자막은 영어, 설명란은 한영 병기여야 합니다.",
+        proposal: "편집은 영문 자막·영문 제목으로 고정하고 설명란만 한영 병기. 같은 클립에서 40~60초본과 20초 컷을 함께 뽑습니다.",
+        rebuttal: { to: "claude", text: "Claude가 효과음과 BGM을 기본값으로 넣자고 했습니다. 해외 시청자는 펌핑 현장음을 중요하게 봅니다. BGM이 현장음을 덮으면 오히려 이탈합니다." },
+        source: "근거: 게시 1편(21.63초) 지표, 해외 LDP 커뮤니티 구성, 경쟁 영상 상위 10개 구성"
+      },
+      hark: {
+        summary: "지난 작업에서 확인된 실패는 두 가지입니다. 462MB 클립 다운로드 실패와 44.5MB 업로드 실패. 둘 다 크기 문제이고 편집 실력 문제가 아닙니다.",
+        points: [
+          "드라이브 다운로드는 64MiB 응답 상한이 있어 큰 원본은 받지 못합니다. 촬영 후 클립을 5초 단위로 나눠 저장하면 상한 아래로 들어옵니다.",
+          "업로드는 25MB 이하가 안전합니다. 23.48MB는 성공했고 44.5MB는 실패했습니다. 경계는 25MB 근처로 보는 게 맞습니다.",
+          "AI 생성 이미지로 만든 LDP는 '전혀 ldp보드가 아니야'로 되돌린 이력이 있습니다. 실사 클립만 쓴다는 원칙을 문서에 넣어야 재발이 없습니다."
+        ],
+        concern: "한 편에 사용량이 12%포인트 늘었습니다. 자동화로 사용량은 줄일 수 있지만 검수가 느슨해지면 되돌리는 일이 다시 생깁니다.",
+        proposal: "클립 5초 분할 저장 · 인코딩 25MB 이하 · 실사만 사용, 이 세 가지를 체크리스트로 고정합니다.",
+        rebuttal: { to: "chatgpt", text: "ChatGPT의 인코딩 자동화는 좋습니다. 다만 CRF 24로 25MB를 맞추려면 20초대여야 합니다. 40~60초본은 화질이 떨어질 수 있어 두 규격을 나눠야 합니다." },
+        source: "근거: 64MiB 다운로드 상한, 업로드 성공·실패 용량, AI 이미지 되돌림 이력"
+      },
+      chatgpt: {
+        summary: "지금 파이프라인은 사람 손이 세 번 들어갑니다. 클립 정리, 편집, 인코딩. 이 중 두 번은 규칙만 정하면 자동으로 돌릴 수 있습니다.",
+        points: [
+          "드라이브 폴더를 날짜/클립번호로 고정하면 편집할 때 파일 찾는 시간이 사라집니다. 지금은 8개가 한 폴더에 섞여 있습니다.",
+          "인코딩은 명령 한 줄로 끝납니다(CRF 24, 25MB 이하). 매번 손으로 설정하지 말고 명령을 파일로 저장해 두면 됩니다.",
+          "결과물 이름 규칙(날짜_기술_길이)을 정하면 같은 소재를 다시 쓸 때 찾기 쉽습니다."
+        ],
+        concern: "자동화는 실패했을 때 조용히 넘어가면 위험합니다. 인코딩 실패와 용량 초과는 반드시 알림으로 남겨야 합니다.",
+        proposal: "폴더 규칙·파일명 규칙·인코딩 명령 세 가지를 정해 'LDP 제작 규칙' 1장으로 만듭니다.",
+        rebuttal: { to: "pickle", text: "피클이 촬영 지침 1장을 말했습니다. 촬영 목록이 먼저 없으면 지침도 못 씁니다. 기술 목록(펌핑·브래킷·커빙)을 먼저 정하는 순서가 맞습니다." },
+        source: "근거: 드라이브 폴더 구성, 인코딩 이력(CRF 24·23.48MB), 파일명 규칙 부재"
+      },
+      claude: {
+        summary: "지난 두 편의 피드백은 이미 일관됩니다. '편집은 괜찮은데 밋밋하다, 효과·음악이 없다, 글꼴과 말투가 딱딱하다, 음성은 여성으로'. 이 네 가지를 기본값으로 박아 두면 매번 지적받지 않습니다.",
+        points: [
+          "자막 폰트는 둥근 계열로 정해졌습니다. 이 폰트를 기본값으로 저장하고, 영문 자막에 짝이 되는 영문 폰트를 하나 정해야 합니다.",
+          "효과음과 BGM은 있으면 좋은 것이 아니라 기본값이어야 합니다. 없다는 지적이 두 번 나왔습니다.",
+          "제목은 분위기와 맞아야 한다는 기준이 확실합니다('땅 한 번 안 딛고…' → 별루). 후보 3개를 쓰고 성진님이 고르는 방식이 빠릅니다."
+        ],
+        concern: "피드백을 문서로만 남기면 다음 편에서 또 잊힙니다. 편집 시작 전 체크 5개(폰트·효과음·BGM·음성·제목)를 화면에 띄우는 방식이어야 합니다.",
+        proposal: "편집 기본값 5개를 체크리스트로 만들고, 영문 자막 폰트 하나를 정해 템플릿에 넣습니다.",
+        rebuttal: { to: "gemini", text: "Gemini가 문구를 먼저 쓰자고 했습니다. 저도 찬성인데 문구 5개는 현장에서 헷갈립니다. 3개로 고정하고 나머지는 버리는 쪽이 맞습니다." },
+        source: "근거: 11-22·11-23 쇼츠 피드백(밋밋함·효과음·폰트·여성 음성), 제목 재선정 이력"
+      }
+    },
+    options: [
+      {
+        id: "A",
+        title: "규격 우선 — 촬영·저장·인코딩 규격을 먼저 고정",
+        detail: "클립 5초 분할 저장, 날짜/클립번호 폴더, 파일명 규칙, 인코딩 25MB 이하(CRF 24)를 'LDP 제작 규칙' 1장으로 만들고 다음 촬영부터 그대로 적용한다. 이미 찍어 둔 731MB는 이번 주에 나누지 않는다.",
+        support: ["pickle", "hark", "chatgpt"],
+        risk: "다음 촬영 시점이 정해지지 않아 적용이 미뤄질 수 있음"
+      },
+      {
+        id: "B",
+        title: "문구·템플릿 우선 — 자막·문구 템플릿으로 편집 시간을 줄인다",
+        detail: "영문 자막 템플릿(폰트·64% 위치)·문구 3개·효과음·BGM 기본값을 파일로 만들고, 다음 편은 문구 → 컷 순서로 편집한다. 촬영 규격은 그다음에 정한다.",
+        support: ["gemini", "claude"],
+        risk: "문구를 먼저 쓰려면 촬영 목록이 필요해 결국 촬영 계획이 먼저 필요함"
+      },
+      {
+        id: "C",
+        title: "두 버전 동시 — 60초 본편과 20초 컷을 한 클립에서 뽑는다",
+        detail: "같은 클립에서 40~60초 본편(유튜브)과 20초 컷(릴스)을 함께 뽑는다. 본편은 CRF 26, 컷은 CRF 24로 인코딩하고 영문 자막·한영 설명란을 공통 적용한다.",
+        support: ["cue", "hark"],
+        risk: "편집 시간이 두 배, 사용량 부담이 커짐"
+      }
+    ],
+    roles: {
+      A: {
+        pickle: "'LDP 제작 규칙' 1장 작성·전달, 다음 촬영 전날까지 확정",
+        gemini: "규격에 맞는 문구 3개(인트로·기술명·아웃트로) 초안 작성",
+        cue: "해외 LDP 채널의 60초 구성 사례 10건과 필요한 클립 목록 정리",
+        hark: "체크리스트 검수: 5초 분할·25MB 이하·실사만 사용 3항목 확인 절차 정리",
+        chatgpt: "폴더·파일명 규칙과 ffmpeg 인코딩 명령을 파일로 만들어 전달",
+        claude: "영문 자막 폰트 1개 선정과 편집 전 체크 5개 문구 작성"
+      },
+      B: {
+        pickle: "템플릿 3종(자막·문구·효과음) 완성 일정 관리, 다음 편 적용 보고",
+        gemini: "문구 3개 확정안과 컷 선택 기준표(문구별 필요 장면) 작성",
+        cue: "문구별 반응이 좋은 해외 사례 8건과 자막 위치 근거 정리",
+        hark: "템플릿에 개인정보·위치 정보가 들어가지 않는지 검수",
+        chatgpt: "템플릿 파일 구조(프로젝트 파일·자막 파일)와 적용 절차 문서화",
+        claude: "자막 템플릿(폰트·64% 위치·색)과 효과음·BGM 기본값 목록 작성"
+      },
+      C: {
+        pickle: "두 버전 제작 일정과 사용량 한도 정해 보고",
+        gemini: "본편 60초 대본과 20초 컷 대본을 한 벌에서 나누는 방식 설계",
+        cue: "유튜브(60초)와 릴스(20초) 각각의 시청 지속 기준 자료 정리",
+        hark: "본편 CRF 26 화질 저하 여부 테스트, 두 규격 용량 확인",
+        chatgpt: "두 규격 인코딩 명령과 파일명 규칙(길이 표기 포함) 작성",
+        claude: "본편·컷 공통 영문 자막 문구와 한영 설명란 초안 작성"
+      }
+    },
+    ownerReplies: {
+      pickle: "그 기준이면 후보 A를 앞으로 당기고 B·C를 뒤로 미루겠습니다. 일정표를 그 순서로 다시 잡습니다.",
+      gemini: "그쪽이면 문구를 먼저 확정해야 합니다. 3개로 줄여 바로 쓰겠습니다.",
+      cue: "그 기준이면 제가 모은 해외 사례 중 절반은 근거가 약합니다. 다시 추리겠습니다.",
+      hark: "용량·실사 원칙은 그대로 두겠습니다. 그 안에서만 조정하고, 벗어나는 안은 표시해 두겠습니다.",
+      chatgpt: "그렇다면 규칙 문서의 항목을 먼저 맞추겠습니다. 어떤 값을 고정할지 정해 주시면 바로 반영합니다.",
+      claude: "폰트·효과음·문구 기본값을 그 기준으로 다시 잡겠습니다."
+    },
+    closing: "제작 규칙 1장과 템플릿이 이번 주 업무로 등록됩니다. 다음 주행 촬영이 생기면 그 규격으로 한 편을 끝까지 돌려 검증합니다."
+  }
+
+  ];
+
+  var byId = {};
+  AGENDAS.forEach(function(a){ byId[a.id] = a; });
+
+  return {
+    version: "v4",
+    updatedAt: "2026-11-26 21:00",
+    agendas: AGENDAS,
+    byId: byId
+  };
+})();
+
+(function(){
+  "use strict";
+
+  /* ═══════════════════ 기본 정의 ═══════════════════ */
+  const LIB = window.AGENDA_LIB || {agendas:[], byId:{}};
+  const AIS = ["pickle","gemini","cue","hark","chatgpt","claude"];
+  const PEOPLE = [
+    {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6"},
+    {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4"},
+    {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8"},
+    {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c"},
+    {id:"chatgpt", name:"ChatGPT",   emoji:"🛠️", role:"구조 설계·DB·자동화",     color:"#10a37f"},
+    {id:"claude",  name:"Claude",    emoji:"✍️", role:"글쓰기·기획 검토",        color:"#d97757"}
+  ];
+  const byId = id => PEOPLE.find(p => p.id === id) || (id === "owner" ? {id:"owner", name:"오너", emoji:"👑", color:"#f5c04a"} : null);
+
+  const K_SPEED = "darkjin_mr4_speed";
+  const K_VOICE = "darkjin_mr4_voice";
+  const K_SFX   = "darkjin_mr4_sfx";
+  const K_REQ   = "darkjin_mr4_requests";
+  const K_SEEN  = "darkjin_mr4_seen_ready";
+  const K_NOTIFY= "darkjin_mr4_notify";
+
+  const LS = {
+    get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+    set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+    del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  };
+
+  const state = {
+    phase:"idle",        // idle | materials | discussion | confirm | roles
+    agenda:null,         // 선택된 안건 객체
+    option:null,         // 확정한 결론 후보 id
+    ownerDir:"",         // 결론 확정 시 오너 추가 지시
+    notes:[],            // 오너 코멘트 전체
+    readSet:{},
+    rebutSet:{},
+    busy:false,
+    runToken:0,
+    speed:Number(LS.get(K_SPEED) || 1),
+    voiceOn:(LS.get(K_VOICE) || "1") !== "0",
+    sfxOn:(LS.get(K_SFX) || "1") !== "0",
+    paused:false,
+    pausedAt:0,
+    pausedMs:0,
+    voiceWarned:false,
+    startedAt:0,
+    timerId:null,
+    activeCut:null,
+    activeSpeaker:null,
+    matId:null
+  };
+
+  const $ = s => document.querySelector(s);
+  const el = (tag, cls, txt) => { const n=document.createElement(tag); if(cls) n.className=cls; if(txt!==undefined) n.textContent=txt; return n; };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const pad = n => String(n).padStart(2,"0");
+  const nowHM = () => { const d=new Date(); return pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds()); };
+  const nowStamp = () => { const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes()); };
+  const norm = s => String(s||"").replace(/\s+/g,"").replace(/[.,?!"'·:;()\[\]]/g,"").toLowerCase();
+
+  /* ═══════════════════ 효과음 (Web Audio · 외부 파일 0) ═══════════════════ */
+  const SFX = (function(){
+    let ctx = null;
+    const log = [], calls = [];
+    window.__sfxLog = log; window.__sfxCalls = calls;
+    function ac(){
+      if(!state.sfxOn || !state.voiceOn) return null;
+      try{
+        if(!ctx){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; ctx = new C(); }
+        if(ctx.state === "suspended" && ctx.resume) ctx.resume();
+        return ctx;
+      }catch(e){ return null; }
+    }
+    function note(c,o){
+      const t0=o.at, dur=o.dur||.12, f=o.freq, to=o.to||f;
+      const osc=c.createOscillator(), g=c.createGain();
+      osc.type=o.type||"sine";
+      osc.frequency.setValueAtTime(f,t0);
+      if(to!==f) osc.frequency.exponentialRampToValueAtTime(Math.max(30,to),t0+dur);
+      const peak=o.gain==null?.16:o.gain;
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(peak,t0+Math.min(.02,dur/3));
+      g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+      osc.connect(g); g.connect(c.destination); osc.start(t0); osc.stop(t0+dur+.02);
+    }
+    function noise(c,o){
+      const dur=o.dur||.18, len=Math.max(1,Math.floor(c.sampleRate*dur));
+      const buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+      for(let i=0;i<len;i++){ const k=1-i/len; d[i]=(Math.random()*2-1)*k*k; }
+      const src=c.createBufferSource(); src.buffer=buf;
+      const bp=c.createBiquadFilter(); bp.type="bandpass"; bp.Q.value=o.q||1.1;
+      bp.frequency.setValueAtTime(o.from||2400,o.at);
+      bp.frequency.exponentialRampToValueAtTime(Math.max(120,o.to||700),o.at+dur);
+      const g=c.createGain(); g.gain.setValueAtTime(o.gain==null?.13:o.gain,o.at);
+      g.gain.exponentialRampToValueAtTime(.0001,o.at+dur);
+      src.connect(bp); bp.connect(g); g.connect(c.destination); src.start(o.at);
+    }
+    function play(name,fn){
+      calls.push(name); if(calls.length>120) calls.shift();
+      const c=ac(); if(!c) return;
+      try{ fn(c,c.currentTime+.01); log.push({name:name,t:Date.now()}); if(log.length>120) log.shift(); }catch(e){}
+    }
+    return {
+      unlock(){ const c=ac(); if(c&&c.state==="suspended"&&c.resume) c.resume(); },
+      shush(){ play("shush",(c,t)=>{
+        note(c,{at:t,freq:900,to:560,dur:.10,type:"sine",gain:.13});
+        note(c,{at:t+.085,freq:640,to:430,dur:.13,type:"sine",gain:.12});
+        note(c,{at:t,freq:190,to:70,dur:.18,type:"sine",gain:.10});
+        noise(c,{at:t+.02,dur:.22,from:2800,to:620,q:1.0,gain:.14});
+      }); },
+      ding(){ play("ding",(c,t)=>{
+        note(c,{at:t,freq:660,dur:.26,type:"triangle",gain:.13});
+        note(c,{at:t+.16,freq:880,dur:.34,type:"triangle",gain:.12});
+        note(c,{at:t+.16,freq:1320,dur:.30,type:"sine",gain:.05});
+      }); },
+      confirm(){ play("confirm",(c,t)=>{
+        [523.25,659.25,783.99,1046.5].forEach((f,i)=>note(c,{at:t+i*.075,freq:f,dur:.42,type:"triangle",gain:i===3?.10:.11}));
+        note(c,{at:t,freq:130.81,dur:.5,type:"sine",gain:.07});
+      }); },
+      pop(){ play("pop",(c,t)=>{
+        note(c,{at:t,freq:420,to:760,dur:.085,type:"sine",gain:.15});
+        note(c,{at:t+.04,freq:1180,dur:.05,type:"sine",gain:.05});
+      }); }
+    };
+  })();
+
+  /* ═══════════════════ 음성 엔진 (Web Speech) ═══════════════════ */
+  const VOICE_CFG = {
+    pickle:  {pitch:0.90, rate:1.02, tone:"진행 · 낮고 또렷"},
+    gemini:  {pitch:1.06, rate:1.00, tone:"분석 · 또박"},
+    cue:     {pitch:1.30, rate:1.12, tone:"리서치 · 빠름"},
+    hark:    {pitch:0.78, rate:1.04, tone:"검증 · 낮고 무겁게"},
+    chatgpt: {pitch:1.00, rate:0.96, tone:"구조 · 차분"},
+    claude:  {pitch:1.14, rate:0.88, tone:"작가 · 느긋"}
+  };
+  const synthOK = (typeof window !== "undefined") && ("speechSynthesis" in window) && (typeof window.SpeechSynthesisUtterance === "function");
+  let koVoices = [];
+
+  function refreshVoices(){
+    if(!synthOK) return;
+    try{
+      const all = window.speechSynthesis.getVoices() || [];
+      koVoices = all.filter(v => /^ko/i.test(v.lang || "") || /korean|한국/i.test(v.name || ""));
+    }catch(e){ koVoices = []; }
+  }
+  function pickVoice(id){
+    if(!koVoices.length) refreshVoices();
+    if(!koVoices.length) return null;
+    const i = Math.max(0, AIS.indexOf(id));
+    return koVoices[i % koVoices.length];
+  }
+  function splitChunks(text){
+    const clean = String(text || "").replace(/\s+/g," ").trim();
+    if(!clean) return [];
+    const parts = clean.match(/[^.!?。？！\n]+[.!?。？！]?/g) || [clean];
+    const out = []; let buf="";
+    parts.forEach(p=>{
+      const s = p.trim(); if(!s) return;
+      if(buf && (buf+" "+s).length > 110){ out.push(buf); buf=s; }
+      else buf = buf ? buf+" "+s : s;
+    });
+    if(buf) out.push(buf);
+    return out;
+  }
+  function speakChunk(id, text, cfg){
+    return new Promise(resolve=>{
+      if(!synthOK || !state.voiceOn){ resolve("skip"); return; }
+      const synth = window.speechSynthesis;
+      const u = new window.SpeechSynthesisUtterance(text);
+      u.lang = "ko-KR";
+      const v = pickVoice(id);
+      if(v){ u.voice = v; if(v.lang) u.lang = v.lang; }
+      u.pitch = cfg.pitch; u.rate = cfg.rate; u.volume = 1;
+      let done=false, started=false, silent=0;
+      const began = Date.now();
+      const finish = r => { if(done) return; done=true; clearInterval(watch); clearTimeout(hard); resolve((started||r==="canceled")?r:"empty"); };
+      u.onstart = ()=>{ started = true; };
+      u.onend = ()=> finish("ended");
+      u.onerror = ev => { const code=(ev&&(ev.error||ev.name))||""; finish(/cancel|interrupt/i.test(code)?"canceled":"error"); };
+      const watch = setInterval(()=>{
+        if(done) return;
+        if(synth.paused){ silent=0; return; }
+        if(synth.speaking || synth.pending){ silent=0; started = started || synth.speaking; return; }
+        silent++;
+        if(Date.now()-began > 700 && silent >= 4) finish("ended");
+      },120);
+      const hard = setTimeout(()=>finish("ended"), 1500 + text.length*300);
+      try{ synth.speak(u); if(synth.paused) synth.resume(); }catch(e){ finish("error"); }
+    });
+  }
+  async function speakText(id, text, token, cutRec){
+    if(!synthOK || !state.voiceOn) return;
+    const cfg = VOICE_CFG[id] || {pitch:1, rate:1};
+    const chunks = splitChunks(text);
+    let i=0, emptyRuns=0, cancelRuns=0;
+    while(i < chunks.length){
+      if(token !== state.runToken || !state.voiceOn) return;
+      if(cutRec && cutRec.fired) return;
+      await waitIfPaused();
+      if(token !== state.runToken || !state.voiceOn) return;
+      if(cutRec && cutRec.fired) return;
+      const res = await speakChunk(id, chunks[i], cfg);
+      if(cutRec && cutRec.fired) return;
+      if(res === "empty"){ emptyRuns++; if(emptyRuns>=3){ voiceUnavailable(); return; } i++; continue; }
+      emptyRuns = 0;
+      if(res === "canceled"){ cancelRuns++; if(cutRec && cutRec.fired) return; if(cancelRuns>4 && !state.paused) return; continue; }
+      cancelRuns = 0; i++;
+    }
+  }
+  function voiceUnavailable(){
+    if(state.voiceWarned) return;
+    state.voiceWarned = true;
+    setVoice(false, true);
+    toast("🔇 이 브라우저에서 목소리를 재생할 수 없습니다 · 글자로만 진행합니다");
+  }
+  function setVoice(on, quiet){
+    state.voiceOn = !!on;
+    LS.set(K_VOICE, state.voiceOn ? "1" : "0");
+    const b = document.getElementById("voiceBtn");
+    if(b){
+      b.classList.toggle("on", state.voiceOn);
+      b.innerHTML = state.voiceOn ? '🔊 <span class="lg">음성 </span>ON' : '🔇 <span class="lg">음성 </span>OFF';
+    }
+    if(!state.voiceOn && synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+    if(!quiet) toast(state.voiceOn ? "🔊 AI 목소리 ON" : "🔇 AI 목소리 OFF · 글자로만 진행");
+  }
+  function unlockVoice(){
+    if(!synthOK || !state.voiceOn) return;
+    try{
+      const s = window.speechSynthesis;
+      const u = new window.SpeechSynthesisUtterance(" ");
+      u.lang="ko-KR"; u.volume=0; u.rate=2; s.speak(u);
+      if(s.paused) s.resume();
+    }catch(e){}
+    SFX.unlock();
+  }
+
+  /* ── 정지 / 재개 ── */
+  let pauseWaiters = [];
+  function waitIfPaused(){ if(!state.paused) return Promise.resolve(); return new Promise(res=>pauseWaiters.push(res)); }
+  function releasePause(){ const ws=pauseWaiters; pauseWaiters=[]; ws.forEach(fn=>{ try{ fn(); }catch(e){} }); }
+  async function psleep(ms){ await waitIfPaused(); if(state.paused) return; await sleep(ms); }
+
+  function quietAll(){
+    stopListening(true); stopInterjectMic(true);
+    const first = !state.paused;
+    if(first){ state.paused = true; state.pausedAt = Date.now(); }
+    AIS.forEach(id=>{
+      const r = tileRefs[id]; if(!r) return;
+      r.tile.classList.add("quiet");
+      r.tile.classList.remove("speaking");
+      r.state.classList.remove("s-speaking","s-ready","s-done");
+      r.state.classList.add("s-quiet");
+      r.state.textContent = "조용";
+    });
+    document.body.classList.add("is-quiet");
+    if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+    if(first) SFX.shush();
+    setLive("조용히", "quiet");
+    if(first){ addSystem("🤫 다들 조용! — 전원 음소거 · 진행 정지"); toast("🤫 다들 조용! · 모두 멈췄습니다"); }
+  }
+  function restoreTileState(id){
+    const r = tileRefs[id]; if(!r) return;
+    r.tile.classList.remove("quiet");
+    r.state.classList.remove("s-quiet");
+    if(state.phase === "roles") setTileState(id,"assigned","배정");
+    else if(state.agenda) setTileState(id,"ready","자료 준비");
+    else setTileState(id,"","대기");
+  }
+  function resumeAll(){
+    if(!state.paused){ toast("지금은 멈춰 있지 않습니다"); return; }
+    state.paused = false;
+    document.body.classList.remove("is-quiet");
+    AIS.forEach(restoreTileState);
+    if(state.activeSpeaker && tileRefs[state.activeSpeaker]) setTileState(state.activeSpeaker,"speaking","발언 중");
+    if(state.pausedAt){ state.pausedMs += Date.now()-state.pausedAt; state.pausedAt = 0; }
+    if(state.agenda) startClock(state.pausedMs);
+    setLive(state.phase==="roles" ? "역할 분담" : "회의 중", "");
+    addSystem("▶️ 다시 계속 — 이어갑니다");
+    SFX.ding();
+    if(synthOK && state.voiceOn){ try{ window.speechSynthesis.resume(); }catch(e){} }
+    releasePause();
+    toast("▶️ 다시 계속");
+  }
+
+  /* ═══════════════════ 음성 인식 (오너 코멘트) ═══════════════════ */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const STOP_WORDS = ["다들 조용","조용히 해","조용","그만","멈춰","멈춰요","스톱","중지"];
+  let recog=null, listening=false, micWant=false, micBase="", micFinal="";
+  let iRecog=null, iListening=false, iWant=false, iBase="", iFinal="";
+
+  function isStopPhrase(t){
+    const s = String(t||"").replace(/\s+/g," ").trim();
+    if(!s) return false;
+    return STOP_WORDS.some(w=>s.indexOf(w)>=0);
+  }
+  function setMicUI(on){
+    const b=document.getElementById("micBtn"); const f=document.getElementById("inputField");
+    if(b){ b.classList.toggle("on",on); b.textContent = on?"■ 듣는 중":"🎤 말하기"; }
+    if(f) f.classList.toggle("listening",on);
+  }
+  function setIMicUI(on){
+    const b=document.getElementById("interjectMic");
+    if(b){ b.classList.toggle("on",on); b.title = on?"듣는 중 · 누르면 멈춤":"말로 코멘트"; }
+  }
+  function beginRecognition(){
+    if(!SR || !micWant || listening) return;
+    try{
+      recog = new SR();
+      recog.lang="ko-KR"; recog.continuous=true; recog.interimResults=true; recog.maxAlternatives=1;
+      recog.onstart = ()=>{ listening=true; setMicUI(true); };
+      recog.onresult = ev=>{
+        let fin="", interim="";
+        for(let i=ev.resultIndex;i<ev.results.length;i++){
+          const r=ev.results[i];
+          if(r.isFinal) fin += (r[0]&&r[0].transcript)||"";
+          else interim += (r[0]&&r[0].transcript)||"";
+        }
+        const heard=(fin||interim).trim();
+        if(heard && isStopPhrase(heard)){ stopListening(true); quietAll(); toast('🤫 "'+heard+'" 감지 — 전체 정지'); return; }
+        if(fin) micFinal=(micFinal+" "+fin).replace(/\s+/g," ").trim();
+        const shown=(micFinal+(interim?" "+interim:"")).trim();
+        const input=document.getElementById("reqTopic");
+        if(input && shown) input.value = micBase ? micBase+" "+shown : shown;
+      };
+      recog.onerror = ev=>{
+        const e=ev&&ev.error;
+        if(e==="not-allowed"||e==="service-not-allowed") toast("🎤 마이크 권한이 필요합니다");
+        else if(e==="no-speech") toast("🎤 소리가 들리지 않았습니다");
+        else if(e!=="aborted") toast("🎤 음성 인식 오류: "+e);
+      };
+      recog.onend = ()=>{ listening=false; setMicUI(false); recog=null; if(micWant) setTimeout(beginRecognition,260); };
+      recog.start();
+    }catch(err){ listening=false; setMicUI(false); toast("🎤 음성 입력을 시작하지 못했습니다"); }
+  }
+  function startListening(){
+    if(!SR){ toast("이 브라우저는 음성 인식을 지원하지 않습니다"); return; }
+    if(micWant){ toast("🎤 이미 듣고 있습니다"); return; }
+    micWant=true; micBase=($("#reqTopic").value||"").trim(); micFinal="";
+    toast("🎤 듣는 중 … 주제를 말해 주세요");
+    beginRecognition();
+  }
+  function stopListening(silent){
+    micWant=false;
+    if(recog){ try{ recog.onend=null; recog.abort(); }catch(e){ try{ recog.stop(); }catch(e2){} } recog=null; }
+    listening=false; setMicUI(false);
+    if(!silent) toast("🎤 음성 입력을 멈췄습니다");
+  }
+  function beginInterjectMic(){
+    if(!SR){ toast("이 브라우저는 음성 인식을 지원하지 않습니다 · 직접 입력해 주세요"); return; }
+    if(iWant){ stopInterjectMic(); return; }
+    stopListening(true);
+    iWant=true; iListening=false;
+    iBase=(document.getElementById("interjectInput").value||"").trim(); iFinal="";
+    try{ if(synthOK && window.speechSynthesis.speaking && !window.speechSynthesis.paused) window.speechSynthesis.pause(); }catch(e){}
+    (function start(){
+      if(!iWant) return;
+      try{
+        iRecog = new SR();
+        iRecog.lang="ko-KR"; iRecog.continuous=true; iRecog.interimResults=true; iRecog.maxAlternatives=1;
+        iRecog.onstart = ()=>{ iListening=true; setIMicUI(true); };
+        iRecog.onresult = ev=>{
+          let fin="", interim="";
+          for(let i=ev.resultIndex;i<ev.results.length;i++){
+            const r=ev.results[i];
+            if(r.isFinal) fin += (r[0]&&r[0].transcript)||"";
+            else interim += (r[0]&&r[0].transcript)||"";
+          }
+          if(fin) iFinal=(iFinal+" "+fin).replace(/\s+/g," ").trim();
+          const shown=(iFinal+(interim?" "+interim:"")).trim();
+          const input=document.getElementById("interjectInput");
+          if(input && shown) input.value = iBase ? iBase+" "+shown : shown;
+        };
+        iRecog.onerror = ev=>{
+          const e=ev&&ev.error;
+          if(e==="not-allowed"||e==="service-not-allowed") toast("🎤 마이크 권한이 필요합니다");
+          else if(e!=="aborted"&&e!=="no-speech") toast("🎤 음성 인식 오류: "+e);
+        };
+        iRecog.onend = ()=>{ iListening=false; setIMicUI(false); iRecog=null; if(iWant) setTimeout(start,260); };
+        iRecog.start();
+        toast("🎤 듣는 중 … 말한 뒤 💬 코멘트를 누르세요");
+      }catch(err){ iWant=false; iListening=false; setIMicUI(false); toast("🎤 음성 입력을 시작하지 못했습니다"); }
+    })();
+  }
+  function stopInterjectMic(silent){
+    iWant=false;
+    if(iRecog){ try{ iRecog.onend=null; iRecog.abort(); }catch(e){ try{ iRecog.stop(); }catch(e2){} } iRecog=null; }
+    iListening=false; setIMicUI(false);
+    try{ if(synthOK && state.voiceOn && window.speechSynthesis.paused) window.speechSynthesis.resume(); }catch(e){}
+    if(!silent) toast("🎤 코멘트 입력을 멈췄습니다");
+  }
+
+  /* ═══════════════════ 타일 ═══════════════════ */
+  const stage = $("#stage");
+  const tileRefs = {};
+
+  function buildTiles(){
+    stage.innerHTML = "";
+    PEOPLE.forEach(p=>{
+      const t = el("div","tile");
+      t.dataset.id = p.id;
+
+      const head = el("div","thead");
+      const av = el("div","avatar", p.emoji);
+      av.style.borderColor = p.color + "55";
+      const who = el("div","who");
+      who.append(el("div","nm", p.name), el("div","rl", p.role));
+      const st = el("div","state","대기");
+      head.append(av, who, st);
+
+      const wrap = el("div","stagewrap");
+      const bubble = el("div","bubble empty","안건을 고르면 준비해 온 자료가 여기에 열립니다.");
+      wrap.append(bubble);
+
+      const foot = el("div","tfoot");
+      const wave = el("div","wave");
+      for(let i=0;i<7;i++) wave.append(el("i"));
+      const roleTag = el("div","who-role");
+      roleTag.innerHTML = '<span class="mic">🔇</span>';
+      const matbtn = el("button","matbtn ghost","자료 펼치기");
+      matbtn.addEventListener("click", ()=> openMat(p.id));
+      foot.append(wave, roleTag, matbtn);
+
+      const qv = el("div","qveil");
+      t.append(head, wrap, foot, qv);
+      stage.append(t);
+      tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave};
+    });
+  }
+
+  function setTileState(id, kind, label){
+    const r = tileRefs[id]; if(!r) return;
+    r.tile.classList.remove("speaking","assigned");
+    r.state.classList.remove("s-speaking","s-ready","s-done","s-quiet");
+    if(kind==="speaking"){ r.tile.classList.add("speaking"); r.state.classList.add("s-speaking"); }
+    if(kind==="ready"){ r.tile.classList.add("matready"); r.state.classList.add("s-ready"); }
+    if(kind==="assigned"){ r.tile.classList.add("assigned"); r.state.classList.add("s-done"); }
+    if(kind==="quiet"){ r.state.classList.add("s-quiet"); }
+    r.state.textContent = label || (kind==="speaking"?"발언 중":kind==="ready"?"자료 준비":kind==="assigned"?"배정":kind==="quiet"?"조용":"대기");
+  }
+
+  function renderBubble(id, tag, text, opts){
+    const r = tileRefs[id]; if(!r) return;
+    opts = opts || {};
+    r.bubble.innerHTML = "";
+    r.bubble.classList.remove("empty");
+    if(tag) r.bubble.append(el("span","mtag", tag));
+    if(opts.role) r.bubble.append(el("span","mrole", opts.role));
+    r.bubble.append(el("span","msum", text));
+    r.bubble.scrollTop = 0;
+    if(opts.showBtn) r.matbtn.classList.remove("ghost");
+  }
+
+  /* ═══════════════════ 기록 (논의 / 회의록) ═══════════════════ */
+  const talkList = $("#talkList"), talkCountEl = $("#talkCount");
+  const minList = $("#minList"), minCountEl = $("#minCount");
+  let talkN = 0, minN = 0;
+
+  function clearTalkEmpty(){ const e=document.getElementById("talkEmpty"); if(e) e.remove(); }
+  function clearMinEmpty(){ const e=document.getElementById("minEmpty"); if(e) e.remove(); }
+
+  function addTalk(id, kind, text, opts){
+    opts = opts || {};
+    clearTalkEmpty();
+    const li = el("li","talk-item" + (kind==="sys"?" sys":"") + (kind==="owner"?" owner":""));
+    const tm = el("div","tt2", nowHM());
+    const bd = el("div","bd");
+    const who = el("div","tw");
+    const p = byId(id) || {name:"시스템", emoji:"•"};
+    const nm = el("span","", (p.emoji?p.emoji+" ":"") + p.name);
+    if(p.color) nm.style.color = p.color;
+    who.append(nm);
+    if(kind==="read") who.append(el("span","pill","준비 자료"));
+    if(kind==="react") who.append(el("span","pill","코멘트 반영"));
+    if(kind==="owner") who.append(el("span","pill","오너"));
+    if(opts.to){
+      const t = byId(opts.to);
+      who.append(el("span","to","→ " + (t?t.name:opts.to)));
+    }
+    const tx = el("div","tx", text);
+    bd.append(who, tx);
+    li.append(tm, bd);
+    talkList.append(li);
+    talkN++; talkCountEl.textContent = talkN + "건";
+    talkList.scrollTop = talkList.scrollHeight;
+  }
+
+  function addSystem(text){
+    clearMinEmpty();
+    const li = el("li","min-item sys");
+    const tm = el("div","tm", nowHM());
+    const bd = el("div","body");
+    bd.append(el("div","tx", text));
+    li.append(tm, bd);
+    minList.append(li);
+    minN++; minCountEl.textContent = minN + "건";
+    minList.scrollTop = minList.scrollHeight;
+  }
+
+  /* ═══════════════════ 단계·상태 표시 ═══════════════════ */
+  function setStep(idx){
+    document.querySelectorAll(".step").forEach(s=>{
+      const n = Number(s.dataset.step);
+      s.classList.toggle("on", n === idx);
+      s.classList.toggle("done", n < idx);
+    });
+  }
+  function setStageHead(tag, descr, right, alt){
+    const t = document.getElementById("roundTag");
+    const d = document.getElementById("roundDescr");
+    const k = document.getElementById("talkers");
+    if(t){ t.textContent = tag; t.classList.toggle("r2", !!alt); }
+    if(d) d.textContent = descr;
+    if(k) k.textContent = right;
+  }
+  function setLive(text, kind){
+    const lt = document.getElementById("liveTxt");
+    if(lt) lt.textContent = text;
+    const b = document.getElementById("liveBadge");
+    if(b){
+      b.style.borderColor = kind==="done" ? "rgba(46,224,106,.4)" : kind==="quiet" ? "rgba(242,84,91,.55)" : kind==="owner" ? "rgba(245,192,74,.55)" : "";
+      b.style.background = kind==="quiet" ? "rgba(242,84,91,.10)" : kind==="owner" ? "rgba(245,192,74,.10)" : "";
+    }
+    if(lt) lt.style.color = kind==="quiet" ? "#ffb3b7" : kind==="owner" ? "#ffe0a2" : "";
+  }
+  function startClock(offsetMs){
+    state.startedAt = Date.now() - (offsetMs||0);
+    clearInterval(state.timerId);
+    state.timerId = setInterval(()=>{
+      if(state.paused) return;
+      const s = Math.floor((Date.now()-state.startedAt)/1000);
+      const c = document.getElementById("clock");
+      if(c) c.textContent = pad(Math.floor(s/60))+":"+pad(s%60);
+    },1000);
+    const s0 = Math.floor((offsetMs||0)/1000);
+    const c = document.getElementById("clock");
+    if(c) c.textContent = pad(Math.floor(s0/60))+":"+pad(s0%60);
+  }
+  function toast(msg){
+    const t = document.getElementById("toast");
+    if(!t) return;
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> t.classList.remove("show"), 2800);
+  }
+  let toastTimer = null;
+
+  /* ═══════════════════ 발언(낭독) ═══════════════════ */
+  async function speakLine(id, text, opts){
+    opts = opts || {};
+    const token = state.runToken;
+    await waitIfPaused();
+    if(token !== state.runToken) return;
+    const cutRec = {fired:false, fire:null};
+    state.activeCut = cutRec;
+    const cutP = new Promise(res=>{ cutRec.fire = ()=>{ if(!cutRec.fired){ cutRec.fired = true; res(); } }; });
+    state.activeSpeaker = id;
+    setTileState(id, "speaking", opts.label || "낭독 중");
+    const talking = (state.voiceOn && text) ? speakText(id, text, token, cutRec) : Promise.resolve();
+    await Promise.race([talking, cutP]);
+    state.activeCut = null;
+    if(cutRec.fired){
+      state.activeSpeaker = null;
+      if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+      return;
+    }
+    state.activeSpeaker = null;
+    if(token === state.runToken) await psleep(180/state.speed);
+  }
+
+  /* ═══════════════════ 준비실 ═══════════════════ */
+  function readyAgendas(){ return (LIB.agendas||[]).filter(a=>a.ready && a.panels); }
+  function requests(){
+    try{ return JSON.parse(LS.get(K_REQ)||"[]") || []; }catch(e){ return []; }
+  }
+  function saveRequests(list){ LS.set(K_REQ, JSON.stringify(list.slice(-20))); }
+  function findReadyByTopic(topic){
+    const n = norm(topic);
+    if(!n) return null;
+    return readyAgendas().find(a => norm(a.title) === n || norm(a.title).indexOf(n) >= 0 || n.indexOf(norm(a.title)) >= 0) || null;
+  }
+
+  function renderPrep(){
+    const list = document.getElementById("agList");
+    const ready = readyAgendas();
+    list.innerHTML = "";
+    if(!ready.length){
+      list.append(el("div","qempty","아직 준비 완료된 안건이 없습니다. 아래에서 주제를 요청해 주세요."));
+    }
+    ready.forEach(a=>{
+      const b = el("button","agcard" + (state.agenda && state.agenda.id === a.id ? " active" : ""));
+      b.dataset.id = a.id;
+      const cnt = a.panels ? Object.keys(a.panels).filter(k=>a.panels[k]).length : 0;
+      b.append(el("span","tg", a.tag || "안건"));
+      b.append(el("div","tt", a.title));
+      b.append(el("div","bf", a.brief || ""));
+      const mt = el("div","mt");
+      const m1 = el("span"); m1.innerHTML = "자료 <b>"+cnt+"/6</b> 준비 완료";
+      mt.append(m1);
+      if(a.preparedAt) mt.append(el("span","", "· " + a.preparedAt));
+      if(a.preparedBy) mt.append(el("span","", "· " + a.preparedBy));
+      b.append(mt);
+      b.addEventListener("click", ()=> openAgenda(a.id));
+      list.append(b);
+    });
+    const cntEl = document.getElementById("readyCnt");
+    const req = requests();
+    const pending = req.filter(r=>!findReadyByTopic(r.topic)).length;
+    cntEl.textContent = "준비 완료 " + ready.length + "건" + (pending ? " · 준비 중 " + pending + "건" : "");
+    cntEl.classList.toggle("warn", pending > 0);
+    renderQueue();
+  }
+
+  function renderQueue(){
+    const list = document.getElementById("queueList");
+    const empty = document.getElementById("queueEmpty");
+    const req = requests();
+    list.innerHTML = "";
+    if(!req.length){ empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    req.slice().reverse().forEach(r=>{
+      const hit = findReadyByTopic(r.topic);
+      const li = el("li","qitem" + (hit ? " ready" : ""));
+      li.append(el("span","st", hit ? "준비 완료" : "자료 준비 중"));
+      li.append(el("span","qt", r.topic));
+      if(hit){
+        const go = el("button","qb","열기");
+        go.addEventListener("click", ()=> openAgenda(hit.id));
+        li.append(go);
+        const cp = el("button","qb","요청문");
+        cp.addEventListener("click", ()=> copyText(requestText(r.topic)));
+        li.append(cp);
+      }else{
+        const cp = el("button","qb","요청문 복사");
+        cp.addEventListener("click", ()=> copyText(requestText(r.topic)));
+        li.append(cp);
+      }
+      const x = el("button","qx","✕");
+      x.title = "큐에서 빼기";
+      x.addEventListener("click", ()=>{
+        const cur = requests().filter(v=>v.at !== r.at || v.topic !== r.topic);
+        saveRequests(cur); renderPrep(); toast("큐에서 뺐습니다");
+      });
+      li.append(x);
+      list.append(li);
+    });
+  }
+
+  function requestText(topic){
+    return [
+      "[회의 안건 요청] 다크진 AI 비서실 · 6분할 회의실",
+      "",
+      "주제: " + topic,
+      "요청: 오너 darkjin / " + nowStamp(),
+      "",
+      "피클, 이 주제로 6분할 회의실 v4 사전 자료를 준비해 주세요.",
+      "- 6인(피클·Gemini·Cue·Hark·ChatGPT·Claude)이 서로 겹치지 않는 사전 조사 자료를 각각 만들 것",
+      "- 각 AI 자료: 핵심 요약 1~2문장 / 근거·데이터 2~3개 / 우려·반박 1개 / 제안 1개 / 자료 출처 한 줄",
+      "- 확인 가능한 근거와 추정을 구분해서 적을 것",
+      "- 결론 후보 2~3개와 후보별 6인 역할 분담을 함께 만들 것",
+      "- 다 모이면 work/meeting-room/v4/agendas.js 에 안건을 추가하고 ready:true 로 표시",
+      "",
+      "자료가 모두 준비되면 '회의 준비 완료'로 알려 주세요. 그때까지 웹에는 '자료 준비 중'으로 남습니다."
+    ].join("\n");
+  }
+
+  function addRequest(topic){
+    const t = String(topic||"").replace(/\s+/g," ").trim();
+    if(!t){ toast("주제를 적어 주세요"); return null; }
+    const hit = findReadyByTopic(t);
+    if(hit){ toast("이미 준비 완료된 안건입니다 · 목록에서 열어 주세요"); openAgenda(hit.id); return hit; }
+    const list = requests();
+    if(list.some(r=>norm(r.topic) === norm(t))){ toast("이미 큐에 있는 주제입니다"); return null; }
+    list.push({topic:t, at:Date.now()});
+    saveRequests(list); renderPrep();
+    toast("➕ 안건 큐에 등록 — 피클이 자료를 모으면 '준비 완료'로 바뀝니다");
+    return null;
+  }
+
+  /* ═══════════════════ 안건 열기 ═══════════════════ */
+  function openAgenda(id){
+    const a = (LIB.byId && LIB.byId[id]) || (LIB.agendas||[]).find(x=>x.id === id);
+    if(!a){ toast("안건을 찾지 못했습니다"); return; }
+    if(!a.panels || !Object.keys(a.panels).length){
+      toast("이 안건은 아직 자료가 준비되지 않았습니다");
+      return;
+    }
+    state.runToken++;
+    state.agenda = a;
+    state.option = null;
+    state.ownerDir = "";
+    state.notes = [];
+    state.readSet = {}; state.rebutSet = {};
+    state.paused = false; state.pausedAt = 0; state.pausedMs = 0;
+    document.body.classList.remove("is-quiet");
+    releasePause();
+    state.phase = "materials";
+
+    document.body.classList.add("meeting-on");
+    document.getElementById("stage1Bar").style.display = "";
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("rolePanel").classList.remove("show");
+    document.getElementById("finalBlock").classList.remove("show");
+    document.getElementById("ownerDirection").value = "";
+
+    renderPrep();
+    renderMaterials();
+    renderOwnerChips();
+    document.getElementById("prepCard").classList.add("has-agenda");
+    document.getElementById("prepCard").classList.add("collapsed");
+    document.getElementById("curAgendaTitle").textContent = a.title;
+    document.getElementById("prepToggle").textContent = "다른 안건 ▾";
+
+    setStep(1);
+    setStageHead("1단계","준비된 자료 보기 & 주제 논의", "자료 " + Object.keys(a.panels).length + " / 6", false);
+    setLive("자료 열람", "");
+    startClock(0);
+    SFX.ding();
+
+    showReadyBanner(true);
+    document.getElementById("refNote").innerHTML =
+      "자료 출처는 각 패널의 <b>자료 펼치기</b>에서 확인할 수 있습니다. " +
+      "<b>Meta Muse · Keyring</b>은 이번 안건 자료를 아직 내지 않아 6분할에 넣지 않았습니다.";
+
+    clearMinEmpty();
+    minList.innerHTML = ""; minN = 0; minCountEl.textContent = "0건";
+    talkList.innerHTML = ""; talkN = 0; talkCountEl.textContent = "0건";
+    const te = el("li","talk-empty", "자료 6/6 도착 — 카드를 펼쳐 읽고, 📖 자료 낭독이나 🔁 반박 라운드로 6인의 관점 차이를 확인하세요. 아래 💬 오너 코멘트로 방향을 잡으면 결론 후보가 좁혀집니다.");
+    te.id = "talkEmpty"; talkList.append(te);
+
+    addSystem('안건 열람 — "' + a.title + '" (자료 ' + Object.keys(a.panels).length + '/6 · ' + (a.preparedAt||"") + ")");
+    addSystem("1단계 · 역할 분담은 결론을 확정한 뒤에 나옵니다");
+
+    $("#reqTopic").value = "";
+    toast("🗂️ 안건 열었습니다 · 6인 자료가 준비되어 있습니다");
+    const sh = document.getElementById("stageHd");
+    if(sh) sh.scrollIntoView({block:"start"});
+  }
+
+  function renderMaterials(){
+    const a = state.agenda;
+    AIS.forEach(id=>{
+      const p = a.panels[id];
+      const r = tileRefs[id];
+      if(!p){
+        r.bubble.innerHTML = ""; r.bubble.classList.add("empty");
+        r.bubble.textContent = "이번 안건 자료 없음";
+        r.matbtn.classList.add("ghost");
+        setTileState(id,"","자료 없음");
+        return;
+      }
+      renderBubble(id, "준비 자료", p.summary, {showBtn:true});
+      setTileState(id,"ready","자료 준비");
+    });
+  }
+
+  function openMat(id){
+    const a = state.agenda;
+    if(!a || !a.panels[id]) return;
+    const p = a.panels[id];
+    const who = byId(id);
+    state.matId = id;
+    document.getElementById("matTitle").textContent = who.name + " 준비 자료";
+    document.getElementById("matWho").textContent = who.role + " · 준비 " + (a.preparedAt||"") + (a.preparedBy ? " · " + a.preparedBy : "");
+    document.getElementById("matSum").textContent = p.summary || "";
+    const ul = document.getElementById("matPoints");
+    ul.innerHTML = "";
+    (p.points||[]).forEach(t=> ul.append(el("li","", t)));
+    document.getElementById("matConcern").textContent = p.concern || "—";
+    document.getElementById("matProposal").textContent = p.proposal || "—";
+    const rb = document.getElementById("matRebuttal");
+    if(p.rebuttal && p.rebuttal.text){
+      const to = byId(p.rebuttal.to);
+      rb.textContent = "→ " + (to?to.name:p.rebuttal.to) + " : " + p.rebuttal.text;
+    } else rb.textContent = "—";
+    document.getElementById("matSource").textContent = p.source || "";
+    document.getElementById("matModal").classList.add("show");
+  }
+
+  /* ═══════════════════ 1단계: 자료 낭독 ═══════════════════ */
+  function setBarBusy(v){
+    state.busy = !!v;
+    ["readBtn","rebutBtn","toConfirmBtn","confirmRoleBtn","backToTalkBtn"].forEach(i=>{
+      const b = document.getElementById(i);
+      if(b) b.disabled = state.busy;
+    });
+  }
+
+  async function readAll(){
+    if(!state.agenda || state.busy) return;
+    setBarBusy(true);
+    const token = ++state.runToken;
+    state.phase = "materials";
+    addSystem("📖 자료 낭독 — 6인이 준비해 온 요약을 차례로 읽습니다");
+    for(const id of AIS){
+      if(token !== state.runToken) break;
+      await waitIfPaused();
+      if(token !== state.runToken) break;
+      const p = state.agenda.panels[id];
+      if(!p) continue;
+      renderBubble(id, "준비 자료", p.summary, {showBtn:true});
+      await speakLine(id, p.summary, {label:"자료 낭독"});
+      if(token !== state.runToken) break;
+      if(!state.readSet[id]){ addTalk(id, "read", p.summary); state.readSet[id] = true; }
+      setTileState(id,"ready","낭독 완료");
+      await psleep(150/state.speed);
+    }
+    if(token === state.runToken){
+      state.phase = "discussion";
+      setStep(2);
+      setStageHead("1단계","논의 — 반박 라운드로 관점 차이를 확인", "낭독 " + Object.keys(state.readSet).length + " / 6", false);
+      setLive("논의 중", "");
+      addSystem("자료 낭독 완료 — 이제 반박 라운드로 서로 다른 관점을 확인합니다");
+      toast("📖 낭독 끝 · 이제 🔁 반박 라운드로 넘어가세요");
+    }
+    setBarBusy(false);
+  }
+
+  /* ═══════════════════ 1단계: 반박 라운드 ═══════════════════ */
+  async function rebuttalRound(){
+    if(!state.agenda || state.busy) return;
+    setBarBusy(true);
+    const token = ++state.runToken;
+    state.phase = "discussion";
+    setStep(2);
+    setStageHead("1단계","논의 — 6인이 서로의 자료에 반박·보완", "반박 0 / 6", false);
+    addSystem("🔁 반박 라운드 — 각자 다른 AI의 자료를 짚고 반박합니다");
+    let n = 0;
+    for(const id of AIS){
+      if(token !== state.runToken) break;
+      await waitIfPaused();
+      if(token !== state.runToken) break;
+      const p = state.agenda.panels[id];
+      if(!p || !p.rebuttal || !p.rebuttal.text) continue;
+      const to = byId(p.rebuttal.to);
+      renderBubble(id, "반박 → " + (to?to.name:p.rebuttal.to), p.rebuttal.text, {showBtn:true});
+      await speakLine(id, p.rebuttal.text, {label:"반박 중"});
+      if(token !== state.runToken) break;
+      if(!state.rebutSet[id]){ addTalk(id, "rebut", p.rebuttal.text, {to:p.rebuttal.to}); state.rebutSet[id] = true; }
+      setTileState(id,"ready","반박 완료");
+      n++;
+      setStageHead("1단계","논의 — 6인이 서로의 자료에 반박·보완", "반박 " + n + " / 6", false);
+      await psleep(150/state.speed);
+    }
+    if(token === state.runToken){
+      setLive("오너 결정 대기", "owner");
+      addSystem("반박 라운드 완료 — 오너가 결론을 확정하면 역할 분담이 나옵니다");
+      toast("🔁 반박 6건 끝 · ✅ 결론 확정으로 넘어가세요");
+    }
+    setBarBusy(false);
+  }
+
+  /* ═══════════════════ 오너 코멘트 ═══════════════════ */
+  function renderOwnerChips(){
+    const box = document.getElementById("interjectChips");
+    box.innerHTML = "";
+    const a = state.agenda;
+    const chips = (a && a.ownerChips) ? a.ownerChips : [];
+    chips.forEach(c=>{
+      const b = el("button","chip2", c);
+      b.addEventListener("click", ()=>{ unlockVoice(); submitComment(c); });
+      box.append(b);
+    });
+  }
+
+  function submitComment(text){
+    const note = String(text||"").replace(/\s+/g," ").trim();
+    if(!note){ toast("코멘트를 적어 주세요"); return false; }
+    if(!state.agenda){ toast("먼저 준비실에서 안건을 골라 주세요"); return false; }
+    state.notes.push(note);
+    addTalk("owner","owner", note);
+    addSystem('💬 오너 코멘트 — "' + note + '"');
+    document.getElementById("interjectInput").value = "";
+    stopInterjectMic(true);
+    if(state.activeCut && state.activeCut.fire) state.activeCut.fire();
+    if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+    SFX.pop();
+    setLive("오너 코멘트", "owner");
+
+    if(state.phase === "roles"){
+      const c = document.getElementById("conclText");
+      c.textContent = (c.textContent||"") + "\n[오너 코멘트] " + note;
+      state.ownerDir = (state.ownerDir ? state.ownerDir + " / " : "") + note;
+      toast("💬 코멘트를 결론에 덧붙였습니다");
+      return true;
+    }
+
+    // 진행 중인 낭독/반박 스크립트를 여기서 끊는다 (코멘트 반영이 덮이지 않도록)
+    state.runToken++;
+
+    const a = state.agenda;
+    let picked = null;
+    AIS.forEach(id=>{
+      const p = a.panels[id];
+      if(!p) return;
+      const rep = (a.ownerReplies && a.ownerReplies[id]) || "";
+      if(!rep) return;
+      renderBubble(id, "코멘트 반영", rep, {showBtn:true});
+      addTalk(id, "react", rep);
+      setTileState(id,"ready","반영 완료");
+      if(id === "pickle") picked = rep;
+    });
+    if(picked){
+      const token = state.runToken;
+      speakLine("pickle", picked, {label:"오너 지시 반영"});
+    }
+    toast("💬 코멘트 접수 — 6인이 각자 반응을 남겼습니다");
+    return true;
+  }
+
+  /* ═══════════════════ 결론 확정 ═══════════════════ */
+  function openConfirm(){
+    if(!state.agenda) return;
+    state.phase = "confirm";
+    setStep(3);
+    setLive("결론 확정 대기", "owner");
+    document.getElementById("stage1Bar").style.display = "none";
+    const opts = state.agenda.options || [];
+    const list = document.getElementById("optList");
+    list.innerHTML = "";
+    opts.forEach(o=>{
+      const b = el("button","opt" + (state.option === o.id ? " sel" : ""));
+      b.dataset.id = o.id;
+      const ot = el("div","ot");
+      ot.append(el("span","ck2","✓"), el("span","", o.title));
+      const od = el("div","od", o.detail || "");
+      const om = el("div","om");
+      const sup = (o.support||[]).map(x=>byId(x)?byId(x).name:x).join(" · ");
+      if(sup) om.append(el("span","sup","지지 " + sup));
+      if(o.risk) om.append(el("span","rk","위험 " + o.risk));
+      b.append(ot, od, om);
+      b.addEventListener("click", ()=>{
+        state.option = o.id;
+        document.querySelectorAll("#optList .opt").forEach(x=>x.classList.toggle("sel", x.dataset.id === o.id));
+        document.getElementById("cfMeta").textContent = "선택: " + o.id + " · 반박 " + Object.keys(state.rebutSet).length + "건";
+      });
+      list.append(b);
+    });
+    document.getElementById("cfMeta").textContent = "결론 후보 " + opts.length + " · 반박 " + Object.keys(state.rebutSet).length + "건 반영";
+    document.getElementById("confirmPanel").classList.add("show");
+    addSystem("결론 확정 단계 — 오너가 후보를 고르고 역할 분담이 생성됩니다");
+    document.getElementById("confirmPanel").scrollIntoView({block:"center", behavior:"smooth"});
+  }
+
+  function backToTalk(){
+    state.phase = "discussion";
+    setStep(2);
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("stage1Bar").style.display = "";
+    setLive("논의 중", "");
+    toast("↩️ 논의로 돌아왔습니다");
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  function confirmRoles(){
+    if(!state.agenda) return;
+    if(!state.option){
+      toast("결론 후보를 하나 골라 주세요");
+      document.querySelectorAll("#optList .opt").forEach(x=>{
+        if(!x.dataset.done){ x.style.borderColor = "rgba(242,84,91,.6)"; setTimeout(()=>{ x.style.borderColor = ""; }, 900); }
+      });
+      return;
+    }
+    const a = state.agenda;
+    const opt = (a.options||[]).find(o=>o.id === state.option);
+    if(!opt){ toast("결론을 찾지 못했습니다"); return; }
+    state.ownerDir = (document.getElementById("ownerDirection").value || "").replace(/\s+\n/g,"\n").trim();
+    const roles = (a.roles && a.roles[state.option]) || {};
+
+    state.phase = "roles";
+    state.runToken++;
+    setStep(4);
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("stage1Bar").style.display = "none";
+    document.getElementById("rolePanel").classList.add("show");
+    SFX.confirm();
+
+    const concl = opt.title + "\n" + (opt.detail||"") + (state.ownerDir ? "\n[오너 추가 지시] " + state.ownerDir : "") + (state.notes.length ? "\n[오너 코멘트] " + state.notes.join(" / ") : "");
+    document.getElementById("conclText").textContent = concl;
+    document.getElementById("ccMeta").textContent = "결론 " + opt.id + " · " + (a.tag||"");
+    document.getElementById("roleTitle").textContent = "결론과 역할 분담";
+
+    const list = document.getElementById("actionList");
+    list.innerHTML = "";
+    AIS.forEach(id=>{
+      const p = byId(id);
+      const card = el("div","ac"); card.dataset.id = id;
+      const body = el("div");
+      body.append(el("div","nm", p.name), el("div","tx", roles[id] || "역할 미정"));
+      card.append(el("div","em", p.emoji), body);
+      list.append(card);
+      renderBubble(id, "맡은 일", roles[id] || "역할 미정", {role:"2단계 · 역할 분담", showBtn:false});
+      setTileState(id,"assigned","배정");
+      tileRefs[id].matbtn.classList.add("ghost");
+    });
+
+    const fin = document.getElementById("finalText");
+    fin.textContent = a.closing || "역할 분담대로 진행하고, 결과는 다음 회의에서 복기합니다.";
+    document.getElementById("finalBlock").classList.add("show");
+
+    setStageHead("2단계","결론 확정 → 역할 분담", "배정 6 / 6", true);
+    setLive("역할 분담 완료", "done");
+    addSystem("✅ 결론 확정 — 후보 " + opt.id + " · 역할 6건 배정");
+    AIS.forEach(id=>{
+      if(roles[id]) addTalk(id,"sys", "배정 — " + roles[id]);
+    });
+    toast("🧩 역할 분담 완료 · 복사해서 피클에게 넘기세요");
+    const sh2 = document.getElementById("stageHd");
+    if(sh2) sh2.scrollIntoView({block:"start"});
+
+    const token = state.runToken;
+    speakLine("pickle", "결론 확정했습니다. " + opt.title + ". 역할 여섯 개를 나눴습니다.", {label:"결론 확정"})
+      .then(()=>{ if(token === state.runToken){ AIS.forEach(id=>{ if(state.phase==="roles") setTileState(id,"assigned","배정"); }); } });
+  }
+
+  function newMeeting(){
+    state.runToken++;
+    state.phase = "idle";
+    state.agenda = null; state.option = null; state.ownerDir = "";
+    state.notes = []; state.readSet = {}; state.rebutSet = {};
+    document.body.classList.remove("meeting-on");
+    document.getElementById("prepCard").classList.remove("collapsed");
+    document.getElementById("prepCard").classList.remove("has-agenda");
+    document.getElementById("curAgendaTitle").textContent = "";
+    document.getElementById("prepToggle").textContent = "다른 안건 ▾";
+    document.getElementById("stage1Bar").style.display = "none";
+    document.getElementById("confirmPanel").classList.remove("show");
+    document.getElementById("rolePanel").classList.remove("show");
+    document.getElementById("readyBanner").classList.remove("show");
+    document.getElementById("refNote").textContent = "";
+    clearInterval(state.timerId);
+    document.getElementById("clock").textContent = "00:00";
+    AIS.forEach(id=>{
+      const r = tileRefs[id]; if(!r) return;
+      r.bubble.innerHTML = ""; r.bubble.classList.add("empty");
+      r.bubble.textContent = "안건을 고르면 준비해 온 자료가 여기에 열립니다.";
+      r.matbtn.classList.add("ghost");
+      setTileState(id,"","대기");
+    });
+    setStep(0);
+    setStageHead("1단계","안건을 고르면 6인이 준비해 온 자료가 열립니다","자료 0 / 6",false);
+    setLive("준비실", "");
+    renderPrep();
+    window.scrollTo({top:0, behavior:"smooth"});
+    toast("준비실로 돌아왔습니다");
+  }
+
+  /* ═══════════════════ 복사 ═══════════════════ */
+  function copyText(text){
+    const done = ()=> toast("📋 복사되었습니다 · 붙여넣기 하세요");
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(done).catch(()=>{ if(fallbackCopy(text)) done(); else manualCopy(text); });
+    } else if(fallbackCopy(text)){ done(); }
+    else { manualCopy(text); }
+  }
+  function fallbackCopy(text){
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=text; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.opacity="0"; ta.style.top="0";
+      document.body.append(ta); ta.select();
+      const ok=document.execCommand("copy"); ta.remove(); return ok;
+    }catch(e){ return false; }
+  }
+  function manualCopy(text){
+    const modal=el("div","modal show"); const veil=el("div","veil"); const sheet=el("div","sheet");
+    sheet.append(el("h3","","복사"));
+    sheet.append(el("p","note","이 브라우저는 자동 복사가 막혀 있습니다. 아래 내용을 길게 눌러 전체 선택한 뒤 복사해 주세요."));
+    const ta=document.createElement("textarea");
+    ta.value=text; ta.readOnly=true;
+    ta.style.cssText="width:100%;height:42vh;background:#0a0d14;border:1px solid #242a3a;color:#c9cfe0;border-radius:10px;padding:9px;font-size:11px;line-height:1.5;font-family:inherit;resize:vertical";
+    sheet.append(ta);
+    const foot=el("div","foot"); const close=el("button","btn2 green","닫기");
+    foot.append(close); sheet.append(foot); modal.append(veil,sheet);
+    const shut=()=>modal.remove();
+    veil.addEventListener("click",shut); close.addEventListener("click",shut);
+    document.body.append(modal);
+    setTimeout(()=>{ ta.focus(); ta.select(); },60);
+  }
+
+  function rolesText(){
+    const a = state.agenda; if(!a) return "";
+    const opt = (a.options||[]).find(o=>o.id === state.option);
+    const roles = (a.roles && a.roles[state.option]) || {};
+    const L = [];
+    L.push("## " + a.title);
+    L.push("");
+    L.push("- 안건 ID: " + a.id);
+    L.push("- 자료 준비: " + (a.preparedAt||"") + " · " + (a.preparedBy||""));
+    L.push("- 회의 일시: " + nowStamp());
+    L.push("- 확정 결론: " + state.option + (opt ? " · " + opt.title : ""));
+    L.push("");
+    L.push("### 결론");
+    L.push(opt ? opt.detail : "");
+    if(state.ownerDir){ L.push(""); L.push("### 오너 추가 지시"); L.push(state.ownerDir); }
+    if(state.notes.length){ L.push(""); L.push("### 오너 코멘트"); state.notes.forEach(n=>L.push("- " + n)); }
+    L.push("");
+    L.push("### 역할 분담");
+    AIS.forEach(id=>{
+      const p = byId(id);
+      L.push("- " + p.name + " (" + p.role + ") — " + (roles[id] || "미정"));
+    });
+    L.push("");
+    L.push("### 다음 단계");
+    L.push(a.closing || "");
+    L.push("");
+    L.push("### 준비 자료 요약");
+    AIS.forEach(id=>{
+      const p = a.panels[id]; if(!p) return;
+      L.push("- " + byId(id).name + ": " + p.summary);
+    });
+    return L.join("\n");
+  }
+
+  function talkText(){
+    return Array.from(talkList.querySelectorAll(".talk-item")).map(li=>{
+      const tm = li.querySelector(".tt2") ? li.querySelector(".tt2").textContent : "";
+      const who = li.querySelector(".tw") ? li.querySelector(".tw").innerText.replace(/\n/g," ") : "";
+      const tx = li.querySelector(".tx") ? li.querySelector(".tx").textContent : "";
+      return "- " + tm + " " + (who ? who + ": " : "") + tx;
+    }).join("\n");
+  }
+  function minutesText(){
+    return Array.from(minList.querySelectorAll(".min-item")).map(li=>{
+      const tm = li.querySelector(".tm") ? li.querySelector(".tm").textContent : "";
+      const tx = li.querySelector(".tx") ? li.querySelector(".tx").textContent : "";
+      return "- " + tm + " " + tx;
+    }).join("\n");
+  }
+
+  /* ═══════════════════ 준비 완료 알림 ═══════════════════ */
+  function showReadyBanner(force){
+    const a = state.agenda;
+    const b = document.getElementById("readyBanner");
+    if(!a){ b.classList.remove("show"); return; }
+    const cnt = Object.keys(a.panels||{}).length;
+    document.getElementById("readyTitle").textContent = "회의 준비 완료 — " + a.title;
+    document.getElementById("readySub").textContent = "6인 자료 " + cnt + "/6 · 준비 " + (a.preparedAt||"") + " · " + (a.preparedBy||"");
+    b.classList.add("show");
+    if(force) SFX.ding();
+  }
+  function checkNewReady(){
+    const ready = readyAgendas();
+    let seen = [];
+    try{ seen = JSON.parse(LS.get(K_SEEN)||"[]") || []; }catch(e){ seen = []; }
+    const fresh = ready.filter(a=>seen.indexOf(a.id) < 0);
+    LS.set(K_SEEN, JSON.stringify(ready.map(a=>a.id)));
+    if(!fresh.length) return;
+    if(state.agenda) return;
+    document.getElementById("readyTitle").textContent = "새 안건 " + fresh.length + "건 준비 완료";
+    document.getElementById("readySub").textContent = fresh.map(a=>a.title).join(" · ");
+    document.getElementById("readyBanner").classList.add("show");
+    toast("🔔 새 회의 자료가 준비되었습니다 · " + fresh.length + "건");
+    if(LS.get(K_NOTIFY) === "1"){
+      try{
+        if(window.Notification && Notification.permission === "granted"){
+          new Notification("다크진 AI 비서실 · 회의 준비 완료", {body: fresh.map(a=>a.title).join("\n")});
+        }
+      }catch(e){}
+    }
+  }
+
+  /* ═══════════════════ 설정 ═══════════════════ */
+  function openSettings(){
+    document.getElementById("settingsModal").classList.add("show");
+    document.querySelectorAll("#speedRow .chip").forEach(c=>c.classList.toggle("on", Number(c.dataset.speed) === state.speed));
+    const sfx = document.getElementById("sfxToggle");
+    sfx.classList.toggle("on", state.sfxOn);
+    sfx.textContent = state.sfxOn ? "🔔 효과음 ON" : "🔕 효과음 OFF";
+    const nb = document.getElementById("notifyToggle");
+    nb.classList.toggle("on", LS.get(K_NOTIFY) === "1");
+    nb.textContent = LS.get(K_NOTIFY) === "1" ? "🔔 알림 켜짐" : "🔕 알림 꺼짐";
+  }
+  function closeSettings(){ document.getElementById("settingsModal").classList.remove("show"); }
+
+  /* ═══════════════════ 이벤트 ═══════════════════ */
+  document.getElementById("readBtn").addEventListener("click", ()=>{ unlockVoice(); readAll(); });
+  document.getElementById("rebutBtn").addEventListener("click", ()=>{ unlockVoice(); rebuttalRound(); });
+  document.getElementById("toConfirmBtn").addEventListener("click", ()=>{ unlockVoice(); openConfirm(); });
+  document.getElementById("backToTalkBtn").addEventListener("click", backToTalk);
+  document.getElementById("confirmRoleBtn").addEventListener("click", confirmRoles);
+  document.getElementById("newMeeting").addEventListener("click", newMeeting);
+  document.getElementById("changeOption").addEventListener("click", ()=>{
+    if(!state.agenda) return;
+    document.getElementById("rolePanel").classList.remove("show");
+    document.getElementById("finalBlock").classList.remove("show");
+    document.getElementById("stage1Bar").style.display = "";
+    state.phase = "materials";
+    renderMaterials();
+    AIS.forEach(id=>{ const r=tileRefs[id]; if(r) r.matbtn.classList.remove("ghost"); });
+    openConfirm();
+    toast("↩️ 결론을 다시 고를 수 있습니다 · 자료도 그대로 남아 있습니다");
+  });
+  document.getElementById("copyRoles").addEventListener("click", ()=> copyText(rolesText()));
+  document.getElementById("copyTalk").addEventListener("click", ()=> copyText("[" + (state.agenda?state.agenda.title:"회의") + "]\n" + talkText()));
+  document.getElementById("copyMinutes").addEventListener("click", ()=> copyText("[" + (state.agenda?state.agenda.title:"회의") + "]\n" + minutesText()));
+  document.getElementById("copyAll").addEventListener("click", ()=>{
+    copyText("[" + (state.agenda?state.agenda.title:"회의") + "]\n\n" +
+      "== 역할 분담 ==\n" + rolesText() + "\n\n== 논의 기록 ==\n" + talkText());
+  });
+  document.getElementById("readyClose").addEventListener("click", ()=> document.getElementById("readyBanner").classList.remove("show"));
+  document.getElementById("prepToggle").addEventListener("click", ()=>{
+    const c = document.getElementById("prepCard");
+    const open = c.classList.toggle("collapsed");
+    document.getElementById("prepToggle").textContent = open ? "다른 안건 ▾" : "접기 ▴";
+    if(!open) document.getElementById("agList").scrollIntoView({block:"nearest"});
+  });
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.querySelectorAll("[data-close]").forEach(n=> n.addEventListener("click", ()=>{
+    if(n.closest("#matModal")) document.getElementById("matModal").classList.remove("show");
+    else closeSettings();
+  }));
+  document.getElementById("matSpeak").addEventListener("click", ()=>{
+    if(!state.matId || !state.agenda) return;
+    const p = state.agenda.panels[state.matId];
+    if(!p) return;
+    unlockVoice();
+    state.runToken++;
+    speakLine(state.matId, p.summary, {label:"자료 낭독"}).then(()=>{ if(state.phase!=="roles" && state.agenda) setTileState(state.matId,"ready","자료 준비"); });
+  });
+
+  document.getElementById("reqCopy").addEventListener("click", ()=>{
+    const t = ($("#reqTopic").value||"").trim();
+    if(!t){ toast("주제를 먼저 적어 주세요"); return; }
+    copyText(requestText(t));
+  });
+  document.getElementById("reqQueue").addEventListener("click", ()=>{
+    const t = ($("#reqTopic").value||"").trim();
+    const hit = addRequest(t);
+    if(!hit) $("#reqTopic").value = "";
+  });
+  $("#reqTopic").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); document.getElementById("reqQueue").click(); } });
+
+  document.getElementById("voiceBtn").addEventListener("click", ()=>{
+    setVoice(!state.voiceOn);
+    if(state.voiceOn){ unlockVoice(); SFX.ding(); }
+  });
+  document.getElementById("quietBtn").addEventListener("click", ()=>{
+    unlockVoice();
+    if(state.paused) resumeAll(); else quietAll();
+  });
+  document.getElementById("interjectMic").addEventListener("click", ()=>{ unlockVoice(); beginInterjectMic(); });
+  document.getElementById("interjectSend").addEventListener("click", ()=>{
+    const v = (document.getElementById("interjectInput").value||"").trim();
+    if(!v){ toast("코멘트를 적거나 🎤로 말해 주세요"); return; }
+    submitComment(v);
+  });
+  document.getElementById("interjectInput").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); const v=(document.getElementById("interjectInput").value||"").trim(); if(v) submitComment(v); }
+  });
+
+  document.querySelectorAll("#speedRow .chip").forEach(c=>{
+    c.addEventListener("click", ()=>{
+      state.speed = Number(c.dataset.speed);
+      LS.set(K_SPEED, String(state.speed));
+      document.querySelectorAll("#speedRow .chip").forEach(x=>x.classList.toggle("on", x === c));
+      toast("낭독 속도: " + c.textContent);
+    });
+  });
+  const sfxBtn = document.getElementById("sfxToggle");
+  sfxBtn.addEventListener("click", ()=>{
+    state.sfxOn = !state.sfxOn;
+    LS.set(K_SFX, state.sfxOn ? "1" : "0");
+    sfxBtn.classList.toggle("on", state.sfxOn);
+    sfxBtn.textContent = state.sfxOn ? "🔔 효과음 ON" : "🔕 효과음 OFF";
+    if(state.sfxOn){ SFX.unlock(); SFX.pop(); }
+  });
+  document.getElementById("notifyToggle").addEventListener("click", ()=>{
+    const on = LS.get(K_NOTIFY) === "1";
+    const b = document.getElementById("notifyToggle");
+    if(on){
+      LS.del(K_NOTIFY); b.classList.remove("on"); b.textContent = "🔕 알림 꺼짐";
+      toast("준비 완료 알림을 껐습니다");
+      return;
+    }
+    LS.set(K_NOTIFY, "1"); b.classList.add("on"); b.textContent = "🔔 알림 켜짐";
+    try{
+      if(window.Notification && Notification.permission === "default") Notification.requestPermission();
+    }catch(e){}
+    toast("🔔 새 안건이 준비되면 이 브라우저에 알립니다");
+  });
+
+  document.getElementById("voiceTest").addEventListener("click", ()=>{
+    if(!synthOK){ toast("이 브라우저는 음성 합성을 지원하지 않습니다"); return; }
+    if(!state.voiceOn) setVoice(true, true);
+    unlockVoice();
+    speakChunk("pickle","안건 자료 확인했습니다. 제가 회의를 진행하겠습니다.", VOICE_CFG.pickle);
+    toast("🔊 피클 목소리 테스트");
+  });
+  document.getElementById("voiceTestAll").addEventListener("click", async ()=>{
+    if(!synthOK){ toast("이 브라우저는 음성 합성을 지원하지 않습니다"); return; }
+    if(!state.voiceOn) setVoice(true, true);
+    unlockVoice();
+    toast("🎚️ 여섯 목소리를 차례로 들려드립니다");
+    for(const id of AIS){
+      const p = byId(id);
+      await speakChunk(id, p.name + "입니다. " + (VOICE_CFG[id]?VOICE_CFG[id].tone:""), VOICE_CFG[id]||{pitch:1,rate:1});
+      await sleep(140);
+    }
+  });
+  document.addEventListener("keydown", e=>{
+    if(e.key === "Escape"){ closeSettings(); document.getElementById("matModal").classList.remove("show"); }
+    const tag = (e.target && e.target.tagName) || "";
+    if((e.key === "q" || e.key === "Q") && !/input|textarea/i.test(tag)){ if(state.paused) resumeAll(); else quietAll(); }
+  });
+
+  /* ═══════════════════ 시작 ═══════════════════ */
+  buildTiles();
+  setStep(0);
+  setStageHead("1단계","안건을 고르면 6인이 준비해 온 자료가 열립니다","자료 0 / 6",false);
+  setVoice(state.voiceOn, true);
+  refreshVoices();
+  if(synthOK){ try{ window.speechSynthesis.onvoiceschanged = refreshVoices; }catch(e){} }
+  setIMicUI(false);
+  if(!SR){
+    const ib = document.getElementById("interjectMic");
+    if(ib){ ib.style.opacity = ".55"; ib.title = "이 브라우저는 음성 인식 미지원"; }
+  }
+  renderPrep();
+  checkNewReady();
+
+  // URL 파라미터: ?agenda=yt-growth / ?topic=새 주제
+  try{
+    const q = new URLSearchParams(location.search);
+    const ag = q.get("agenda");
+    const tp = q.get("topic");
+    if(ag && LIB.byId && LIB.byId[ag]) openAgenda(ag);
+    else if(tp) document.getElementById("reqTopic").value = tp;
+  }catch(e){}
+
+  const unlockOnce = ()=>{ unlockVoice(); document.removeEventListener("pointerdown", unlockOnce); document.removeEventListener("touchstart", unlockOnce); };
+  document.addEventListener("pointerdown", unlockOnce, {passive:true});
+  document.addEventListener("touchstart", unlockOnce, {passive:true});
+
+  // 테스트용 훅
+  window.__mr4 = {
+    state: state,
+    agendaIds: () => (LIB.agendas||[]).map(a=>a.id),
+    openAgenda: openAgenda,
+    readAll: readAll,
+    rebuttalRound: rebuttalRound,
+    submitComment: submitComment,
+    openConfirm: openConfirm,
+    confirmRoles: confirmRoles,
+    rolesText: rolesText
+  };
+})();
+</script>
+</body>
+</html>
