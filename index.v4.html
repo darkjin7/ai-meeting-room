@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.7 — 피클이 듣는 중 기본 영상 · 졸기/딴짓은 어쩌다 한 번</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.7.1 — 피클이 듣는 중 기본 영상 · 졸기/딴짓은 어쩌다 한 번(딴짓은 1회만)</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -1105,7 +1105,7 @@
         <div class="dh-top">
           <span class="dh-org">다크진 AI 비서실</span>
           <span>회의 브리핑 서류</span>
-          <span class="dh-no" id="docNo">v4.7 · DOC 2026-1127</span>
+          <span class="dh-no" id="docNo">v4.7.1 · DOC 2026-1127</span>
         </div>
         <h2 class="dh-title">회의 브리핑 서류</h2>
         <p class="dh-sub">이번에 다룰 안건을 고르고, 다음 회의에 다룰 안건을 적어 두십시오.</p>
@@ -1942,7 +1942,10 @@ window.AGENDA_LIB = (function(){
        마지막 프레임에 그대로 머물고, setTileMood 로 조는 상태에 **다시 들어올 때만** currentTime=0 부터 재생한다.
      v4.7 — `listening`(Hark 가 만든 8초 루프)이 **듣는 중의 기본 겹**이 되면서 피클 타일 영상은 4겹이다:
        speaking(pickle.mp4) + listening(pickle_listening.mp4) + sleepy + phone. 여전히 src 교체 없이
-       opacity + play()/pause() 만 쓴다. 졸기·딴짓은 '어쩌다 한 번'만 켜진다(maybeMoodEvent). */
+       opacity + play()/pause() 만 쓴다. 졸기·딴짓은 '어쩌다 한 번'만 켜진다(maybeMoodEvent).
+     v4.7.1 — `phone` 도 **한 번만 재생**한다(VIDEO_ONCE). 성진님: "딴짓이 계속 반복됨. 한 번만 하고 경청을 해야지".
+       sleepy 처럼 마지막 프레임에 머물지 않고, 영상이 끝나는 순간(ended / 마지막 0.04초) 곧바로 mood 를 비워
+       기본 `listening`(경청) 자세로 돌아온다 — 딱 한 번 폰 보다 들키고 민망해서 다시 듣는 연출. */
   const PEOPLE = [
     /* v4.4 — 피클만 움직이는 영상 아바타. 정지 이미지는 영상 poster/실패 시 대체용으로 그대로 둔다.
        v4.6.2 — 듣는 중에 조는 모습(sleepy)·몰래 폰 보는 모습(phone). 발언 차례가 오면 setTileMood 가 즉시 깨운다. */
@@ -1966,8 +1969,18 @@ window.AGENDA_LIB = (function(){
   PEOPLE.forEach(p=>{ if(p.video) p.videos = Object.assign({speaking:p.video}, p.videos || {}); });
   /* v4.6.3 — 한 번만 재생하고 마지막 프레임에서 멈출 상태 영상.
      `sleepy` 는 눈이 감기는 순간까지의 클립이라 루프로 돌리면 눈을 다시 뜨는 대목이 섞인다(3.5초 루프였던 v4.6.2).
-     여기 적힌 상태는 <video loop=false> 로 만들고, 끝나면 그 프레임에 멈춰 '자는 얼굴'로 남는다. */
-  const VIDEO_ONCE = {sleepy:true};
+     여기 적힌 상태는 <video loop=false> 로 만들고, 끝나면 그 프레임에 멈춘다.
+     v4.7.1 — `phone`(몰래 폰 보다 들킴 2.2초)도 한 번만 튼다. 단 끝나면 마지막 프레임에 남지 않고
+       곧바로 기본 `listening`(경청)으로 돌아온다(backToListening — 아래 motionVideo 의 ended/timeupdate). */
+  const VIDEO_ONCE = {sleepy:true, phone:true};
+  /* v4.7.1 — 한 번 재생을 마친 상태 영상의 뒷정리. 지금은 `phone` 만 해당한다.
+     영상이 끝나면(ended 또는 마지막 0.04초) mood 를 비워 기본 경청으로 되돌린다.
+     이미 발언 차례가 와서 speaking 으로 바뀌었거나 다른 상태(sleepy)면 손대지 않는다 — 깨어 있는 쪽이 이긴다. */
+  function backToListening(id){
+    const r = id && tileRefs[id];
+    if(!r || r.mood !== "phone") return false;
+    return setTileMood(id, "");
+  }
 
   /* ── v4.3 캐릭터 썸네일 ──
      모든 자리에서 크기는 CSS 로 고정하고 img 에 width/height/object-fit 을 명시한다.
@@ -2072,10 +2085,18 @@ window.AGENDA_LIB = (function(){
     /* v4.6.3 — once 상태 영상이 끝나면 그 자리(마지막 프레임)에 남긴다. done 표시가 없으면
        syncAvatarMedia 가 'paused 니까 다시 재생' 하며 처음으로 되감아 버린다(눈을 다시 뜨는 것처럼 보임). */
     if(once){
-      v.addEventListener("ended", function(){ v.dataset.done = "1"; });
+      /* v4.7.1 — 한 번 트는 영상의 끝 처리 한 곳.
+         · done 표시는 syncAvatarMedia 가 'paused 니까 다시 재생' 하며 되감는 것을 막는다.
+         · `phone` 은 끝나는 순간 곧바로 listening 으로 복귀(backToListening) — 마지막 프레임에 머물지 않는다. */
+      const finish = function(){
+        if(v.dataset.done === "1") return;
+        v.dataset.done = "1";
+        if(state === "phone") backToListening(p && p.id);
+      };
+      v.addEventListener("ended", finish);
       v.addEventListener("timeupdate", function(){
         if(!v.duration || !isFinite(v.duration)) return;
-        if(v.currentTime >= v.duration - 0.04) v.dataset.done = "1";
+        if(v.currentTime >= v.duration - 0.04) finish();
       });
     }
     return v;
@@ -2668,7 +2689,7 @@ window.AGENDA_LIB = (function(){
     t.append(head, wrap, foot, vs, vbadge, react, qv);
     const refs = {id:p.id, tile:t, state:st, bubble, mtag, mrole, msum, matbtn, wave, mic,
                   vstate:vst, vbob, vid:media && media.video, vids:(media && media.vids) || {},
-                  poster:media && media.poster, mood:"", stateLbl:"대기",
+                  poster:media && media.poster, mood:"", moodTimer:null, stateLbl:"대기",
                   react, reactT:null};
     return refs;
   }
@@ -2766,8 +2787,8 @@ window.AGENDA_LIB = (function(){
     /* 말하는 중에는 다른 상태를 켜지 않는다 — 깨어 있는 쪽이 이긴다 */
     if(mood && r.tile.classList.contains("speaking")) mood = "";
     const was = r.mood || "";
-    /* v4.6.3 — 한 번만 트는 영상(sleepy)은 이 상태에 **새로 들어올 때만** 처음부터 다시 튼다.
-       끝까지 틀어 마지막 프레임(눈 감은 얼굴)에 머물던 영상이니, 재진입이 아니면 되감지 않는다. */
+    /* v4.6.3 — 한 번만 트는 영상(sleepy·phone)은 이 상태에 **새로 들어올 때만** 처음부터 다시 튼다.
+       끝까지 틀어 done 이 찍힌 영상이니, 재진입이 아니면 되감지 않는다(phone 은 끝나면 mood 가 비어 다시 들어올 때 새로 튼다). */
     if(mood && mood !== was && VIDEO_ONCE[mood] && r.vids[mood]){
       const v = r.vids[mood];
       delete v.dataset.done;
@@ -2777,6 +2798,13 @@ window.AGENDA_LIB = (function(){
     MOODS.forEach(m=> r.tile.classList.toggle(m, mood === m));
     if(r.state) r.state.textContent = mood ? MOOD_TEXT[mood] : r.stateLbl;
     if(r.vstate) r.vstate.textContent = videoLabel(r);
+    /* v4.7.1 — 딴짓(phone)은 영상이 도는 경우엔 ended 가 먼저 되돌리지만, 글로 보기·영상 차단·버퍼링처럼
+       clips 이 안 도는 경우에는 배지가 '📱 딴짓'으로 남는다. 클립(2.21초)보다 넉넉한 3.5초 뒤 한 번 더
+       되돌려, 어느 화면에서든 "한 번만 하고 경청" 이 지켜지게 한다(이미 경청이면 아무 일도 없다). */
+    if(r.moodTimer){ clearTimeout(r.moodTimer); r.moodTimer = null; }
+    if(mood === "phone"){
+      r.moodTimer = setTimeout(()=>{ r.moodTimer = null; backToListening(id); }, 3500);
+    }
     syncAvatarMedia();
     return !!mood;
   }
@@ -3260,7 +3288,7 @@ window.AGENDA_LIB = (function(){
     const pt = document.getElementById("lobbyPickTitle");
     if(pt) pt.textContent = cur ? cur.title : "—";
     const dn = document.getElementById("docNo");
-    if(dn){ const d = new Date(); dn.textContent = "v4.7 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
+    if(dn){ const d = new Date(); dn.textContent = "v4.7.1 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
   }
 
   function renderMemos(){
@@ -4580,6 +4608,7 @@ window.AGENDA_LIB = (function(){
     }),
     /* v4.6.2 — 조는 중(sleepy) 검증용 훅 */
     setTileMood: (id, mood)=> setTileMood(id, mood),
+    setTileState: (id, kind, label)=> setTileState(id, kind, label),   // v4.7.1 — 발언 차례에 잠이 깨는지 검증용
     moods: ()=> Object.keys(tileRefs).map(id=>{
       const r = tileRefs[id];
       const one = (x)=> x ? {src:x.getAttribute("src"), paused:x.paused,

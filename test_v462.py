@@ -16,7 +16,7 @@
 ④ sleepy — 재생 중 loop===false · 3초를 다 틀면 마지막 프레임(눈 감은 얼굴)에서 paused 로 멈춰 있고
    done 표시로 다시 되감기지 않는다(같은 상태를 다시 setTileMood 해도 재생 안 함).
    상태를 벗었다가 다시 들어올 때만 currentTime 0 에서 다시 재생된다.
-⑤ phone — .tile.phone · '📱 딴짓하다 걸림' · 루프 재생 · sleepy 겹 정지.
+⑤ phone — .tile.phone · '📱 딴짓하다 걸림' · **한 번만 재생(v4.7.1 loop=false)** 하고 끝나면 즉시 경청 복귀 · sleepy 겹 정지.
    이름·상태(.vov)는 다른 타일과 같이 **하단**에 있다(v4.6.2 의 위로 올리기 예외 제거 확인)
 ⑥ 복귀 — 발언 차례가 오면 즉시 깨고 speaking 이 재생, 발언이 끝나면 listening 으로 돌아온다
 ⑦ 희소화 — 정책값(상한 2 · rest>=3 · 22% · 쿨다운 1라운드)과 경계(moodGate),
@@ -324,10 +324,21 @@ def main():
             bad('phone 인데 sleepy 영상이 %s' % ph['sleep'])
         if ph['sleepy']:
             bad('phone 으로 바꿨는데 .tile.sleepy 가 남아 있음')
-        if ph['phon']['loop'] is not True:
-            bad('phone 영상 loop=%s (딴짓 영상은 계속 도는 루프여야 함)' % ph['phon']['loop'])
-        ok('phone — .tile.phone · 「📱 딴짓하다 걸림」 · pickle_phone.mp4 재생 t=%.2fs op=1 · loop=true · sleepy 겹 정지'
+        if ph['phon']['loop'] is not False:
+            bad('phone 영상 loop=%s — v4.7.1 부터는 한 번만 재생(loop=false)하고 경청으로 돌아와야 함' % ph['phon']['loop'])
+        ok('phone — .tile.phone · 「📱 딴짓하다 걸림」 · pickle_phone.mp4 재생 t=%.2fs op=1 · loop=false(1회) · sleepy 겹 정지'
            % ph['phon']['t'])
+        # v4.7.1 — 2.2초 클립이 끝나면 마지막 프레임에 머물지 않고 곧바로 경청(listening)으로 돌아온다
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m && m.mood==='' && m.moodNow==='listening' && m.listen && !m.listen.paused;
+            }""", timeout=8000)
+        back = p.evaluate("()=>window.__mr4.moods().find(m=>m.id==='pickle')")
+        if back['phon']['done'] != '1' or not back['phon']['paused']:
+            bad('phone 이 1회 재생 후 멈추지 않음: %s' % back['phon'])
+        else:
+            ok('phone 1회 종료 — mood \'\' · listening 재생 t=%.2fs · phone 정지(done=1) · 문구 %r'
+               % (back['listen']['t'], back['vstate']))
+        # '들킨' 표정 프레임(~1.6초) 스크린샷용으로 한 번 더 켠다(1회 클립이라 그 순간을 다시 잡아야 한다)
         # v4.6.3 — 이름·상태(.vov)는 다른 타일과 같이 하단. v4.6.2 의 'phone 만 위로' 예외가 없어졌다
         vov = p.evaluate("""()=>{
             const pick=document.querySelector('.tile[data-id=\"pickle\"]'), gem=document.querySelector('.tile[data-id=\"gemini\"]');
@@ -351,8 +362,9 @@ def main():
                % (vov['pickFromTop'], vov['gemFromTop']))
         # 스크린샷은 '들킨' 표정(클립 1.6~1.9초)에서 — 조는 얼굴과 헷갈리지 않게 눈 크게 뜬 프레임을 잡는다
         # (일부러 pause 시키면 다음 syncAvatarMedia 가 다시 틀어 버리므로, 재생 중에 그 순간을 기다려 찍는다)
+        p.evaluate("()=>window.__mr4.setTileMood('pickle','phone')")
         p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
-            return m && m.phon && m.phon.t >= 1.50 && m.phon.t <= 1.62;}""", timeout=6000)
+            return m && m.phon && m.phon.t >= 1.50 && m.phon.t <= 2.20;}""", timeout=6000)
         p.screenshot(path=DL + 'meeting_v47_pickle_phone.png')
         print('  shot', DL + 'meeting_v47_pickle_phone.png')
 
@@ -374,6 +386,10 @@ def main():
             ok('상태 전환 2회 — 타일·영상 노드와 src 그대로(클래스·opacity 만 변경)')
 
         # ══════════ ⑤ 복귀 — 발언 차례 ══════════
+        # 이 라운드에서는 '어쩌다 한 번' 졸기/딴짓 이벤트를 끈다 — 여기서 보려는 것은 발언↔경청 전환뿐이고,
+        # 이벤트가 우연히 끼면 발언이 끝난 직후 타일이 딴짓/졸기로 보여 전환 검사가 흔들린다.
+        # 이벤트 자체는 ⑥~⑧ 에서 따로 검증한다(v4.7.1 — phone 은 2.2초 뒤 스스로 경청으로 돌아온다).
+        p.evaluate("()=>window.__mr4.setMoodPolicy({maxPerSession:0})")
         p.evaluate("""()=>{ window.__log=[]; clearInterval(window.__t);
             window.__t=setInterval(()=>{ const m=window.__mr4.moods().find(x=>x.id==='pickle');
               if(!m) return;
@@ -404,7 +420,10 @@ def main():
         else:
             ok('발언 중 %d샘플 모두 상태 문구 「발언 중」 · 조는/딴짓 상태 0' % len(sp))
         p.wait_for_timeout(400)
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m && m.moodNow==='listening' && m.listen.op==='1' && !m.listen.paused;}""", timeout=6000)
         after = p.evaluate("()=>window.__mr4.moods().find(x=>x.id==='pickle')")
+        p.evaluate("()=>window.__mr4.setMoodPolicy({maxPerSession:2})")   # ⑥ 정책 검사 전에 원래값으로
         if not after['speak']['paused'] or after['speak']['op'] != '0':
             bad('발언이 끝났는데 speaking 영상이 계속 재생/노출: %s' % after['speak'])
         elif after['moodNow'] != 'listening' or after['listen']['op'] != '1' or after['listen']['paused']:

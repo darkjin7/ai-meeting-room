@@ -1,7 +1,8 @@
-"""v4.7 검증 — avatars/pickle_listening.mp4 (Hark 경청 영상 → 640x598 풀블리드 · 8초 루프)
+"""v4.7 / v4.7.1 검증 — avatars/pickle_listening.mp4 (Hark 경청 영상 → 640x598 풀블리드 · 8초 루프)
 
 성진님 지시
   "Hark 가 만든 피클 경청 영상(listening_8s_loop)을 기본으로 넣어라"
+  (v4.7.1) "조는 건 못 봤는데 딴짓이 계속 반복됨. 한 번만 하고 경청을 해야지... 조는 것도 반복으로 되있나 확인해줘"
 
 무엇을 재는가
 ① 파일 — 640x598 · 무음 H.264 · faststart · 8.00초 · 220~350KB · 24fps
@@ -10,6 +11,8 @@
 ③ 루프 — 첫 프레임과 마지막 프레임의 평균차가 연속 프레임 수준(끊김 없이 이어진다)
 ④ 앱 — 모바일 390x844 화상 6분할에서 listening 이 기본 재생(loop · opacity 1) 이고
    발언 차례에는 멈추고 speaking 영상이 나온다. 스크린샷 downloads/meeting_v47_pickle_listening.png
+⑤ v4.7.1 딴짓(phone) — loop=false(한 번만) · 끝나면 mood ''/listening 으로 자동 복귀 · 다시 반복하지 않음 ·
+   다시 켜면 처음부터 한 번. sleepy 는 loop=false 로 마지막 프레임(눈 감은 얼굴)에 그대로 머문다.
 """
 import re
 import subprocess
@@ -208,6 +211,115 @@ def main():
         ok('발언 종료 — listening 이 다시 재생(op 1)')
         b.close()
 
+    # ══════════ ⑤ v4.7.1 — 딴짓(phone) 은 한 번만, 끝나면 경청 복귀 ══════════
+    html = (ROOT / 'v4/app.js').read_text(encoding='utf-8')
+    if 'const VIDEO_ONCE = {sleepy:true, phone:true}' not in html:
+        bad("v4/app.js — VIDEO_ONCE 에 phone 이 없다(딴짓이 무한 반복됨)")
+    else:
+        ok('VIDEO_ONCE — sleepy·phone 둘 다 한 번 재생(loop=false)')
+    title = re.search(r'<title>([^<]*)</title>', (ROOT / 'v4/head.html').read_text(encoding='utf-8')).group(1)
+    if 'v4.7.1' not in title:
+        bad('<title> 이 v4.7.1 이 아님: %s' % title)
+    else:
+        ok('<title> v4.7.1 — %s' % title)
+    if 'v4.7.1 · DOC' not in (ROOT / 'index.v4.html').read_text(encoding='utf-8'):
+        bad('서류철 문서번호가 v4.7.1 이 아님')
+    else:
+        ok('서류철 문서번호 — v4.7.1 · DOC')
+
+    with sync_playwright() as pw:
+        b = pw.chromium.launch(executable_path=EXE, args=['--no-sandbox'])
+        ctx = b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2,
+                            is_mobile=True, has_touch=True)
+        p = ctx.new_page(); p.add_init_script(MOCK)
+        p.on('pageerror', lambda e: errs.append('pageerror:' + str(e)))
+        p.on('console', lambda m: errs.append('console:' + m.text) if m.type == 'error' else None)
+        p.goto(URL); p.evaluate("()=>localStorage.clear()"); p.reload(); p.wait_for_timeout(700)
+        p.evaluate("()=>window.__mr4.enterRoom('yt-growth')"); p.wait_for_timeout(600)
+        p.click('#viewVideoBtn')
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m && m.listen && !m.listen.paused && m.listen.t>0.3;}""", timeout=9000)
+        pick = "()=>window.__mr4.moods().find(x=>x.id==='pickle')"
+        # 두 이벤트 영상(sleepy·phone)은 loop 속성 자체가 없다 = 한 번만 재생
+        m = p.evaluate(pick)
+        if m['phon']['loop'] is not False or m['sleep']['loop'] is not False:
+            bad('딴짓/졸기 영상이 loop=true — %s / %s' % (m['phon']['loop'], m['sleep']['loop']))
+        else:
+            ok('phone · sleepy 영상 loop=false (한 번만 재생)')
+        # 딴짓 켜기 — 폰 보는 영상이 실제로 돈다
+        p.evaluate("()=>window.__mr4.setTileMood('pickle','phone')")
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m.mood==='phone' && m.moodNow==='phone' && m.phon && !m.phon.paused && m.phon.t>0.3;}""", timeout=6000)
+        m = p.evaluate(pick)
+        ok('딴짓 켜짐 — mood=%s · phone 재생 t=%.2fs · listening 정지(op %s)'
+           % (m['mood'], m['phon']['t'], m['listen']['op']))
+        if m['listen']['op'] != '0' or not m['listen']['paused']:
+            bad('딴짓 중인데 listening 이 아직 보임: %s' % m['listen'])
+        # 2.21초 클립이 끝나면 곧바로 경청 복귀 (마지막 프레임에 머물지 않는다)
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m.mood==='' && m.moodNow==='listening' && m.listen && !m.listen.paused;}""", timeout=9000)
+        p.wait_for_timeout(600)
+        m = p.evaluate(pick)
+        if m['phon']['done'] != '1' or not m['phon']['paused']:
+            bad('phone 이 끝난 뒤에도 재생 중(done=%s paused=%s)' % (m['phon']['done'], m['phon']['paused']))
+        elif m['listen']['op'] != '1' or m['listen']['paused']:
+            bad('phone 종료 후 경청 복귀 실패: %s' % m['listen'])
+        else:
+            ok('딴짓 1회 종료 — mood \'\' 로 복귀 · listening 재생 t=%.2fs · phone 정지(done=1)'
+               % m['listen']['t'])
+        if m['vstate'] != '듣는 중':
+            bad('딴짓이 끝났는데 화상 타일 문구가 \'%s\'' % m['vstate'])
+        else:
+            ok('화상 타일 문구 — 딴짓 종료 후 \'듣는 중\'')
+        # 한 번 끝난 딴짓은 저절로 다시 켜지지 않는다(6초 지켜봐도 그대로 경청)
+        t0 = p.evaluate(pick)['phon']['t']; lt0 = p.evaluate(pick)['listen']['t']
+        p.wait_for_timeout(6000)
+        m = p.evaluate(pick)
+        if m['mood'] != '' or m['phone'] or m['moodNow'] != 'listening':
+            bad('딴짓이 끝난 뒤 스스로 다시 켜졌다(mood=%s · tile.phone=%s)' % (m['mood'], m['phone']))
+        elif abs(m['phon']['t'] - t0) > 0.05:
+            bad('phone 영상이 계속 돌고 있다(t %.2f → %.2f)' % (t0, m['phon']['t']))
+        elif m['listen']['t'] == lt0:
+            bad('경청 영상이 멈춰 있다(t %.2f 그대로)' % m['listen']['t'])
+        else:
+            ok('6초 뒤에도 딴짓 재발 없음 — phone t=%.2fs 고정 · listening 계속 재생(t %.2f → %.2f)'
+               % (m['phon']['t'], lt0, m['listen']['t']))
+        # 다시 켜면 처음(0초)부터 한 번 더 — 재진입은 정상 동작
+        p.evaluate("()=>window.__mr4.setTileMood('pickle','phone')")
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m.mood==='phone' && m.phon && !m.phon.paused && m.phon.t>0.1 && m.phon.t<1.4;}""", timeout=6000)
+        m = p.evaluate(pick)
+        ok('다시 켜면 처음부터 — phone t=%.2fs (되감기 정상)' % m['phon']['t'])
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m.mood==='' && m.moodNow==='listening';}""", timeout=9000)
+        ok('두 번째 딴짓도 1회로 끝나 경청 복귀')
+        # 글로 보기에서는 영상이 안 돌아도 배지가 '딴짓'으로 남지 않는다(3.5초 안전 타이머)
+        p.click('#viewTextBtn'); p.wait_for_timeout(400)
+        p.evaluate("()=>window.__mr4.setTileMood('pickle','phone')")
+        p.wait_for_function("()=>window.__mr4.moods().find(x=>x.id==='pickle').state.indexOf('딴짓')>=0", timeout=4000)
+        ok('글로 보기 — 카드 배지 「📱 딴짓」 표시')
+        p.wait_for_function("()=>window.__mr4.moods().find(x=>x.id==='pickle').mood===''", timeout=7000)
+        m = p.evaluate(pick)
+        ok('글로 보기 — 3.5초 뒤 배지 자동 해제(%r) · mood \'\'' % m['state'])
+        p.click('#viewVideoBtn'); p.wait_for_timeout(500)
+        # 조는 영상은 반대로 마지막 프레임(눈 감은 얼굴)에 머문다 — 발언 차례에 깨어난다
+        p.evaluate("()=>window.__mr4.setTileMood('pickle','sleepy')")
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m.sleep && m.sleep.done==='1' && m.sleep.paused && m.mood==='sleepy';}""", timeout=12000)
+        p.wait_for_timeout(1500)
+        m = p.evaluate(pick)
+        if m['mood'] != 'sleepy' or m['moodNow'] != 'sleepy' or m['sleep']['t'] < 2.9:
+            bad('sleepy 가 마지막 프레임에 머물지 않는다: mood=%s t=%.2f' % (m['mood'], m['sleep']['t']))
+        elif m['phon']['paused'] is not True:
+            bad('자는 중인데 phone 이 재생 중')
+        else:
+            ok('졸기(sleepy) — loop 1회 후 마지막 프레임(t=%.2fs)에서 정지 · 반복 없음 · 발언 차례까지 유지'
+               % m['sleep']['t'])
+        p.evaluate("()=>window.__mr4.setTileState && window.__mr4.setTileState('pickle','speaking','발언 중')")
+        p.wait_for_function("()=>window.__mr4.moods().find(x=>x.id==='pickle').mood===''" , timeout=5000)
+        ok('발언 차례 — 조는 상태 해제(mood \'\')')
+        b.close()
+
     real = [e for e in errs if 'net::' not in e and 'Failed to load resource' not in e]
     if real:
         bad('콘솔 오류: %s' % real[:5])
@@ -220,7 +332,7 @@ def main():
         for f in fails:
             print(' - ' + f)
         sys.exit(1)
-    print('ALL PASS (v4.7 · listening)')
+    print('ALL PASS (v4.7.1 · listening + 딴짓 1회)')
 
 
 main()
