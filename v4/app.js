@@ -1100,8 +1100,257 @@
     return null;
   }
 
+  /* ═══════════════════ v4.6 — 회의 서류철 로비 · 입장 인트로 ═══════════════════
+     성진님 지시: "들어가면 준비된 회의 안건 고르는 거랑 다음에 회의를 할 안건을 적고 입장..
+     영상이 있으면 다들 의자에 앉거나 화상회의 준비하는 그런 영상 나오고 우리가 만든 페이지 로딩 되면 좋겠어"
+     → 첫 화면은 종이 서류(로비). 입장을 누르면 착석 영상(인트로) → 6분할 회의실 본방.
+     · 로비는 fixed 레이어다. 뒤의 회의실 DOM 은 하나도 지우지 않는다(v4.5.1 깜박임 방지 구조 유지).
+     · 다음 안건 메모는 localStorage 에 누적되고, '복사'는 피클에게 보내는 자료 요청문을 그대로 담는다. */
+  const K_NEXT = "darkjin_mr46_next";    // 다음 회의 안건 메모 (누적 목록)
+  const K_SEL  = "darkjin_mr46_sel";     // 마지막으로 고른 안건
+  const INTRO_MAX = 4000;                // 인트로 최대 4초 (영상이 더 길거나 자동재생이 막혀도 멈추지 않게)
+  let lobbySel = null;
+  let lobbyPaused = false;               // 로비로 나가면서 잠시 멈춘 상태인지
+  let introDone = true;
+  let introA = null;                     // 지금 재생 중인 인트로의 안건
+  let introTimers = [];
+  let introHandlers = null;              // 영상 ended/error 리스너 — 새 인트로를 틀 때 반드시 뗀다
+
+  function nextMemos(){
+    try{
+      const v = JSON.parse(LS.get(K_NEXT) || "[]");
+      return Array.isArray(v) ? v.filter(m=> m && m.text) : [];
+    }catch(e){ return []; }
+  }
+  function saveNextMemos(list){ LS.set(K_NEXT, JSON.stringify(list.slice(-40))); }
+  function memoStamp(at){
+    const d = new Date(at || Date.now());
+    return (d.getMonth()+1) + "/" + d.getDate() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function lobbySelected(){
+    const list = readyAgendas();
+    if(!list.length) return null;
+    let cur = lobbySel ? list.find(a=>a.id === lobbySel) : null;
+    if(!cur && state.agenda) cur = list.find(a=>a.id === state.agenda.id) || null;
+    if(!cur){ const saved = LS.get(K_SEL); cur = list.find(a=>a.id === saved) || null; }
+    if(!cur) cur = list[0];
+    lobbySel = cur.id;
+    return cur;
+  }
+
+  function pickAgenda(id){
+    const a = readyAgendas().find(x=>x.id === id);
+    if(!a) return null;
+    lobbySel = id; LS.set(K_SEL, id);
+    const box = document.getElementById("lobbyAgList");
+    if(box) [].forEach.call(box.children, n=>{
+      if(!n.dataset || !n.dataset.id) return;
+      const on = n.dataset.id === id;
+      n.classList.toggle("sel", on);
+      const r = n.querySelector("input"); if(r) r.checked = on;
+    });
+    const pt = document.getElementById("lobbyPickTitle");
+    if(pt) pt.textContent = a.title;
+    SFX.tap && SFX.tap();
+    return a;
+  }
+
+  function renderLobby(){
+    const box = document.getElementById("lobbyAgList");
+    if(!box) return;
+    const list = readyAgendas();
+    const cur = lobbySelected();
+    box.innerHTML = "";
+    if(!list.length){
+      box.append(el("div","lobby-empty","아직 결재할 안건이 없습니다. 피클이 6인 자료를 모아 ✅ 준비 완료로 바꾸면 이 서류에 올라옵니다."));
+    }
+    list.forEach((a, i)=>{
+      const on = !!(cur && cur.id === a.id);
+      const row = el("label","agdoc-item" + (on ? " sel" : ""));
+      row.dataset.id = a.id;
+      const radio = document.createElement("input");
+      radio.type = "radio"; radio.name = "lobbyAgenda"; radio.value = a.id;
+      radio.checked = on;
+      radio.setAttribute("aria-label", a.title);
+      radio.addEventListener("change", ()=> pickAgenda(a.id));
+      row.append(radio);
+      row.append(el("span","radio"));
+      const body = el("span","abody");
+      body.append(el("span","ai-tag", a.tag || ("안건 " + (i+1))));
+      body.append(el("span","ai-title", a.title));
+      if(a.brief) body.append(el("span","ai-brief", a.brief));
+      const pc = panelCount(a);
+      body.append(el("span","ai-meta", "자료 " + pc + "/6 · 🎙 " + roundTotal(a) + "라운드" + (a.preparedAt ? " · " + a.preparedAt : "")));
+      row.append(body);
+      row.append(el("span","okstamp", "준비 완료"));
+      box.append(row);
+    });
+    const rn = document.getElementById("lobbyReadyN");
+    if(rn) rn.textContent = list.length + "건";
+    renderMemos();
+    const pt = document.getElementById("lobbyPickTitle");
+    if(pt) pt.textContent = cur ? cur.title : "—";
+    const dn = document.getElementById("docNo");
+    if(dn){ const d = new Date(); dn.textContent = "v4.6 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
+  }
+
+  function renderMemos(){
+    const box = document.getElementById("memoList");
+    if(!box) return;
+    const list = nextMemos();
+    box.innerHTML = "";
+    if(!list.length){
+      box.append(el("div","memo-empty","아직 적어 둔 다음 안건이 없습니다."));
+    }
+    list.slice().reverse().forEach(m=>{
+      const row = el("div","memo");
+      row.dataset.mid = m.id;
+      row.append(el("span","memo-tx", m.text));
+      row.append(el("span","memo-when", memoStamp(m.at)));
+      const cp = el("button","memo-b", "복사");
+      cp.type = "button"; cp.dataset.act = "copy"; cp.dataset.mid = m.id;
+      cp.title = "피클에게 보낼 자료 요청문으로 복사";
+      const del = el("button","memo-b del", "삭제");
+      del.type = "button"; del.dataset.act = "del"; del.dataset.mid = m.id;
+      del.title = "이 메모 삭제";
+      row.append(cp); row.append(del);
+      box.append(row);
+    });
+    const n = document.getElementById("lobbyMemoN");
+    if(n) n.textContent = list.length + "건";
+  }
+
+  function addMemo(){
+    const ta = document.getElementById("memoInput");
+    if(!ta) return null;
+    const t = String(ta.value || "").replace(/\s+/g, " ").trim();
+    if(!t){ toast("다음 회의에 다룰 안건을 먼저 적어 주세요"); ta.focus(); return null; }
+    const list = nextMemos();
+    const item = {id:"m" + Date.now(), text:t, at:Date.now()};
+    list.push(item); saveNextMemos(list);
+    ta.value = "";
+    renderMemos();
+    SFX.ding();
+    toast("📌 다음 회의 안건으로 저장했습니다");
+    return item;
+  }
+  function copyMemo(mid){
+    const m = nextMemos().find(x=> x.id === mid);
+    if(!m) return;
+    copyText(requestText(m.text, ""));
+  }
+  function delMemo(mid){
+    const list = nextMemos().filter(x=> x.id !== mid);
+    saveNextMemos(list);
+    renderMemos();
+    toast("메모를 지웠습니다");
+  }
+
+  /* ── 로비 열기 / 닫기 ── */
+  function showLobby(){
+    if(!document.getElementById("lobby")) return;
+    renderLobby();
+    const sc = document.getElementById("lobbyScroll");
+    if(sc) sc.scrollTop = 0;
+    document.body.classList.add("lobby-on");
+    if(state.agenda && !state.paused){
+      state.paused = true; state.pausedAt = Date.now(); lobbyPaused = true;
+      if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+      syncAvatarMedia();
+    }
+    setLive(state.agenda ? "서류함" : "준비실", "");
+  }
+  function hideLobby(){ document.body.classList.remove("lobby-on"); }
+  function resumeFromLobby(){
+    if(!lobbyPaused) return;
+    lobbyPaused = false;
+    state.paused = false;
+    if(state.pausedAt){ state.pausedMs += Date.now() - state.pausedAt; state.pausedAt = 0; }
+    if(state.agenda) startClock(state.pausedMs);
+    setLive(state.phase === "roles" ? "역할 분담" : "회의 중", "");
+    releasePause();
+  }
+
+  /* ── 입장: 인트로 → 6분할 회의실 본방 ── */
+  function clearIntroTimers(){ introTimers.forEach(t=> clearTimeout(t)); introTimers = []; }
+  /* 건너뛰기·자동 종료로 인트로를 닫았는데도 예전 영상의 ended 리스너가 남아 있으면,
+     다음 인트로가 끝나는 순간 ‘예전 안건’으로 회의실을 열어 버린다(실제로 그랬다).
+     리스너는 매번 떼고 새로 붙인다. */
+  function clearIntroHandlers(){
+    if(!introHandlers) return;
+    const h = introHandlers; introHandlers = null;
+    try{ h.vid.removeEventListener("ended", h.onEnd); h.vid.removeEventListener("error", h.onErr); }catch(e){}
+  }
+
+  function openRoom(a){
+    lobbyPaused = false;
+    // 인트로가 이미 "착석·자료 불러오는 중"을 알렸으므로 안건 토스트는 겹쳐 띄우지 않는다
+    openAgenda(a.id, {quiet:true});
+    setView("video", {silent:true});   // 서류 → 착석 영상 → 6분할 화상 화면으로 이어진다
+  }
+
+  function finishIntro(a){
+    if(introDone) return;
+    introDone = true;
+    clearIntroTimers();
+    clearIntroHandlers();
+    const box = document.getElementById("intro");
+    const vid = document.getElementById("introVid");
+    if(vid){ try{ vid.pause(); }catch(e){} }
+    if(box){ box.classList.remove("show"); box.setAttribute("aria-hidden", "true"); }
+    document.body.classList.remove("intro-on");
+    hideLobby();
+    openRoom(a);
+    introTimers.push(setTimeout(()=>{ if(vid){ try{ vid.currentTime = 0; }catch(e){} } }, 420));
+  }
+
+  function playIntro(a){
+    const box = document.getElementById("intro");
+    const vid = document.getElementById("introVid");
+    hideLobby();
+    const ip = document.getElementById("introPickTitle");
+    if(ip) ip.textContent = "「" + a.title + "」";
+    if(!box || !vid){ openRoom(a); return; }
+    clearIntroTimers();
+    clearIntroHandlers();
+    introDone = false;
+    introA = a;
+    setLive("착석 중", "");
+    box.classList.add("show");
+    box.setAttribute("aria-hidden", "false");
+    document.body.classList.add("intro-on");
+    const bar = box.querySelector(".it-bar i");
+    if(bar){ bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = ""; }
+    const finish = ()=> finishIntro(introA);   // 예전 리스너가 남아 있어도 지금 인트로를 닫는다
+    const onEnd = finish;
+    const onErr = ()=>{ if(introDone) return; clearIntroTimers(); introTimers.push(setTimeout(finish, 900)); };
+    introHandlers = {vid:vid, onEnd:onEnd, onErr:onErr};
+    vid.addEventListener("ended", onEnd, {once:true});
+    vid.addEventListener("error", onErr, {once:true});
+    try{ vid.currentTime = 0; }catch(e){}
+    try{ const p = vid.play(); if(p && p.catch) p.catch(()=>{}); }catch(e){}
+    introTimers.push(setTimeout(finish, INTRO_MAX));
+  }
+
+  function enterMeeting(){
+    const a = lobbySelected();
+    if(!a){ toast("아직 결재할 안건이 없습니다 · 피클이 자료를 모으면 올라옵니다"); return; }
+    unlockVoice();
+    LS.set(K_SEL, a.id);
+    // 이미 그 안건으로 회의 중이었다면 처음부터 다시 틀지 않고 이어서 본다
+    if(state.agenda && state.agenda.id === a.id && state.phase !== "idle"){
+      hideLobby();
+      resumeFromLobby();
+      setView(state.view === "video" ? "video" : "text", {silent:true});
+      toast("회의를 이어서 봅니다");
+      return;
+    }
+    playIntro(a);
+  }
+
   /* ═══════════════════ 안건 열기 ═══════════════════ */
-  function openAgenda(id){
+  function openAgenda(id, opts){
     const a = (LIB.byId && LIB.byId[id]) || (LIB.agendas||[]).find(x=>x.id === id);
     if(!a){ toast("안건을 찾지 못했습니다"); return; }
     if(!a.panels || !Object.keys(a.panels).length){
@@ -1167,7 +1416,7 @@
     setSubtitle(null, "", "", true);
     setView(LS.get(K_VIEW) === "video" ? "video" : "text", {silent:true});
 
-    toast("🗂️ 안건 열었습니다 · 주전 " + pc + "인 자료와 " + goal + "라운드 토론이 준비되어 있습니다");
+    if(!(opts && opts.quiet)) toast("🗂️ 안건 열었습니다 · 주전 " + pc + "인 자료와 " + goal + "라운드 토론이 준비되어 있습니다");
     if(state.view !== "video"){
       const sh = document.getElementById("stageHd");
       if(sh) sh.scrollIntoView({block:"start"});
@@ -1866,7 +2115,10 @@
     document.getElementById("readyTitle").textContent = "새 안건 " + fresh.length + "건 준비 완료";
     document.getElementById("readySub").textContent = fresh.map(a=>a.title).join(" · ");
     document.getElementById("readyBanner").classList.add("show");
-    toast("🔔 새 회의 자료가 준비되었습니다 · " + fresh.length + "건");
+    // v4.6 — 첫 화면(서류 로비)·입장 인트로에서는 토스트가 입장 버튼·영상 위를 가리므로 띄우지 않는다.
+    //         로비 01번 칸에 이미 "준비된 회의 안건 N건"으로 보인다.
+    const covered = document.body.classList.contains("lobby-on") || document.body.classList.contains("intro-on");
+    if(!covered) toast("🔔 새 회의 자료가 준비되었습니다 · " + fresh.length + "건");
     if(LS.get(K_NOTIFY) === "1"){
       try{
         if(window.Notification && Notification.permission === "granted"){
@@ -1955,6 +2207,21 @@
     state.runToken++;
     speakLine(state.matId, p.summary, {label:"자료 낭독"}).then(()=>{ if(state.phase!=="roles" && state.agenda) setTileState(state.matId,"ready","자료 준비"); });
   });
+
+  /* v4.6 — 서류철 로비 · 입장 인트로 · 다음 안건 메모 */
+  document.getElementById("enterBtn").addEventListener("click", ()=>{ unlockVoice(); enterMeeting(); });
+  document.getElementById("introSkip").addEventListener("click", ()=>{ if(!introDone && introA) finishIntro(introA); });
+  document.getElementById("memoSave").addEventListener("click", ()=>{ unlockVoice(); addMemo(); });
+  document.getElementById("memoList").addEventListener("click", (e)=>{
+    const b = e.target.closest ? e.target.closest("[data-act]") : null;
+    if(!b) return;
+    if(b.dataset.act === "copy") copyMemo(b.dataset.mid);
+    else if(b.dataset.act === "del") delMemo(b.dataset.mid);
+  });
+  document.getElementById("memoInput").addEventListener("keydown", e=>{
+    if((e.metaKey || e.ctrlKey) && e.key === "Enter"){ e.preventDefault(); addMemo(); }
+  });
+  document.getElementById("lobbyBackBtn").addEventListener("click", ()=>{ unlockVoice(); showLobby(); });
 
   document.getElementById("planAddBtn").addEventListener("click", ()=>{ unlockVoice(); openPlan(); });
   document.getElementById("planSave").addEventListener("click", ()=>{
@@ -2064,16 +2331,22 @@
     if(ib){ ib.style.opacity = ".55"; ib.title = "이 브라우저는 음성 인식 미지원"; }
   }
   renderPrep();
-  checkNewReady();
+  renderLobby();
 
   // URL 파라미터: ?agenda=yt-growth / ?topic=새 주제
+  let deepLinked = false;
   try{
     const q = new URLSearchParams(location.search);
     const ag = q.get("agenda");
     const tp = q.get("topic");
-    if(ag && LIB.byId && LIB.byId[ag]) openAgenda(ag);
+    if(ag && LIB.byId && LIB.byId[ag]){ deepLinked = true; openAgenda(ag); }
     else if(tp){ openPlan(); document.getElementById("planTopic").value = tp; }
   }catch(e){}
+
+  // v4.6 — 첫 화면은 회의실이 아니라 '회의 서류철' 로비다 (?agenda= 딥링크일 때만 바로 회의실)
+  if(!deepLinked) showLobby();
+  // 새 자료 알림은 로비가 열린 뒤에 본다 — 로비 위에 토스트가 입장 버튼을 가리지 않게.
+  checkNewReady();
 
   const unlockOnce = ()=>{ unlockVoice(); document.removeEventListener("pointerdown", unlockOnce); document.removeEventListener("touchstart", unlockOnce); };
   document.addEventListener("pointerdown", unlockOnce, {passive:true});
@@ -2149,6 +2422,35 @@
     confirmRoles: confirmRoles,
     addPlanned: addPlanned,
     plannedAgendas: plannedAgendas,
-    rolesText: rolesText
+    rolesText: rolesText,
+    /* v4.6 — 로비·인트로 검증용 훅 */
+    showLobby: showLobby,
+    dismissLobby: hideLobby,     // 테스트용: 로비만 닫고 배경 회의실 UI 를 그대로 쓴다
+    enterMeeting: enterMeeting,
+    enterRoom: (id)=>{           // 테스트·딥링크용: 로비와 인트로를 건너뛰고 바로 회의실
+      const a = id ? readyAgendas().find(x=>x.id === id) : lobbySelected();
+      if(!a) return null;
+      lobbySel = a.id; LS.set(K_SEL, a.id);
+      introDone = true; clearIntroTimers();
+      document.body.classList.remove("intro-on");
+      const box = document.getElementById("intro"); if(box){ box.classList.remove("show"); box.setAttribute("aria-hidden","true"); }
+      lobbyPaused = false;
+      hideLobby(); openAgenda(a.id);
+      return a.id;
+    },
+    lobby: ()=>({
+      open: document.body.classList.contains("lobby-on"),
+      sel: lobbySel,
+      picked: (()=>{ const el2 = document.getElementById("lobbyPickTitle"); return el2 ? el2.textContent : ""; })(),
+      agendas: [].map.call(document.querySelectorAll("#lobbyAgList .agdoc-item"), n=>({
+        id:n.dataset.id, sel:n.classList.contains("sel"),
+        checked: !!(n.querySelector("input") && n.querySelector("input").checked)
+      })),
+      memos: nextMemos(),
+      introShown: document.body.classList.contains("intro-on"),
+      introTime: (()=>{ const v=document.getElementById("introVid"); return v ? Math.round(v.currentTime*100)/100 : -1; })()
+    }),
+    addMemo: addMemo,
+    delMemo: delMemo
   };
 })();

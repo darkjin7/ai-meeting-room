@@ -90,7 +90,7 @@ def main():
         mp.on('pageerror', lambda e: errs.append('pageerror:' + str(e)))
         mp.on('console', lambda m: errs.append('console:' + m.text) if m.type == 'error' else None)
         mp.goto(URL); mp.evaluate("localStorage.clear(); localStorage.setItem('darkjin_mr4_speed','1')")
-        mp.reload(); mp.wait_for_timeout(500)
+        mp.reload(); mp.wait_for_timeout(500); mp.evaluate("window.__mr4.dismissLobby()")   # v4.6 로비
         mp.click('.agcard[data-id="yt-growth"]'); mp.wait_for_timeout(800)
 
         # 글로 보기에서는 영상을 내려받지 않는다(src 없음, 재생 안 함)
@@ -202,7 +202,11 @@ def main():
             mp.wait_for_timeout(120)
         assert set(ys) == {0}, '화상 모드 발언 전환에서 스크롤 발생: %s' % sorted(set(ys))
         assert not [x for x in mp.evaluate("()=>window.__siv") if x == 'smooth'], '화상 모드에서 smooth 스크롤 호출'
-        # 피클 차례가 오면 그때만 재생된다 — 라운드 전 구간을 80ms 마다 샘플링해 확인한다
+        # 피클 차례가 오면 그때만 재생된다 — 라운드 전 구간을 80ms 마다 샘플링해 확인한다.
+        # (2026-11-27) 2라운드가 아직 도는 중에 다시 playRound(2) 를 던지면 그대로 반환돼
+        #              피클이 먼저 발언한 판에서는 표본이 비었다 — 라운드를 마저 끝내고 3라운드를 새로 잰다.
+        mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=60000)
+        mp.wait_for_timeout(300)
         mp.evaluate("""()=>{ window.__vidLog = [];
             clearInterval(window.__vidTimer);
             window.__vidTimer = setInterval(()=>{
@@ -211,7 +215,7 @@ def main():
               window.__vidLog.push({sp:t.classList.contains('speaking'), p:v.paused,
                 op:getComputedStyle(v).opacity, t:Math.round(v.currentTime*100)/100, src:!!v.getAttribute('src')});
             }, 80); }""")
-        mp.evaluate("()=>{ window.__mr4.playRound(2); }")
+        mp.evaluate("()=>{ window.__mr4.playRound(3); }")
         mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=60000)
         mp.wait_for_timeout(400)
         log = mp.evaluate("()=>{ clearInterval(window.__vidTimer); return window.__vidLog; }")
@@ -253,7 +257,7 @@ def main():
         dp = ctx2.new_page(); dp.add_init_script(MOCK)
         dp.on('pageerror', lambda e: errs.append('desktop-pageerror:' + str(e)))
         dp.goto(URL); dp.evaluate("localStorage.clear(); localStorage.setItem('darkjin_mr4_speed','2')")
-        dp.reload(); dp.wait_for_timeout(400)
+        dp.reload(); dp.wait_for_timeout(400); dp.evaluate("window.__mr4.dismissLobby()")   # v4.6 로비
         dp.click('.agcard[data-id="yt-growth"]'); dp.wait_for_timeout(600)
         dp.click('#viewVideoBtn'); dp.wait_for_timeout(1200)
         dv = dp.evaluate("()=>window.__mr4.videos()")[0]

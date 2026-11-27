@@ -32,8 +32,23 @@ if mp4.exists():
     vid_inlined = out.count("data:video/mp4;base64,")
     if vid_inlined != 1:
         raise SystemExit("mp4 인라인 %d개 — 1개여야 합니다" % vid_inlined)
+
+# v4.6 — 입장 인트로 영상도 이 파일 하나에 담는다(성진님 휴대폰에서 바로 열리게). 2MB 를 넘으면 실패.
+intro = pathlib.Path("avatars/intro_meeting.mp4")
+intro_inlined = 0
+if intro.exists():
+    insrc = '"./avatars/intro_meeting.mp4"'
+    idup = out.count(insrc)
+    if idup > 1:
+        raise SystemExit("intro_meeting.mp4 주소가 %d번 나온다 — 1번만 적어야 합니다" % idup)
+    if idup == 1:
+        out = out.replace(insrc, '"data:video/mp4;base64,' + base64.b64encode(intro.read_bytes()).decode("ascii") + '"')
+        intro_inlined = out.count("data:video/mp4;base64,") - vid_inlined
 dest = pathlib.Path("/workspace/downloads/darkjin_meeting_room_v4.html")
 dest.write_text(out, encoding="utf-8")
-print("download build: %s (%.0f KB, avatars inlined: %d, video inlined: %d)" % (dest, dest.stat().st_size/1024, out.count("data:image/webp;base64,"), vid_inlined))
+kb = dest.stat().st_size/1024
+print("download build: %s (%.0f KB, avatars inlined: %d, video inlined: %d, intro inlined: %d)" % (dest, kb, out.count("data:image/webp;base64,"), vid_inlined, intro_inlined))
+if kb > 2048:
+    raise SystemExit("단일 파일이 %.0f KB — 2MB 를 넘었습니다" % kb)
 PY
 echo "built: work/meeting-room/index.html ($(wc -l < index.html) lines)"

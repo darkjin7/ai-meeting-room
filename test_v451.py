@@ -116,7 +116,7 @@ def main():
         mp.on('console', lambda m: errs.append('console:' + m.text) if m.type == 'error' else None)
         mp.goto(URL)
         mp.evaluate("localStorage.clear(); localStorage.setItem('darkjin_mr4_speed','3')")
-        mp.reload(); mp.wait_for_timeout(500)
+        mp.reload(); mp.wait_for_timeout(500); mp.evaluate("window.__mr4.dismissLobby()")   # v4.6 로비
         mp.click('.agcard[data-id="yt-growth"]'); mp.wait_for_timeout(600)
         mp.wait_for_function("()=>[...document.querySelectorAll('img.face')].every(i=>i.complete && i.naturalWidth>0)", timeout=10000)
 
@@ -280,7 +280,7 @@ def main():
         dp = ctx2.new_page(); dp.add_init_script(MOCK)
         dp.on('pageerror', lambda e: errs.append('desktop-pageerror:' + str(e)))
         dp.goto(URL); dp.evaluate("localStorage.clear(); localStorage.setItem('darkjin_mr4_speed','3')")
-        dp.reload(); dp.wait_for_timeout(400)
+        dp.reload(); dp.wait_for_timeout(400); dp.evaluate("window.__mr4.dismissLobby()")   # v4.6 로비
         dp.click('.agcard[data-id="yt-growth"]'); dp.wait_for_timeout(600)
         dp.click('#viewVideoBtn'); dp.wait_for_timeout(900)
         dm = dp.evaluate("()=>window.__mr4.media()")

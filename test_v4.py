@@ -79,6 +79,7 @@ def main():
         p.goto(URL)
         p.evaluate("localStorage.clear(); localStorage.setItem('darkjin_mr4_speed','4')")
         p.reload(); p.wait_for_timeout(400)
+        p.evaluate("window.__mr4.dismissLobby()")   # v4.6 — 첫 화면이 서류 로비가 되었으므로 로비만 닫고 기존 검증을 그대로 한다
 
         # 1) 초기: 안건 목록 (✅ / ⏳)
         assert p.eval_on_selector_all('.tile','e=>e.length') == 6, '타일 6개 아님'
@@ -307,7 +308,7 @@ def main():
         assert not p.is_visible('#planModal'), '예약 후 모달이 안 닫힘'
         assert p.inner_text('#waitCnt') == '⏳ %d' % after, '⏳ 카운트 불일치'
         assert any('겨울 방한 장비 교체' in x for x in p.eval_on_selector_all('#planList .wcard','e=>e.map(x=>x.innerText)')), '예약 주제가 목록에 없음'
-        p.reload(); p.wait_for_timeout(500)
+        p.reload(); p.wait_for_timeout(500); p.evaluate("window.__mr4.dismissLobby()")
         assert p.eval_on_selector_all('#planList .wcard','e=>e.length') == after, '새로고침 후 예약이 사라짐'
         # 같은 주제 중복 예약은 막힌다
         p.click('#planAddBtn'); p.wait_for_timeout(250)
@@ -337,7 +338,7 @@ def main():
         mp = m.new_page(); mp.add_init_script(MOCK)
         mp.on('pageerror', lambda e: errs.append('mobile-pageerror:'+str(e)))
         mp.goto(URL); mp.evaluate("localStorage.clear(); localStorage.setItem('darkjin_mr4_speed','2')")
-        mp.reload(); mp.wait_for_timeout(500)
+        mp.reload(); mp.wait_for_timeout(500); mp.evaluate("window.__mr4.dismissLobby()")
         mp.wait_for_timeout(2200)
         mp.screenshot(path=DL+'meeting_v41_mobile_prep.png')
         ov = mp.evaluate("document.documentElement.scrollWidth - window.innerWidth")
