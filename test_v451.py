@@ -217,7 +217,9 @@ def main():
               window.__vidLog.push({sp:t.classList.contains('speaking'), p:v.paused,
                 op:getComputedStyle(v).opacity, t:Math.round(v.currentTime*100)/100, src:v.getAttribute('src')});
             }, 60); }""")
+        mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=60000)   # 앞 라운드가 끝난 뒤에 시작
         mp.evaluate("()=>{ window.__mr4.playRound(4); }")
+        mp.wait_for_function("()=>window.__mr4.state.busy===true", timeout=8000)      # 4라운드가 실제로 시작됐는지
         mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=60000)
         mp.wait_for_timeout(300)
         vlog2 = mp.evaluate("()=>{ clearInterval(window.__vidTimer); return window.__vidLog; }")

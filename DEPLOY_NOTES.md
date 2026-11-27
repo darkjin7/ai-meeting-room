@@ -1,5 +1,44 @@
 # 배포 메모 — 다크진 AI 비서실 · 6분할 회의실
 
+## v4.6.2 (2026-11-27) — 피클의 '듣는 중' 상태 영상: 😴 조는 중 · 📱 딴짓(폰)
+- 성진님 지시: ① 피클이 눈 감고 조는 720×1280 영상 → `sleepy` ② 회의 중 몰래 폰 보다 들켜 깜짝 놀라는 영상 → `phone`
+  "듣는 중일 때 간헐적으로 sleepy·phone 중 하나가 랜덤으로, 발언 차례가 오면 즉시 깨서 speaking 으로"
+
+### ① 영상 2편 (`make_pickle_sleepy.py` · `make_pickle_phone.py`)
+| 상태 | 원본 | 쓴 구간 | 결과 |
+|---|---|---|---|
+| `sleepy` | `attachments/2026-11-27/470953036_…mp4` (8.04초 · 720×1280) | 1.95~5.45초 (눈꺼풀이 내려와 감기는 대목) | `avatars/pickle_sleepy.mp4` **252KB** · 3.50초 · 640×598 · 무음 · faststart · crf 24 |
+| `phone` | `attachments/2026-11-27/108998653_…mp4` (8.04초 · 720×1280) | 2.0~4.2초 (폰 보며 능글 → 고개 들어 멈칫 → 들킨 얼굴) | `avatars/pickle_phone.mp4` **282KB** · 2.21초 · 640×598 · 무음 · faststart · crf 23 |
+- 공통: 24fps · H.264 High · `-an` · `-movflags +faststart` · 끝과 시작을 0.375~0.5초 크로스페이드로 이어 붙인 루프.
+- **sleepy 크롭**: v4.5 `pickle.mp4` 와 같은 기준(y=445 · 720×673 → 640×598). 원본 첫 프레임(눈 뜬 대목)이 기존 pickle.mp4 첫 프레임과 같은 얼굴 위치로 겹치는 것을 확인하고 그대로 썼다. 앞뒤의 '눈 뜬' 구간은 잘라 조는 대목만 남겼다(8초를 그대로 틀면 절반이 또렷한 눈이라 '조는 중'으로 안 읽힌다).
+- **phone 은 크롭 기준이 다르다**: 폰을 허리 높이에 들고 있어 눈(원본 y≈600)과 폰(y≈1100~1270)을 673 높이 안에 함께 담으면 이마·머리가 잘린다. 그래서 이 영상만 세로로 길게 담고(원본 y=250~1270 → 422×598) 좌우를 같은 프레임을 크게 흐린 배경(30px blur · 밝기 72% · 채도 65%)으로 채워 640×598 로 만들었다. **얼굴과 손에 든 폰이 둘 다 프레임 안**에 있고, 위쪽 머리 끝만 살짝 덜어 낸다(타일에서 얼굴·폰이 커 보이게).
+- 인코딩 후 프레임 눈검수: `sleepy` 0.15/1.05초 · `phone` 0.15/1.05초 → 눈 감김·폰 화면이 프레임 안에 있음(아래 스크린샷과 함께 확인).
+
+### ② 코드 (`v4/app.js` · `v4/head.html`) — 상태마다 <video> 한 겹, src 교체 없음
+- `PEOPLE` 피클: `video:'./avatars/pickle.mp4'(=speaking)` + `videos:{sleepy:'./avatars/pickle_sleepy.mp4', phone:'./avatars/pickle_phone.mp4'}`
+- `motionVideo(p, state)` — 상태마다 `<video class="face vid">`(speaking) / `<video class="face vlay" data-state="sleepy|phone">` 를 **한 겹씩** 만들어 겹쳐 둔다. `src` 는 붙인 뒤 절대 바꾸지 않고(armAvatarVideos), 보임/숨김은 CSS opacity, 재생/정지는 `play()/pause()` 만.
+  - 기존 검증(`video.vid` 1개)이 보는 요소는 speaking 그대로 두고, 새 상태는 `vlay` 로 분리했다 — 상태가 늘어도 기존 경로가 흔들리지 않는다.
+- `setTileMood(id, mood)` — `sleepy`/`phone` 이면 타일에 그 클래스만 켜고 `.vstate` 를 **「😴 살짝 조는 중」/「📱 딴짓하다 걸림」** 으로, 글로 보기 카드 배지는 「😴 조는 중」/「📱 딴짓」으로 바꾼다. `syncAvatarMedia()` 가 그 겹만 재생.
+- `avatarMood(r)` 한 곳에서 규칙을 정한다: **quiet → 없음 / speaking → speaking / mood → 그 상태**. 말하는 중에는 `setTileState(...,'speaking')` 이 `setTileMood(id,'')` 로 즉시 깨운다.
+- `playRound` — 피클 차례 없이 다른 AI 가 2명 넘게 말하면(`rest>=2`) 피클이 `sleepy`/`phone` 중 하나를 랜덤으로 켠다(한 번 켜면 다음 에피소드까지 유지, 피클 차례·라운드 시작에 해제).
+- CSS: `.tile.sleepy`(보라 테두리·문구) / `.tile.phone`(주황 테두리·문구). **phone 타일은 이름·상태를 위로 올린다** — 폰을 든 손이 프레임 아래쪽이라 하단 그라데이션이 그대로 덮으면 폰이 가려진다.
+- 검증용 훅: `__mr4.setTileMood('pickle','sleepy'|'phone'|'')`, `__mr4.moods()`, `__mr4.media()` 에 sleepy/phone 겹 정보.
+
+### ③ 빌드 (`build_v4.sh`)
+- `pickle_sleepy.mp4` · `pickle_phone.mp4` 도 `inline_once` 로 인라인(주소는 코드에 1번만). 남은 `./avatars/*.{webp,css,png,mp4}` 가 있으면 빌드 실패 — mp4 까지 검사하도록 넓혔다.
+- 가드: 2.5MB → **2.93MB(3000KB)**. 결과 `downloads/darkjin_meeting_room_v4.html` **2935KB** (webp 12장 + 영상 6개: 피클 3 + 인트로 3).
+
+### ④ 검증 (2026-11-27, 로컬 390×844)
+- `test_v462.py` (신규) **ALL PASS** — 두 영상 실측(3.50/2.21초·640×598·무음·faststart·252/282KB) · phone 1.05초 프레임에 폰 화면 밝은 픽셀 2457개(얼굴+폰 함께) · 3겹 구조 · sleepy 재생·루프 · phone 재생·sleepy 겹 정지 · **상태 전환 2회에도 DOM 노드·src 불변** · 발언 차례에 즉시 깨어남(발언 9샘플 모두 「발언 중」·조는/딴짓 0) · 자동 전환(1라운드 만에 발동, 72샘플 겹침 0) · 글로 보기는 배지만 · 단일 파일 인라인 2편 실제 재생 · 콘솔 오류 0
+- 기존 5종도 **ALL PASS**: `test_v4.py` · `test_v44.py` · `test_v451.py` · `test_v46.py` · `test_v461.py`
+  - 바뀐 단언은 버전 사실에 맞춘 3곳뿐: ① 피클 타일 영상 개수 1 → **3겹(vid 1 + vlay 2)** ② 화상 상태 문구 허용 목록에 두 상태 추가 ③ 단일 파일 인라인 영상 4 → **6개**·상한 2.93MB.
+  - `test_v451.py` 에는 앞 라운드가 끝난 뒤 4라운드를 시작하도록 `busy===true` 대기 한 줄을 넣었다(영상 3겹으로 로딩이 느려져 생긴 경합 — 기능 문제 아님).
+- 스크린샷(눈검수): `downloads/meeting_v462_pickle_sleepy.png`(눈 감고 조는 중·보라 테두리·「😴 살짝 조는 중」) · `downloads/meeting_v462_pickle_phone.png`(폰 든 손까지 보이고 이름·상태는 위로·「📱 딴짓하다 걸림」) — 390×844
+
+### ⑤ 배포
+- 커밋: 아래 「커밋」 참고 → `env -u GH_TOKEN git push origin main` (이 환경 GH_TOKEN 은 만료 — 403 이면 이 방식)
+- GitHub Pages `built` 확인 · https://darkjin7.github.io/ai-meeting-room/ · `avatars/pickle_sleepy.mp4`·`pickle_phone.mp4` 200 확인
+
 ## v4.6.1 (2026-11-27) — 입장 인트로 영상 3종 랜덤
 - 성진님 지시: "회의실 로딩 장면 3가지 랜덤으로 바꿔줘. 다음에 다른거 만들면 또 넣게"
 

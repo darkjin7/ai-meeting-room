@@ -141,9 +141,14 @@ def main():
         tile_faces = p.eval_on_selector_all('.tile .avatar img.face','e=>e.length')
         vbob_faces = p.eval_on_selector_all('.tile .vstage .vbob img.face','e=>e.length')
         vbob_vids = p.eval_on_selector_all('.tile .vstage .vbob video.face','e=>e.length')
+        # v4.6.2 — 상태 영상은 src 교체가 아니라 상태마다 한 겹씩 쌓는다:
+        #           speaking(video.vid) 1 + sleepy·phone(video.vlay) 2 = 3
+        vbob_speaking = p.eval_on_selector_all('.tile .vstage .vbob video.vid','e=>e.length')
+        vbob_layers = p.eval_on_selector_all('.tile .vstage .vbob video.vlay','e=>e.length')
         guest_faces = p.eval_on_selector_all('#guestBar .gi .gie img.face','e=>e.length')
         assert tile_faces == 6 and vbob_faces == 5, '타일 아바타 6개 아님: %d / %d' % (tile_faces, vbob_faces)
-        assert vbob_vids == 1, '화상 얼굴 자리에 피클 영상 1개가 없음: %d' % vbob_vids
+        assert vbob_vids == 3 and vbob_speaking == 1 and vbob_layers == 2, \
+            '화상 얼굴 자리 영상 구성 이상(전체 %d · speaking %d · 상태겹 %d)' % (vbob_vids, vbob_speaking, vbob_layers)
         assert guest_faces == 2, '참관 게스트 썸네일 2개 아님: %d' % guest_faces
         assert p.eval_on_selector_all('.tile .vstage .vbob','e=>e.filter(x=>x.textContent.trim()).length') == 0, '화상 타일에 이모지가 남아 있음'
         print('OK 8인 캐릭터 아바타 로드 — naturalWidth 512x478 %d장 · 타일 6 · 게스트 2 · 상대경로 ./avatars/*.webp' % len(srcs))
@@ -480,7 +485,9 @@ def main():
         assert all(x['fit'] == 'cover' and x['rad'] == '0px' and x['pos'].endswith('45%') for x in bleed), '풀블리드 속성 이상: %s' % bleed
         # 화상 모드 타일 상태는 화상통화처럼 '듣는 중 / 발언 중'
         vstates = set(mp.eval_on_selector_all('.tile .vstate','e=>e.map(x=>x.textContent)'))
-        assert vstates <= {'듣는 중','발언 중','배정','대기','조용'}, '화상 타일 상태 문구 이상: %s' % vstates
+        # v4.6.2 — 피클은 듣는 중에 조는 중(😴)/딴짓(📱) 상태로 바뀔 수 있다
+        assert vstates <= {'듣는 중','발언 중','배정','대기','조용','😴 살짝 조는 중','📱 딴짓하다 걸림'}, \
+            '화상 타일 상태 문구 이상: %s' % vstates
         # v4.2.1 — 화상 모드에서는 캐릭터 바운스·점 웨이브 모션이 없다(정적 상태 + 테두리·배경색만)
         mp.wait_for_timeout(2500)
         mp.evaluate("()=>{ window.__siv = []; }")

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.6.1 — 회의 서류철 로비 · 입장 인트로 3종</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.6.2 — 회의 서류철 로비 · 입장 인트로 3종 · 피클 조는 중</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -277,6 +277,9 @@
   .state.s-speaking{color:#a9fbc4;background:rgba(46,224,106,.13);border-color:rgba(46,224,106,.5)}
   .state.s-done{color:#9df9b9;background:rgba(46,224,106,.10);border-color:rgba(46,224,106,.35)}
   .state.s-quiet{color:#ffb3b7;background:rgba(242,84,91,.15);border-color:rgba(242,84,91,.5)}
+  /* v4.6.2 — 글로 보기 카드에서 피클이 조는 중 / 딴짓 중일 때 */
+  .tile.sleepy .state{color:#cfc6ff;background:rgba(139,124,246,.16);border-color:rgba(139,124,246,.45)}
+  .tile.phone .state{color:#ffd89a;background:rgba(245,192,74,.14);border-color:rgba(245,192,74,.45)}
 
   .stagewrap{position:relative;flex:1;min-height:92px;display:flex;flex-direction:column;padding:0 9px}
   .bubble{
@@ -773,6 +776,27 @@
   }
   body.view-video .vbob video.face{ z-index:1;opacity:0;transition:none }
   body.view-video .tile.speaking .vbob video.face{ opacity:1 }
+  /* v4.6.2 — 피클 '조는 중' 영상 겹. speaking 영상과 별개 요소라 src 교체 없이 opacity 만 바뀐다.
+     · 평소엔 둘 다 opacity 0 (아래에 깔린 포스터가 보인다)
+     · .tile.speaking → speaking 겹만  /  .tile.sleepy → sleepy 겹만 (발언 중이면 잠을 깨므로 양립하지 않는다) */
+  body.view-video .vbob video.face.vlay{ z-index:1;opacity:0 }
+  body.view-video .tile.speaking .vbob video.face.vlay{ opacity:0 }
+  body.view-video .tile.sleepy .vbob video.face.vlay[data-state="sleepy"]{ opacity:1 }
+  body.view-video .tile.phone .vbob video.face.vlay[data-state="phone"]{ opacity:1 }
+  body.view-video .vbob video.face.vlay.off{ display:none }
+  /* 조는 중 — 타일 테두리·상태 문구를 피클 색(보라)으로 살짝 물들인다(두께는 그대로) */
+  body.view-video .tile.sleepy{border-color:rgba(139,124,246,.6)}
+  body.view-video .tile.sleepy .vmeta{color:#c9bdfa}
+  /* 딴짓(폰) — 경고성 주황 */
+  body.view-video .tile.phone{border-color:rgba(245,192,74,.6)}
+  body.view-video .tile.phone .vmeta{color:#ffd89a}
+  /* v4.6.2 — 폰을 든 손은 프레임 아래쪽에 있다. 하단 이름·상태 그라데이션이 그대로 덮으면 폰이 가려지므로
+     이 상태만 이름·상태를 위로 올리고 아래쪽은 띄운다(폰이 그대로 보인다). */
+  body.view-video .tile.phone .vov{
+    top:0;bottom:auto;
+    padding:9px 9px 22px;
+    background:linear-gradient(rgba(0,0,0,.8),rgba(0,0,0,.42) 55%,transparent);
+  }
   body.view-video .vbob video.face.off{ display:none }
   body.view-video .vbob video.face::-webkit-media-controls{display:none!important}
   body.view-video .vbob video.face::-webkit-media-controls-enclosure{display:none!important}
@@ -1078,7 +1102,7 @@
         <div class="dh-top">
           <span class="dh-org">다크진 AI 비서실</span>
           <span>회의 브리핑 서류</span>
-          <span class="dh-no" id="docNo">v4.6.1 · DOC 2026-1127</span>
+          <span class="dh-no" id="docNo">v4.6.2 · DOC 2026-1127</span>
         </div>
         <h2 class="dh-title">회의 브리핑 서류</h2>
         <p class="dh-sub">이번에 다룰 안건을 고르고, 다음 회의에 다룰 안건을 적어 두십시오.</p>
@@ -1905,12 +1929,17 @@ window.AGENDA_LIB = (function(){
        · video  = 발언 중(speaking) 영상 — 발언 중일 때만 opacity 1 + play()
      다른 AI나 다른 상태(idle·react) 영상을 추가할 때는 **src 를 갈아 끼우지 말고**
      `videos:{idle:'...', react:'...'}` 처럼 상태별 주소를 적은 뒤, motionVideo() 를 상태마다 하나씩
-     만들어 겹쳐 두고 타일 클래스(`.tile.speaking` / `.tile.reacting`)로 opacity 만 바꾼다.
-     (iOS Safari 에서 src 교체·DOM 제거는 깜박임과 빈 타일의 원인이다) */
+     만들어 겹쳐 두고 타일 클래스(`.tile.speaking` / `.tile.sleepy`)로 opacity 만 바꾼다.
+     (iOS Safari 에서 src 교체·DOM 제거는 깜박임과 빈 타일의 원인이다)
+     v4.6.2 — 피클에게 첫 상태 영상 `sleepy`(눈 감고 조는 3.5초 루프)와 `phone`(몰래 폰 보다 들킴 2.2초 루프)가 붙었다.
+       · speaking 영상은 지금처럼 class `vid` — 기존 검증(video.vid 1개)이 보는 그 요소
+       · 나머지 상태 영상은 class `vlay` + data-state — 겹으로만 쌓이고 opacity 로만 켜진다 */
   const PEOPLE = [
-    /* v4.4 — 피클만 움직이는 영상 아바타. 정지 이미지는 영상 poster/실패 시 대체용으로 그대로 둔다. */
+    /* v4.4 — 피클만 움직이는 영상 아바타. 정지 이미지는 영상 poster/실패 시 대체용으로 그대로 둔다.
+       v4.6.2 — 듣는 중에 조는 모습(sleepy)·몰래 폰 보는 모습(phone). 발언 차례가 오면 setTileMood 가 즉시 깨운다. */
     {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6", img:"./avatars/pickle.webp",
-      video:"./avatars/pickle.mp4", poster:"./avatars/pickle_poster.webp"},
+      video:"./avatars/pickle.mp4", poster:"./avatars/pickle_poster.webp",
+      videos:{sleepy:"./avatars/pickle_sleepy.mp4", phone:"./avatars/pickle_phone.mp4"}},
     {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4", img:"./avatars/gemini.webp"},
     {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8", img:"./avatars/cue.webp"},
     {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c", img:"./avatars/hark.webp"},
@@ -1920,7 +1949,7 @@ window.AGENDA_LIB = (function(){
     {id:"keyring", name:"Keyring",   emoji:"🔑", role:"신규 합류 · 참관",        color:"#a3e635", img:"./avatars/keyring.webp"}
   ];
   const byId = id => PEOPLE.find(p => p.id === id) || (id === "owner" ? {id:"owner", name:"오너", emoji:"👑", color:"#f5c04a"} : null);
-  /* 상태별 영상 표 — 지금은 speaking 하나. 나중에 idle/react 를 넣으면 여기에만 추가하면 된다.
+  /* 상태별 영상 표 — speaking 외 상태(sleepy …)는 PEOPLE 에 videos 로 적으면 여기서 speaking 과 합쳐진다.
      (주소 문자열을 PEOPLE 안에 중복해 적지 않는 이유: 단일 파일 빌드가 mp4 를 두 번 인라인해 파일이 두 배가 된다) */
   PEOPLE.forEach(p=>{ if(p.video) p.videos = Object.assign({speaking:p.video}, p.videos || {}); });
 
@@ -1955,11 +1984,17 @@ window.AGENDA_LIB = (function(){
       poster.dataset.src = p.poster || p.img || "";
       poster.src = poster.dataset.src;   /* 정지는 정지 이미지가 바로 보여야 한다(18KB) — 영상만 화상 진입 시 내려받는다 */
       poster.addEventListener("error", function(){ poster.style.display = "none"; });
-      /* 위층: 발언 중에만 재생하는 영상 */
-      const v = motionVideo(p);
-      v.addEventListener("error", function(){ stillFallback(holder, p); });
-      holder.append(poster, v);
-      return {video:v, poster:poster};
+      /* 위층: 상태 영상 — speaking·sleepy … 를 상태마다 한 겹씩 쌓는다(주소는 손대지 않고 opacity 만) */
+      const states = Object.keys(p.videos || {});
+      const vids = {}, layers = [];
+      (states.length ? states : ["speaking"]).forEach(st=>{
+        const v = motionVideo(p, st);
+        v.addEventListener("error", function(){ stillFallback(holder, p, v); });
+        vids[st] = v;
+        layers.push(v);
+      });
+      holder.append.apply(holder, [poster].concat(layers));
+      return {video:vids.speaking || layers[0], vids:vids, poster:poster};
     }
     const img = faceImg(p);
     img.addEventListener("error", function(){ stillFallback(holder, p); });
@@ -1968,8 +2003,8 @@ window.AGENDA_LIB = (function(){
   }
   /* 영상이 안 열리는 브라우저(=H.264 미지원 등)는 정지 이미지 → 그것도 실패하면 이모지.
      v4.5.1 — 영상 요소는 지우지 않고 숨기기만 한다(다시 살릴 수 있게). */
-  function stillFallback(holder, p){
-    const v = holder.querySelector("video.vid");
+  function stillFallback(holder, p, culprit){
+    const v = culprit || holder.querySelector("video.face");
     if(v){ v.classList.add("off"); try{ v.pause(); }catch(e){} }
     /* 영상 타일: 아래깔린 정지 이미지(포스터)를 살리면 그만 — 이모지로 갈 필요 없다 */
     const poster = holder.querySelector("img.vposter");
@@ -1996,9 +2031,13 @@ window.AGENDA_LIB = (function(){
      muted + playsinline + autoplay + loop, 그리고 play() 실패(.catch)는 조용히 무시.
      src 는 화상 화면에 처음 들어갈 때 한 번만 붙인다(armAvatarVideos) —
      v4.5.1 부터는 src 를 빼지도, 갈아 끼우지도 않고 play()/pause() + opacity 만 쓴다. */
-  function motionVideo(p){
+  function motionVideo(p, state){
+    state = state || "speaking";
+    const src = (p && p.videos && p.videos[state]) || (p && p.video) || "";
     const v = document.createElement("video");
-    v.className = "face vid";
+    /* v4.6.2 — speaking 은 class `vid`(기존 검증·재생 경로), 그 밖의 상태는 `vlay` + data-state */
+    v.className = "face " + (state === "speaking" ? "vid" : "vlay");
+    v.dataset.state = state;
     v.muted = true; v.defaultMuted = true;
     v.loop = true; v.autoplay = false; v.playsInline = true;
     v.preload = "none";
@@ -2011,51 +2050,63 @@ window.AGENDA_LIB = (function(){
     v.setAttribute("disableremoteplayback", "");
     v.setAttribute("aria-label", ((p && p.name) || "") + " 움직이는 아바타");
     if(p && p.poster) v.poster = p.poster;
-    v.dataset.src = p.video;
+    v.dataset.src = src;
     v.dataset.who = p.id;
     return v;
   }
   /* 화상 화면에 처음 들어갈 때 딱 한 번: 영상 src·포스터 src 를 붙인다(이후에는 건드리지 않는다).
      preload=metadata 로 바꾸고 붙인다 — 발언이 시작될 때 바로 재생되도록 치수·첫 프레임만 미리 받는다. */
   function armAvatarVideos(){
-    document.querySelectorAll("video.vid[data-src]").forEach(v=>{
+    document.querySelectorAll("video.face[data-src]").forEach(v=>{
       if(!v.getAttribute("src")){ v.preload = "metadata"; v.src = v.dataset.src; }
     });
     document.querySelectorAll("img.vposter[data-src]").forEach(im=>{
       if(!im.getAttribute("src")) im.src = im.dataset.src;
     });
   }
-  /* 발언 중일 때만 영상을 재생하고, 듣는 중이면 멈춘다.
+  /* 상태 영상 재생 규칙 (v4.6.2 확장)
+     - 켜는 겹은 avatarMood() 한 곳에서 정한다: 발언 중 → speaking · 조는 중 → sleepy
      - src 는 그대로 둔다(떼었다 붙이면 iOS 에서 깜빡이거나 화면이 사라진다)
-     - opacity 는 CSS(.tile.speaking .vbob video.face)가 정한다
+     - 보임/숨김은 CSS 가 타일 클래스로 정하고, 여기서는 play()/pause() 만 한다
      - 영상이 없거나 화상 모드가 아니면 아무것도 하지 않는다 */
+  /* 어느 영상 겹을 켜야 하는가 — 발언 중(speaking) > 조는 중(sleepy) > 없음.
+     조용(quiet) 이면 전부 끈다. 두 상태가 겹치지 않게 한 곳에서만 정한다. */
+  function avatarMood(r){
+    if(!r) return "";
+    if(r.tile.classList.contains("quiet")) return "";
+    if(r.tile.classList.contains("speaking")) return "speaking";
+    if(r.mood && r.vids && r.vids[r.mood]) return r.mood;
+    return "";
+  }
   function syncAvatarMedia(){
     const inVideo = document.body.classList.contains("view-video");
     Object.keys(tileRefs).forEach(id=>{
       const r = tileRefs[id];
-      const v = r && r.vid;
-      if(!v) return;
-      const speaking = r.tile.classList.contains("speaking") && !r.tile.classList.contains("quiet");
-      if(!inVideo) return;
-      if(!v.getAttribute("src")) return;             // 아직 무장 전
-      if(v.classList.contains("off")) return;        // 코덱·정책으로 실패 → 정지 이미지 유지
-      if(speaking){
-        if(v.paused){
-          try{ const pr = v.play(); if(pr && pr.catch) pr.catch(()=>{}); }catch(e){}
-          /* 재생을 시작했는데 1.5초가 지나도록 아무것도 못 받았다면(readyState 0) 이 기기·이 방식으로는
-             영상이 안 열린다(data: 영상 등) → 영상을 숨기고 정지 이미지를 그대로 보여 준다. */
-          if(parseInt(v.dataset.watch, 10) !== 1){
-            v.dataset.watch = "1";
-            setTimeout(()=>{
-              v.dataset.watch = "0";
-              if(v.readyState === 0) v.classList.add("off");
-              else if(v.readyState >= 2) v.classList.remove("off");
-            }, 1500);
+      if(!r || !r.vids) return;
+      const want = inVideo ? avatarMood(r) : "";
+      Object.keys(r.vids).forEach(st=>{
+        const v = r.vids[st];
+        if(!v) return;
+        if(v.classList.contains("off")) return;        // 코덱·정책으로 실패 → 정지 이미지 유지
+        if(!v.getAttribute("src")) return;              // 아직 무장 전
+        if(st === want){
+          if(v.paused){
+            try{ const pr = v.play(); if(pr && pr.catch) pr.catch(()=>{}); }catch(e){}
+            /* 재생을 시작했는데 1.5초가 지나도록 아무것도 못 받았다면(readyState 0) 이 기기·이 방식으로는
+               영상이 안 열린다(data: 영상 등) → 그 겹만 숨기고 정지 이미지를 그대로 보여 준다. */
+            if(parseInt(v.dataset.watch, 10) !== 1){
+              v.dataset.watch = "1";
+              setTimeout(()=>{
+                v.dataset.watch = "0";
+                if(v.readyState === 0) v.classList.add("off");
+                else if(v.readyState >= 2) v.classList.remove("off");
+              }, 1500);
+            }
           }
+        } else if(!v.paused){
+          try{ v.pause(); }catch(e){}
         }
-      } else if(!v.paused){
-        try{ v.pause(); }catch(e){}
-      }
+      });
     });
   }
   function startMotionVideos(){
@@ -2064,7 +2115,7 @@ window.AGENDA_LIB = (function(){
     watchdogMedia(90);
   }
   function stopMotionVideos(){
-    document.querySelectorAll("video.vid").forEach(v=>{ try{ v.pause(); }catch(e){} });
+    document.querySelectorAll("video.face").forEach(v=>{ try{ v.pause(); }catch(e){} });
   }
   /* v4.5.1 — 타일 미디어 자동 복구.
      iOS Safari 는 앱이 백그라운드로 갔다 오거나 메모리가 빠듯할 때 이미지·영상 디코딩을 버려
@@ -2580,7 +2631,8 @@ window.AGENDA_LIB = (function(){
 
     t.append(head, wrap, foot, vs, vbadge, react, qv);
     const refs = {id:p.id, tile:t, state:st, bubble, mtag, mrole, msum, matbtn, wave, mic,
-                  vstate:vst, vbob, vid:media && media.video, poster:media && media.poster,
+                  vstate:vst, vbob, vid:media && media.video, vids:(media && media.vids) || {},
+                  poster:media && media.poster, mood:"", stateLbl:"대기",
                   react, reactT:null};
     return refs;
   }
@@ -2613,21 +2665,44 @@ window.AGENDA_LIB = (function(){
 
   function setTileState(id, kind, label){
     const r = tileRefs[id]; if(!r) return;
+    if(kind === "speaking") setTileMood(id, "");   // v4.6.2 — 발언 차례가 오면 즉시 잠에서 깬다
     r.tile.classList.remove("speaking","assigned");
     r.state.classList.remove("s-speaking","s-ready","s-done","s-quiet");
     if(kind==="speaking"){ r.tile.classList.add("speaking"); r.state.classList.add("s-speaking"); }
     if(kind==="ready"){ r.tile.classList.add("matready"); r.state.classList.add("s-ready"); }
     if(kind==="assigned"){ r.tile.classList.add("assigned"); r.state.classList.add("s-done"); }
     if(kind==="quiet"){ r.state.classList.add("s-quiet"); }
-    r.state.textContent = label || (kind==="speaking"?"발언 중":kind==="ready"?"자료 준비":kind==="assigned"?"배정":kind==="quiet"?"조용":"대기");
+    r.stateLbl = label || (kind==="speaking"?"발언 중":kind==="ready"?"자료 준비":kind==="assigned"?"배정":kind==="quiet"?"조용":"대기");
+    r.state.textContent = (r.mood && kind !== "speaking") ? MOOD_TEXT[r.mood] : r.stateLbl;
     if(r.vstate) r.vstate.textContent = videoLabel(r);
-    syncAvatarMedia();   // 발언 중일 때만 피클 영상을 재생하고, 듣는 중에는 멈춘다
+    syncAvatarMedia();   // 지금 켜야 하는 겹(speaking / sleepy)만 재생하고 나머지는 멈춘다
   }
-  /* 화상 6분할 타일의 상태 문구 — 화상통화처럼 "듣는 중 / 발언 중"으로 보여 준다 */
+  /* ═════ v4.6.2 — '듣는 중의 피클' 상태 영상 (sleepy / phone) ═════
+     피클이 듣기만 하는 동안(다른 AI 가 2명 넘게 연달아 말할 때) 눈을 감고 조는 모습(sleepy)과
+     회의 중 몰래 폰을 보다 들키는 모습(phone) 중 하나가 랜덤으로 켜지고,
+     자기 발언 차례가 오면 setTileState(speaking) 가 즉시 깨운다.
+     영상은 상태마다 따로 쌓여 있으므로 여기서는 클래스 한 개와 문구만 바꾼다 — src 교체 없음. */
+  const MOODS = ["sleepy", "phone"];
+  const MOOD_TEXT  = {sleepy:"😴 조는 중",   phone:"📱 딴짓"};          // 글로 보기 카드 헤더 배지
+  const MOOD_LABEL = {sleepy:"😴 살짝 조는 중", phone:"📱 딴짓하다 걸림"};   // 화상 타일 하단 상태
+  function setTileMood(id, mood){
+    const r = tileRefs[id]; if(!r) return false;
+    mood = (MOODS.indexOf(mood) >= 0 && r.vids && r.vids[mood]) ? mood : "";
+    /* 말하는 중에는 다른 상태를 켜지 않는다 — 깨어 있는 쪽이 이긴다 */
+    if(mood && r.tile.classList.contains("speaking")) mood = "";
+    r.mood = mood;
+    MOODS.forEach(m=> r.tile.classList.toggle(m, mood === m));
+    if(r.state) r.state.textContent = mood ? MOOD_TEXT[mood] : r.stateLbl;
+    if(r.vstate) r.vstate.textContent = videoLabel(r);
+    syncAvatarMedia();
+    return !!mood;
+  }
+  /* 화상 6분할 타일의 상태 문구 — 화상통화처럼 "듣는 중 / 발언 중 / 조는 중"으로 보여 준다 */
   function videoLabel(r){
     if(!r) return "대기";
     if(r.tile.classList.contains("quiet")) return "조용";
     if(r.tile.classList.contains("speaking")) return "발언 중";
+    if(r.mood && MOOD_LABEL[r.mood]) return MOOD_LABEL[r.mood];
     if(state.phase === "roles") return "배정";
     if(!state.agenda) return "대기";
     return "듣는 중";
@@ -3102,7 +3177,7 @@ window.AGENDA_LIB = (function(){
     const pt = document.getElementById("lobbyPickTitle");
     if(pt) pt.textContent = cur ? cur.title : "—";
     const dn = document.getElementById("docNo");
-    if(dn){ const d = new Date(); dn.textContent = "v4.6 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
+    if(dn){ const d = new Date(); dn.textContent = "v4.6.2 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
   }
 
   function renderMemos(){
@@ -3674,10 +3749,22 @@ window.AGENDA_LIB = (function(){
     addSystem((rd.emoji||"") + " " + rd.n + "라운드 " + rd.tag + " — " + (rd.desc || ""));
     setLive(n === 1 ? "자료 발표" : rd.tag, "");
     let k = 0;
+    let rest = 0;   // v4.6.2 — 피클 차례 없이 다른 AI 가 말한 횟수(2번째부터 피클은 조기 시작)
+    setTileMood("pickle", "");   // 라운드 시작 — 일단 또릇하게
     for(const id of order){
       if(token !== state.runToken) break;
       await waitIfPaused();
       if(token !== state.runToken) break;
+      if(id === "pickle"){
+        setTileMood("pickle", "");      // 내 차례 — 즉시 깨서 영상도 speaking 으로 바뀜
+        rest = 0;
+      } else {
+        rest++;
+        if(rest >= 2 && tileRefs.pickle && !tileRefs.pickle.mood){
+          /* 다른 AI 둘이 지나가면 살짝 딴짓 — 조는 중/폰 보는 중을 한 번씩 골라 켠다 */
+          setTileMood("pickle", MOODS[Math.floor(Math.random() * MOODS.length)]);
+        }
+      }
       const line = lineFor(id, rd);
       if(!line) continue;
       const who = line.to ? byId(line.to) : null;
@@ -4316,21 +4403,28 @@ window.AGENDA_LIB = (function(){
       plays:v.playsInline, autoplay:v.autoplay, controls:v.controls,
       op:getComputedStyle(v).opacity, off:v.classList.contains("off")
     })),
-    /* v4.5.1 — 타일별 미디어 상태(타일 소실·영상 재생 조건 감시) */
+    /* v4.5.1 — 타일별 미디어 상태(타일 소실·영상 재생 조건 감시)
+       v4.6.2 — mood(조는 중)·sleepy 겹 정보 추가 */
     media: ()=> Object.keys(tileRefs).map(id=>{
       const r = tileRefs[id];
       const rect = r.tile.getBoundingClientRect();
       const img = r.tile.querySelector(".vbob img.face");
       const pos = r.poster;
       const v = r.vid;
+      const sl = r.vids && r.vids.sleepy;
+      const ph = r.vids && r.vids.phone;
       const cast = (x)=> x ? {nw:x.naturalWidth, c:x.complete, src:x.getAttribute("src"),
                               op:getComputedStyle(x).opacity, disp:getComputedStyle(x).display} : null;
+      const vcast = (x)=> x ? {src:x.getAttribute("src"), paused:x.paused, rs:x.readyState,
+                               t:Math.round(x.currentTime*100)/100, op:getComputedStyle(x).opacity,
+                               off:x.classList.contains("off"), w:x.videoWidth, h:x.videoHeight} : null;
       return {id:id, speaking:r.tile.classList.contains("speaking"),
+              sleepy:r.tile.classList.contains("sleepy"), phone:r.tile.classList.contains("phone"),
+              mood:r.mood || "",
+              vstate:(r.vstate && r.vstate.textContent) || "",
               rect:{w:Math.round(rect.width), h:Math.round(rect.height), t:Math.round(rect.top), l:Math.round(rect.left)},
               img:cast(img), poster:cast(pos),
-              video: v ? {src:v.getAttribute("src"), paused:v.paused, rs:v.readyState,
-                          t:Math.round(v.currentTime*100)/100, op:getComputedStyle(v).opacity,
-                          off:v.classList.contains("off")} : null};
+              video: vcast(v), sleep: vcast(sl), phon: vcast(ph)};
     }),
     tileIds: ()=> [].map.call(stage.children, n=> n.dataset.id),
     nodeIds: ()=> Object.keys(tileRefs).map(id=>{
@@ -4399,6 +4493,23 @@ window.AGENDA_LIB = (function(){
       readyState: (()=>{ const v=document.getElementById("introVid"); return v ? v.readyState : -1; })(),
       paused: (()=>{ const v=document.getElementById("introVid"); return v ? v.paused : true; })(),
       time: (()=>{ const v=document.getElementById("introVid"); return v ? Math.round(v.currentTime*100)/100 : -1; })()
+    }),
+    /* v4.6.2 — 조는 중(sleepy) 검증용 훅 */
+    setTileMood: (id, mood)=> setTileMood(id, mood),
+    moods: ()=> Object.keys(tileRefs).map(id=>{
+      const r = tileRefs[id];
+      const one = (x)=> x ? {src:x.getAttribute("src"), paused:x.paused,
+                             t:Math.round(x.currentTime*100)/100, rs:x.readyState,
+                             op:getComputedStyle(x).opacity, off:x.classList.contains("off"),
+                             w:x.videoWidth, h:x.videoHeight} : null;
+      return {id:id, mood:r.mood || "",
+              sleepy:r.tile.classList.contains("sleepy"), phone:r.tile.classList.contains("phone"),
+              speaking:r.tile.classList.contains("speaking"),
+              vstate:(r.vstate && r.vstate.textContent) || "",
+              state:(r.state && r.state.textContent) || "",
+              layers:Object.keys(r.vids || {}),
+              sleep: one(r.vids && r.vids.sleepy), phon: one(r.vids && r.vids.phone),
+              speak: one(r.vid)};
     }),
     pickIntroIdx: () => { const i = pickIntroIdx(); lastIntroIdx = i; return i; }   // 분포만 볼 때(영상 재생 없이)
   };

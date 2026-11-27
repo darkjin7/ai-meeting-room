@@ -13,6 +13,8 @@ cp index.html index.v4.html
 #         iOS Safari 가 data: 영상을 못 열면 코드가 poster/정지 이미지로 조용히 대체한다.
 # v4.6.1 — 입장 인트로 영상 3종(intro_1~3.mp4 + 포스터)도 인라인한다. 앱 코드의 INTRO_CLIPS 배열에
 #          적힌 주소를 그대로 훑으므로, 새 클립(intro_4 …)을 넣어도 이 스크립트는 고칠 필요가 없다.
+# v4.6.2 — 피클 '조는 중'(sleepy) 영상도 인라인한다. 상태 영상은 상태마다 한 겹씩 늘어나므로
+#          새 상태(sleepy …)를 넣을 때는 이 스크립트의 inline_once 목록에 주소를 하나 더 적는다.
 python3 - <<'PY'
 import base64, pathlib, re
 html = pathlib.Path("index.html").read_text(encoding="utf-8")
@@ -37,8 +39,10 @@ def inline_once(html, rel, mime, what):
     b64 = base64.b64encode(p.read_bytes()).decode("ascii")
     return html.replace(pat, '"data:%s;base64,%s"' % (mime, b64)), 1
 
-# ── 2) 피클 움직이는 영상 ──
+# ── 2) 피클 상태 영상 (v4.6.2 — speaking pickle.mp4 + sleepy pickle_sleepy.mp4 + phone pickle_phone.mp4) ──
 html, n_pickle = inline_once(html, "./avatars/pickle.mp4", "video/mp4", "pickle.mp4")
+html, n_sleepy = inline_once(html, "./avatars/pickle_sleepy.mp4", "video/mp4", "pickle_sleepy.mp4")
+html, n_phone = inline_once(html, "./avatars/pickle_phone.mp4", "video/mp4", "pickle_phone.mp4")
 
 # ── 3) 입장 인트로 클립 — 코드(INTRO_CLIPS)에 적힌 순서대로 ──
 intro_srcs = list(dict.fromkeys(re.findall(r'"(\./avatars/intro_[0-9]+\.mp4)"', html)))
@@ -51,17 +55,17 @@ for rel in intro_srcs:
 missing = [r for r in intro_srcs if ('"%s"' % r) in html]   # 아직 주소로 남아 있으면 인라인 실패
 if missing:
     raise SystemExit("인트로 영상이 인라인되지 않았다: %s" % ", ".join(missing))
-left = re.findall(r'"\./avatars/[a-z0-9_]+\.(?:webp|css|png)"', html)
+left = re.findall(r'"\./avatars/[a-z0-9_]+\.(?:webp|css|png|mp4)"', html)
 if left:
     raise SystemExit("인라인되지 않은 자산이 남았다: %s" % ", ".join(sorted(set(left))))
 
 dest = pathlib.Path("/workspace/downloads/darkjin_meeting_room_v4.html")
 dest.write_text(html, encoding="utf-8")
 kb = dest.stat().st_size / 1024
-print("download build: %s (%.0f KB, avatars inlined: %d, pickle video: %d, intro clips: %s)"
-      % (dest, kb, html.count("data:image/webp;base64,"), n_pickle,
+print("download build: %s (%.0f KB, avatars inlined: %d, pickle videos: %d/%d/%d (speaking/sleepy/phone), intro clips: %s)"
+      % (dest, kb, html.count("data:image/webp;base64,"), n_pickle, n_sleepy, n_phone,
          ", ".join(p.name for p in map(pathlib.Path, intro_srcs))))
-if kb > 2560:   # v4.6.1 — 인트로 3종(약 1.15MB 인라인)을 담느라 2MB → 2.5MB 로 올림
-    raise SystemExit("단일 파일이 %.0f KB — 2.5MB 를 넘었습니다" % kb)
+if kb > 3000:   # v4.6.2 — 조는 중(252KB)·딴짓(272KB) 영상을 더 담느라 2.5MB → 2.93MB 로 올림
+    raise SystemExit("단일 파일이 %.0f KB — 2.93MB 를 넘었습니다" % kb)
 PY
 echo "built: work/meeting-room/index.html ($(wc -l < index.html) lines)"
