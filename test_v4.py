@@ -126,13 +126,13 @@ def main():
         assert p.eval_on_selector_all('.tile','e=>e.length') == 6, '게스트가 타일로 들어감'
         print('OK 안건1 자료 6개 · 라운드 칩 4개 · 2~4 잠김')
 
-        # 3-b) v4.3 — 비서실 8인 캐릭터 아바타(256x256 webp)가 실제로 로드되는지
+        # 3-b) v4.3/v4.5 — 비서실 8인 캐릭터 아바타(512x478 webp)가 실제로 로드되는지
         def face_report(page):
             return page.evaluate("""()=>[...document.querySelectorAll('img.face')].map(i=>({src:i.getAttribute('src'),nw:i.naturalWidth,nh:i.naturalHeight,
                 w:Math.round(i.getBoundingClientRect().width),h:Math.round(i.getBoundingClientRect().height)}))""")
         p.wait_for_function("()=>[...document.querySelectorAll('img.face')].every(i=>i.complete && i.naturalWidth>0)", timeout=15000)
         fr = face_report(p)
-        bad = [f for f in fr if not (f['nw'] == 256 and f['nh'] == 256)]
+        bad = [f for f in fr if not (f['nw'] == 512 and f['nh'] == 478)]
         assert not bad, '아바타 이미지 로드 실패/크기 이상: %s' % bad[:4]
         srcs = sorted(set(f['src'] for f in fr))
         assert all('/avatars/' in s for s in srcs), '아바타가 상대경로가 아님: %s' % srcs
@@ -145,7 +145,7 @@ def main():
         assert vbob_vids == 1, '화상 얼굴 자리에 피클 영상 1개가 없음: %d' % vbob_vids
         assert guest_faces == 2, '참관 게스트 썸네일 2개 아님: %d' % guest_faces
         assert p.eval_on_selector_all('.tile .vstage .vbob','e=>e.filter(x=>x.textContent.trim()).length') == 0, '화상 타일에 이모지가 남아 있음'
-        print('OK 8인 캐릭터 아바타 로드 — naturalWidth 256x256 %d장 · 타일 6 · 게스트 2 · 상대경로 ./avatars/*.webp' % len(srcs))
+        print('OK 8인 캐릭터 아바타 로드 — naturalWidth 512x478 %d장 · 타일 6 · 게스트 2 · 상대경로 ./avatars/*.webp' % len(srcs))
 
         # 4) 잠긴 4라운드를 건너뛰려 하면 막힌다
         p.evaluate("()=>window.__mr4.playRound(4)")
@@ -463,9 +463,20 @@ def main():
         # v4.4 — 피클 얼굴 자리는 정지 이미지 대신 움직이는 영상(videos → 5장 + video 1)
         vface = mp.eval_on_selector_all('.tile .vstage .vbob img.face', VFACE)
         assert len(vface) == 5, '화상 타일 얼굴 5개(피클은 영상) 아님: %d' % len(vface)
-        assert all(f['nw'] == 256 for f in vface), '화상 타일 아바타 로드 실패: %s' % [f['src'] for f in vface if f['nw'] != 256]
-        assert all(f['w'] >= 50 and abs(f['w'] - f['h']) <= 1 for f in vface), '화상 타일 얼굴이 원형 프레임을 안 채움: %s' % vface
+        assert all(f['nw'] == 512 for f in vface), '화상 타일 아바타 로드 실패: %s' % [f['src'] for f in vface if f['nw'] != 512]
         assert all(f['fit'] == 'cover' for f in vface), '화상 타일 얼굴 object-fit 이 cover 아님: %s' % set(f['fit'] for f in vface)
+        # v4.5 — 풀블리드: 타일 안 미디어가 타일 전체(테두리 안쪽)를 꽉 채운다
+        bleed = mp.evaluate("""()=>[...document.querySelectorAll('.tile')].map(t=>{
+            const r=t.getBoundingClientRect(), b=t.querySelector('.vbob').getBoundingClientRect();
+            const m=t.querySelector('.vbob img.face, .vbob video.face');
+            const mr=m.getBoundingClientRect(), s=getComputedStyle(m);
+            return {id:t.dataset.id, tile:[Math.round(r.width),Math.round(r.height)],
+                    media:[Math.round(mr.width),Math.round(mr.height)], frame:[Math.round(b.width),Math.round(b.height)],
+                    fit:s.objectFit, pos:s.objectPosition, rad:s.borderRadius};})""")
+        assert len(bleed) == 6, '화상 타일 6개 아님: %d' % len(bleed)
+        assert all(abs(x['media'][0]-x['frame'][0]) <= 1 and abs(x['media'][1]-x['frame'][1]) <= 1 for x in bleed), '미디어가 프레임과 크기가 다름: %s' % bleed
+        assert all(x['frame'][0] >= x['tile'][0]-6 and x['frame'][1] >= x['tile'][1]-6 for x in bleed), '미디어가 타일을 꽉 채우지 않음: %s' % bleed
+        assert all(x['fit'] == 'cover' and x['rad'] == '0px' and x['pos'].endswith('22%') for x in bleed), '풀블리드 속성 이상: %s' % bleed
         # 화상 모드 타일 상태는 화상통화처럼 '듣는 중 / 발언 중'
         vstates = set(mp.eval_on_selector_all('.tile .vstate','e=>e.map(x=>x.textContent)'))
         assert vstates <= {'듣는 중','발언 중','배정','대기','조용'}, '화상 타일 상태 문구 이상: %s' % vstates
@@ -550,7 +561,7 @@ def main():
         assert mp.is_visible('#guestAdviceBox'), '모바일 게스트 조언 섹션 없음'
         assert mp.eval_on_selector_all('#guestAdvice .gcard','e=>e.length') == 2, '모바일 게스트 조언 2건 아님'
         assert mp.eval_on_selector_all('#guestAdvice .gcard .gce img.face','e=>e.length') == 2, '게스트 최종 조언에 캐릭터 썸네일 없음'
-        assert mp.evaluate("()=>[...document.querySelectorAll('#guestAdvice .gce img.face')].every(i=>i.naturalWidth===256)"), '게스트 조언 썸네일 로드 실패'
+        assert mp.evaluate("()=>[...document.querySelectorAll('#guestAdvice .gce img.face')].every(i=>i.naturalWidth===512)"), '게스트 조언 썸네일 로드 실패'
         gfs = mp.evaluate("parseFloat(getComputedStyle(document.querySelector('#guestAdvice .gcw')).fontSize)")
         assert gfs >= 13, '게스트 조언 글자 %.1fpx' % gfs
         ov = mp.evaluate("document.documentElement.scrollWidth - window.innerWidth")
@@ -566,7 +577,7 @@ def main():
         mp.screenshot(path=DL+'meeting_v41_mobile_roles.png')
         # v4.3 — 역할 분담 카드도 이모지 대신 캐릭터 썸네일
         assert mp.eval_on_selector_all('#actionList .ac .em img.face','e=>e.length') == 6, '역할 분담 카드에 캐릭터 썸네일 6개 아님'
-        assert mp.evaluate("()=>[...document.querySelectorAll('#actionList .ac .em img.face')].every(i=>i.naturalWidth===256)"), '역할 카드 썸네일 로드 실패'
+        assert mp.evaluate("()=>[...document.querySelectorAll('#actionList .ac .em img.face')].every(i=>i.naturalWidth===512)"), '역할 카드 썸네일 로드 실패'
         print('OK 모바일 390x844 · 1열 큰 카드(%.0fpx, 줄간격 %.2f) · 말하는 카드 테두리 강조·자막 바 68px 고정 · 게스트 조언 · 역할 카드 썸네일' % (fs, lh))
         b.close()
 

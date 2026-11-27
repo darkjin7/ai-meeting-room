@@ -76,7 +76,7 @@
     v.muted = true; v.defaultMuted = true;
     v.loop = true; v.autoplay = true; v.playsInline = true;
     v.preload = "none";
-    v.width = 480; v.height = 480;
+    v.width = 640; v.height = 598;   // v4.5 — 타일 비율(1.07)에 맞춘 풀블리드 영상
     v.setAttribute("muted", "");
     v.setAttribute("loop", "");
     v.setAttribute("autoplay", "");
@@ -556,20 +556,23 @@
 
       const qv = el("div","qveil");
 
-      /* v4.2 화상 6분할용 얼굴 — 캐릭터 + 이름 + 상태/웨이브 (긴 본문 없음) */
+      /* v4.2 화상 6분할용 얼굴 — v4.5 부터는 타일 전체를 미디어가 꽉 채우는 풀블리드 */
       const vs = el("div","vstage");
       const vbob = el("div","vbob");
-      faceInto(vbob, p, {video:true});   // 화상 6분할 얼굴 자리 — 피클만 움직인다
+      faceInto(vbob, p, {video:true});   // 화상 6분할 타일 전체를 채우는 얼굴 — 피클만 움직인다
+      const vov = el("div","vov");       // 하단 그라데이션 + 이름/상태
       const vnm = el("div","vnm", p.name);
       const vmeta = el("div","vmeta");
       const vst = el("span","vstate","대기");
       const vw = el("div","vw");
       for(let i=0;i<5;i++) vw.append(el("i"));
       vmeta.append(vst, vw);
-      vs.append(vbob, vnm, vmeta);
+      vov.append(vnm, vmeta);
+      vs.append(vbob, vov);
+      const vbadge = el("div","vbadge","발언 중");
       const react = el("div","react");
 
-      t.append(head, wrap, foot, vs, react, qv);
+      t.append(head, wrap, foot, vs, vbadge, react, qv);
       stage.append(t);
       tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave, vstate:vst, vbob, react, reactT:null};
     });

@@ -1,5 +1,31 @@
 # 배포 메모 — 다크진 AI 비서실 · 6분할 회의실
 
+## v4.5 (2026-11-27) — 화상 6분할 타일 풀블리드(꽉 채우기)
+- 성진님 피드백: "회의실 사진을 꽉 채워줘 동그렇게 깔끔하긴 한데 작고 움직임도 잘 안보이고"
+
+### ① 타일 레이아웃 — 작은 원형(.vbob) → 타일 전체 채우기
+- `body.view-video .tile .vstage{position:absolute;inset:0}`, `.vbob{position:absolute;inset:0;width/height:100%;border-radius:0}`. 미디어는 `position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%`.
+- 이름·상태는 타일 하단 `.vov`(신규)에 `background:linear-gradient(transparent,rgba(0,0,0,.78))` 위로. 12px 굵은 흰 글씨 + text-shadow, 상태는 `듣는 중 / 발언 중`.
+- 발언 중: **테두리를 항상 2px로 고정**하고 색만 초록으로 바꾼다(두께 변화 = 레이아웃 변화 금지). 여기에 정적 box-shadow 발광 + 좌상단 `● 발언 중` 배지(`.vbadge`, 신규). 리액션 이모지는 우상단 그대로라 배지와 겹치지 않는다.
+- 화면 떨림 방지: 높이·그리드·자막 바 68px·`.tile{transition:none}` 규칙 전부 그대로. 화상 모드 발언 전환 스크롤 0 유지.
+- **넓은 화면은 6분할 판을 가운데로**(`@media(min-width:700px){stage max-width:1040px}`, 700~1024px는 600px). 전체 폭을 쓰면 타일이 1.7 비율까지 길어져 세로 사진·영상의 턱이 잘린다 → 타일 비율 1.0~1.2 유지.
+
+### ② 아바타 이미지 재생성 (`make_avatars_v45.py`)
+- 256×256 정사각 → **512×478(타일 1.07 비율)** WebP. 콘택트 시트 `attachments/2026-11-27/ai_family_8_avatars.jpg`의 칸(440×442)에서 400×374를 잘라 확대(머리 위 5% 여백, 턱 76%). 장당 19~29KB(합 196KB).
+- 작은 썸네일(카드 헤더 30px·게스트·역할 카드)은 `img.face{aspect-ratio:1/1;object-fit:cover}`라 그대로 잘려 쓰인다.
+
+### ③ 피클 영상 재생성 (`make_pickle_video.py`)
+- v4.4의 원형용 1:1 + 흐린 비네트 여백을 버리고, 원본 720×1280에서 **타일 비율 그대로 720×673(y=445)을 잘라** 640×598로 인코딩(비네트·여백 없음). 이마·눈·턱·넥타이까지 들어오는 화상통화 클로즈업.
+- 오디오 제거 · H.264 High yuv420p(tv) · CRF 29 · `+faststart` · 마지막 10프레임 ↔ 첫 10프레임 크로스페이드 루프 · **392KB**(원본 2.9MB). poster `pickle_poster.webp` 360×336 18KB.
+- `<video muted loop playsinline autoplay preload="none" poster>` · 화상 진입 시 `data-src`→`src` · 글로 보기에서 `pause()` 로직은 v4.4 그대로.
+
+### 검증 (2026-11-27)
+- `test_v4.py` ALL PASS — 아바타 512×478 8장 로드 · 화상 타일 6개 전부 풀블리드(미디어 = 프레임 182×170 = 타일 186×174 − 테두리, `object-fit:cover`·`border-radius:0`·`50% 22%`) · 자막 바 68px · 글로 보기 중앙 정렬 0px · 스크롤 0.
+- `test_v44.py` ALL PASS — 영상 392KB 640×598 7.92초 오디오 0 faststart, 모바일 타일 182×170 풀블리드 재생(t 0.87→2.07), 데스크톱 331×270, 글로 보기 정지 → 화상 복귀 재생, 화상 모드 스크롤 0.
+- 스크린샷: `downloads/meeting_v45_mobile_video6.png`(390×844), `downloads/meeting_v45_desktop_video6.png`(1440×900)
+
+---
+
 ## v4.4 (2026-11-27) — 글로 보기 발언 카드 '세로 중앙' 정렬 · 피클 움직이는 영상 아바타
 - 성진님 피드백 2건: ① "발언 할 때 글로보는 페이지에서 화면 중앙으로 이동이 잘 안됨 ㅠㅠ" ② 피클 움직이는 영상 테스트 적용.
 

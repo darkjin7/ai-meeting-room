@@ -481,8 +481,8 @@ window.AGENDA_LIB = (function(){
   AGENDAS.forEach(function(a){ byId[a.id] = a; });
 
   return {
-    version: "v4.2",
-    updatedAt: "2026-11-26 22:40",
+    version: "v4.5",
+    updatedAt: "2026-11-27 10:40",
     agendas: AGENDAS,
     byId: byId,
     planned: PLANNED

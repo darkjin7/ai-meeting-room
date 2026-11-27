@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.4 — 글로 보기 발언 카드 중앙 정렬 · 피클 움직이는 영상</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.5 — 화상 타일 풀블리드(꽉 채우기) · 피클 움직이는 영상</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -716,36 +716,65 @@
     flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
     grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:6px 10px;overflow:hidden;
   }
-  body.view-video .tile{min-height:0;background:linear-gradient(175deg,#141924,#0f131b)}
-  body.view-video .tile.speaking{background:linear-gradient(175deg,#16281f,#101a16);border-color:var(--green)}
+  /* v4.5 — 화상 타일은 풀블리드: 미디어가 타일 전체(100%x100%)를 채운다.
+     테두리는 항상 2px(발언 중에는 색만 바뀐다) → 두께 변화 없음 = 레이아웃 떨림 없음 */
+  /* v4.5 — 넓은 화면에서는 6분할 판을 가운데로 모은다.
+     타일이 가로로 너무 길면(비율 1.7) 세로 사진·영상의 턱이 잘린다 → 타일 비율을 1.0~1.2로 유지 */
+  @media (min-width:700px){
+    body.view-video .stage{max-width:1040px;margin:0 auto;width:100%}
+  }
+  @media (min-width:700px) and (max-width:1024px){
+    body.view-video .stage{max-width:600px}
+  }
+  body.view-video .tile{
+    min-height:0;background:linear-gradient(175deg,#141924,#0f131b);
+    border-width:2px;border-color:rgba(255,255,255,.07);
+  }
+  body.view-video .tile.speaking{
+    background:linear-gradient(175deg,#16281f,#101a16);border-color:var(--green);
+    box-shadow:0 0 0 1px rgba(46,224,106,.55),0 0 20px rgba(46,224,106,.26);
+  }
   body.view-video .tile .thead,body.view-video .tile .stagewrap,body.view-video .tile .tfoot{display:none}
-  body.view-video .tile .vstage{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    flex:1 1 auto;min-height:0;padding:6px 4px;
-  }
+  body.view-video .tile::after{display:none}   /* 상단 하이라이트가 사진 위를 덮지 않게 */
+  body.view-video .tile .vstage{display:block;position:absolute;inset:0;padding:0}
   body.view-video .vbob{
-    width:clamp(56px,16vh,150px);height:clamp(56px,16vh,150px);border-radius:50%;
-    display:grid;place-items:center;line-height:1;font-size:clamp(26px,7vh,74px);
+    position:absolute;inset:0;width:100%;height:100%;border-radius:0;border:0;
+    display:block;overflow:hidden;line-height:1;font-size:0;
     background:radial-gradient(circle at 50% 36%,#1b2233,#0d1119 72%);
-    border:1px solid var(--line);overflow:hidden;
-    will-change:transform;transform-origin:50% 80%;
   }
-  /* v4.3 — 6분할 얼굴은 실제 캐릭터 이미지(256x256 webp)를 원형 프레임에 꽉 채운다 */
-  body.view-video .vbob img.face{border-radius:50%;width:100%;height:100%;object-fit:cover}
-  /* v4.4 — 피클은 움직이는 영상. 얼굴이 잘리지 않게 1:1(480x480)로 미리 다듬은 영상을 원에 꽉 채운다 */
-  body.view-video .vbob video.face{
-    display:block;border-radius:50%;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
-    background:#0b0f17;pointer-events:none;
+  body.view-video .vbob img.face,body.view-video .vbob video.face{
+    position:absolute;inset:0;display:block;width:100%;height:100%;aspect-ratio:auto;
+    object-fit:cover;object-position:center 22%;border-radius:0;background:#0b0f17;pointer-events:none;
   }
   body.view-video .vbob video.face::-webkit-media-controls{display:none!important}
   body.view-video .vbob video.face::-webkit-media-controls-enclosure{display:none!important}
-  body.view-video .tile.speaking .vbob{
-    border-color:var(--green);
-    background:radial-gradient(circle at 50% 36%,#1b3527,#0e1a14 72%);
+  /* 이름·상태: 타일 하단 그라데이션 위에 또렷하게 */
+  body.view-video .vov{
+    position:absolute;left:0;right:0;bottom:0;z-index:2;pointer-events:none;
+    display:flex;flex-direction:column;gap:1px;padding:26px 9px 8px;
+    background:linear-gradient(transparent,rgba(0,0,0,.78));
   }
-  /* v4.2.1 — 캐릭터 바운스 transform 애니메이션 제거: 발언 표시는 테두리·배경색만(transition 없음) */
+  body.view-video .vnm{
+    font-size:12px;font-weight:800;letter-spacing:-.2px;text-align:left;color:#fff;
+    max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    text-shadow:0 1px 4px rgba(0,0,0,.9);
+  }
+  body.view-video .vmeta{
+    display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:#c8cfdf;
+    white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.9);
+  }
+  body.view-video .tile.speaking .vmeta{color:#a9fbc4}
+  /* 발언 중 배지 — 좌상단(리액션 이모지는 우상단에 그대로) */
+  body.view-video .vbadge{
+    display:none;position:absolute;top:6px;left:6px;z-index:4;align-items:center;gap:4px;
+    font-size:9.5px;font-weight:900;letter-spacing:-.2px;color:#07180d;
+    background:var(--green);border-radius:999px;padding:2px 7px;white-space:nowrap;
+    box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none;
+  }
+  body.view-video .tile.speaking .vbadge{display:inline-flex}
+  body.view-video .vbadge::before{content:"";width:4px;height:4px;border-radius:50%;background:#07180d}
+  /* v4.2.1 — 캐릭터 바운스 transform 애니메이션 제거(움직이는 건 영상뿐) */
   body.view-video .vbob{animation:none;transition:none;transform:none;will-change:auto}
-  body.view-video .tile.speaking .vbob{animation:none;transition:none;transform:none;will-change:auto}
   body.view-video .ctlbar{flex:0 0 auto;flex-wrap:wrap;padding:3px 8px 2px;gap:5px}
   body.view-video .ctlbar .roundbar{flex:1 1 100%}
   body.view-video .ctlbar .btn3{flex:1 1 0;min-height:34px;padding:6px 8px;font-size:11px;border-radius:9px}
@@ -787,8 +816,10 @@
     body.view-video .topbar{padding:6px 10px;gap:6px}
     body.view-video .stagehd{padding:2px 10px 0}
     body.view-video .stage{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:6px;padding:4px 6px}
-    body.view-video .vbob{width:clamp(50px,13vh,86px);height:clamp(50px,13vh,86px);font-size:clamp(24px,6vh,44px)}
-    body.view-video .vnm{font-size:11px}
+    body.view-video .vnm{font-size:11.5px}
+    body.view-video .vmeta{font-size:9.5px}
+    body.view-video .vov{padding:22px 7px 6px}
+    body.view-video .vbadge{top:5px;left:5px;font-size:9px;padding:1px 6px}
     body.view-video .ctlbar{padding:2px 6px 1px;gap:4px}
     body.view-video .ctlbar .btn3{font-size:10.5px;padding:5px 6px;min-height:32px;border-radius:8px}
     body.view-video .ctlbar .rchip{font-size:10px;padding:5px 7px}
@@ -1543,8 +1574,8 @@ window.AGENDA_LIB = (function(){
   AGENDAS.forEach(function(a){ byId[a.id] = a; });
 
   return {
-    version: "v4.2",
-    updatedAt: "2026-11-26 22:40",
+    version: "v4.5",
+    updatedAt: "2026-11-27 10:40",
     agendas: AGENDAS,
     byId: byId,
     planned: PLANNED
@@ -1628,7 +1659,7 @@ window.AGENDA_LIB = (function(){
     v.muted = true; v.defaultMuted = true;
     v.loop = true; v.autoplay = true; v.playsInline = true;
     v.preload = "none";
-    v.width = 480; v.height = 480;
+    v.width = 640; v.height = 598;   // v4.5 — 타일 비율(1.07)에 맞춘 풀블리드 영상
     v.setAttribute("muted", "");
     v.setAttribute("loop", "");
     v.setAttribute("autoplay", "");
@@ -2108,20 +2139,23 @@ window.AGENDA_LIB = (function(){
 
       const qv = el("div","qveil");
 
-      /* v4.2 화상 6분할용 얼굴 — 캐릭터 + 이름 + 상태/웨이브 (긴 본문 없음) */
+      /* v4.2 화상 6분할용 얼굴 — v4.5 부터는 타일 전체를 미디어가 꽉 채우는 풀블리드 */
       const vs = el("div","vstage");
       const vbob = el("div","vbob");
-      faceInto(vbob, p, {video:true});   // 화상 6분할 얼굴 자리 — 피클만 움직인다
+      faceInto(vbob, p, {video:true});   // 화상 6분할 타일 전체를 채우는 얼굴 — 피클만 움직인다
+      const vov = el("div","vov");       // 하단 그라데이션 + 이름/상태
       const vnm = el("div","vnm", p.name);
       const vmeta = el("div","vmeta");
       const vst = el("span","vstate","대기");
       const vw = el("div","vw");
       for(let i=0;i<5;i++) vw.append(el("i"));
       vmeta.append(vst, vw);
-      vs.append(vbob, vnm, vmeta);
+      vov.append(vnm, vmeta);
+      vs.append(vbob, vov);
+      const vbadge = el("div","vbadge","발언 중");
       const react = el("div","react");
 
-      t.append(head, wrap, foot, vs, react, qv);
+      t.append(head, wrap, foot, vs, vbadge, react, qv);
       stage.append(t);
       tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave, vstate:vst, vbob, react, reactT:null};
     });

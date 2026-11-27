@@ -1,4 +1,4 @@
-"""v4.4 검증 — ① 글로 보기 발언 카드 '세로 중앙' 정렬 ② 피클 움직이는 영상 아바타
+"""v4.5 검증 — ① 글로 보기 발언 카드 '세로 중앙' 정렬 ② 피클 움직이는 영상(풀블리드 타일)
 
 ① 글로 보기 중앙 정렬
    - 모바일 390x844에서 라운드를 재생하는 동안 매 프레임 '지금 말하는 카드'의 중앙 오차
@@ -7,9 +7,9 @@
    - 문서 끝/처음에 걸려 더 올릴 수 없는 경우는 카드 전체가 보이면 통과로 본다.
    - 🎥 화상 6분할 모드에서는 스크롤이 절대 일어나지 않아야 한다.
 ② 피클 영상
-   - avatars/pickle.mp4: 오디오 트랙 없음 · H.264 · 480x480 · faststart · 300KB 이하 (ffmpeg 로 직접 확인)
+   - avatars/pickle.mp4: 오디오 트랙 없음 · H.264 · 640x598(타일 1.07 비율) · faststart · 300~600KB (ffmpeg 로 직접 확인)
    - 화상 6분할 피클 타일: <video muted loop playsinline autoplay poster> + play().catch,
-     실제로 재생되고(currentTime 증가) 원형 프레임을 꽉 채우며(1:1 이라 잘림 없음),
+     실제로 재생되고(currentTime 증가) 타일 전체를 꽉 채우며(v4.5 풀블리드 · 둥근 프레임 없음),
      글로 보기로 돌아가면 멈춘다.
 """
 import json, os, re, subprocess, sys
@@ -70,15 +70,15 @@ def main():
     assert os.path.exists(POSTER), 'pickle_poster.webp 없음'
     info = probe(MP4)
     size_kb = os.path.getsize(MP4) / 1024
-    assert size_kb <= 320, '영상이 너무 큼: %.0fKB' % size_kb
+    assert 300 <= size_kb <= 600, '영상 용량이 목표(300~600KB) 밖: %.0fKB' % size_kb
     assert 'Video: h264' in info, 'H.264 아님:\n' + info
-    assert '480x480' in info, '480x480 아님'
+    assert '640x598' in info, '640x598 아님'
     assert 'Audio:' not in info, '오디오 트랙이 남아 있음:\n' + info
     dur = float(re.search(r'Duration: 00:00:(\d+\.\d+)', info).group(1))
     assert 7.0 <= dur <= 9.0, '길이 이상: %s' % dur
     head = open(MP4, 'rb').read(4096)
     assert b'moov' in head, 'faststart 아님(moov 가 앞에 없음)'
-    print('OK avatars/pickle.mp4 — %.0fKB · H.264 480x480 %.2f초 · 오디오 0 · faststart (원본 %.1fMB)'
+    print('OK avatars/pickle.mp4 — %.0fKB · H.264 640x598(타일 1.07 비율) %.2f초 · 오디오 0 · faststart (원본 %.1fMB)'
           % (size_kb, dur, os.path.getsize(SRC) / 1048576))
 
     with sync_playwright() as pw:
@@ -164,7 +164,7 @@ def main():
         assert len(vv) == 1, '화상 모드 피클 영상 1개 아님: %s' % vv
         v = vv[0]
         assert v['src'] and v['src'].endswith('avatars/pickle.mp4'), '영상 src 이상: %s' % v
-        assert v['rs'] >= 3 and v['w'] == 480 and v['h'] == 480, '영상이 실제로 열리지 않음: %s' % v
+        assert v['rs'] >= 3 and v['w'] == 640 and v['h'] == 598, '영상이 실제로 열리지 않음: %s' % v
         assert v['paused'] is False, '영상이 재생되지 않음: %s' % v
         t1 = v['t']
         mp.wait_for_timeout(1200)
@@ -181,10 +181,10 @@ def main():
                     speaking:t.classList.contains('speaking')};
         }""")
         assert geo['fit'] == 'cover', 'object-fit 이 cover 아님: %s' % geo['fit']
-        assert geo['radius'].startswith('50%'), '원형 프레임 아님: %s' % geo['radius']
-        assert geo['video']['w'] >= 50 and abs(geo['video']['w'] - geo['video']['h']) <= 1, '영상이 원형 프레임을 안 채움: %s' % geo
+        assert geo['radius'] == '0px', '풀블리드가 아님(둥근 프레임 잔존): %s' % geo['radius']
         assert abs(geo['video']['w'] - geo['bob']['w']) <= 2 and abs(geo['video']['h'] - geo['bob']['h']) <= 2, '영상이 프레임과 크기가 다름: %s' % geo
-        assert geo['nw'] == geo['nh'], '영상 소스가 정사각이 아님: %s' % geo
+        assert geo['bob']['w'] >= geo['tile']['w'] - 6 and geo['bob']['h'] >= geo['tile']['h'] - 6, '영상이 타일을 꽉 채우지 않음: %s' % geo
+        assert geo['nw'] == 640 and geo['nh'] == 598 and abs(geo['nw']/geo['nh'] - 1.07) < 0.01, '영상 소스 비율이 타일과 다름: %s' % geo
         # 화상 모드: 스크롤 없음 + 발언이 바뀌어도 스크롤 없음
         assert mp.evaluate("()=>Math.round(window.pageYOffset)") == 0, '화상 모드에서 페이지가 스크롤됨'
         mp.evaluate("()=>{ window.__siv = []; }")
@@ -199,7 +199,7 @@ def main():
         mp.wait_for_timeout(600)
         mp.screenshot(path=DL + 'meeting_v44_mobile_video6.png')
         mp.screenshot(path=WORK + 'v44_mobile_video6.png')
-        print('OK 화상 6분할 피클 영상 — %s · 480x480 · 재생 중(t %.2f→%.2f) · 원형 프레임 %dx%d 꽉 채움 · 발언 전환 스크롤 0'
+        print('OK 화상 6분할 피클 영상 — %s · 640x598 · 재생 중(t %.2f→%.2f) · 타일 %dx%d 풀블리드 · 발언 전환 스크롤 0'
               % (v['src'], t1, v2['t'], geo['video']['w'], geo['video']['h']))
 
         # 글로 보기로 돌아가면 영상은 멈춘다
@@ -226,7 +226,7 @@ def main():
             const rb=b.getBoundingClientRect(), rv=v.getBoundingClientRect();
             return {bob:[Math.round(rb.width),Math.round(rb.height)], video:[Math.round(rv.width),Math.round(rv.height)], nw:v.videoWidth};}""")
         assert dv['paused'] is False and dv['rs'] >= 3, '데스크톱에서 영상 재생 실패: %s' % dv
-        assert abs(dg['video'][0]-dg['bob'][0]) <= 2 and dg['video'][0] >= 100, '데스크톱 원형 프레임 채움 실패: %s' % dg
+        assert abs(dg['video'][0]-dg['bob'][0]) <= 2 and dg['video'][0] >= 100, '데스크톱 풀블리드 채움 실패: %s' % dg
         assert dp.evaluate("()=>Math.round(window.pageYOffset)") == 0
         dp.screenshot(path=WORK + 'v44_desktop_video6.png')
         dp.screenshot(path=DL + 'meeting_v44_desktop_video6.png')
@@ -235,6 +235,6 @@ def main():
 
     if errs:
         print('ERRORS:'); [print(' ', e) for e in errs]; sys.exit(1)
-    print('ALL PASS (v4.4)')
+    print('ALL PASS (v4.5)')
 
 main()
