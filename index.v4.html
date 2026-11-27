@@ -1617,7 +1617,14 @@ window.AGENDA_LIB = (function(){
   const LIB = window.AGENDA_LIB || {agendas:[], byId:{}};
   const AIS = ["pickle","gemini","cue","hark","chatgpt","claude"];
   const GUEST_POOL = ["meta_muse","keyring"];
-  /* v4.3 — 비서실 8인 SD 캐릭터 아바타. img 는 256x256 webp(저장소 `avatars/`), 실패하면 emoji 로 대체된다. */
+  /* v4.3 — 비서실 8인 SD 캐릭터 아바타. img 는 512x478 webp(저장소 `avatars/`), 실패하면 emoji 로 대체된다.
+     v4.5.1 — 영상은 "상태별로 한 겹씩" 쌓는 구조다.
+       · poster = 정지 이미지(영상 첫 프레임) — 항상 아래층
+       · video  = 발언 중(speaking) 영상 — 발언 중일 때만 opacity 1 + play()
+     다른 AI나 다른 상태(idle·react) 영상을 추가할 때는 **src 를 갈아 끼우지 말고**
+     `videos:{idle:'...', react:'...'}` 처럼 상태별 주소를 적은 뒤, motionVideo() 를 상태마다 하나씩
+     만들어 겹쳐 두고 타일 클래스(`.tile.speaking` / `.tile.reacting`)로 opacity 만 바꾼다.
+     (iOS Safari 에서 src 교체·DOM 제거는 깜박임과 빈 타일의 원인이다) */
   const PEOPLE = [
     /* v4.4 — 피클만 움직이는 영상 아바타. 정지 이미지는 영상 poster/실패 시 대체용으로 그대로 둔다. */
     {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6", img:"./avatars/pickle.webp",
@@ -1631,6 +1638,9 @@ window.AGENDA_LIB = (function(){
     {id:"keyring", name:"Keyring",   emoji:"🔑", role:"신규 합류 · 참관",        color:"#a3e635", img:"./avatars/keyring.webp"}
   ];
   const byId = id => PEOPLE.find(p => p.id === id) || (id === "owner" ? {id:"owner", name:"오너", emoji:"👑", color:"#f5c04a"} : null);
+  /* 상태별 영상 표 — 지금은 speaking 하나. 나중에 idle/react 를 넣으면 여기에만 추가하면 된다.
+     (주소 문자열을 PEOPLE 안에 중복해 적지 않는 이유: 단일 파일 빌드가 mp4 를 두 번 인라인해 파일이 두 배가 된다) */
+  PEOPLE.forEach(p=>{ if(p.video) p.videos = Object.assign({speaking:p.video}, p.videos || {}); });
 
   /* ── v4.3 캐릭터 썸네일 ──
      모든 자리에서 크기는 CSS 로 고정하고 img 에 width/height/object-fit 을 명시한다.

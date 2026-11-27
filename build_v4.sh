@@ -24,9 +24,14 @@ out = re.sub(r"\./avatars/[a-z_]+\.webp", sub, html)
 mp4 = pathlib.Path("avatars/pickle.mp4")
 vid_inlined = 0
 if mp4.exists():
-    out = out.replace('\"./avatars/pickle.mp4\"',
-                      '\"data:video/mp4;base64,' + base64.b64encode(mp4.read_bytes()).decode("ascii") + '\"')
+    vid_src = '"./avatars/pickle.mp4"'
+    dup = out.count(vid_src)
+    if dup > 1:   # v4.5.1 — 주소를 여러 번 적으면 mp4 가 그만큼 인라인되어 파일이 배로 커진다
+        raise SystemExit("pickle.mp4 주소가 %d번 나온다 — PEOPLE/app.js 의 중복 문자열을 지워 주세요" % dup)
+    out = out.replace(vid_src, '"data:video/mp4;base64,' + base64.b64encode(mp4.read_bytes()).decode("ascii") + '"')
     vid_inlined = out.count("data:video/mp4;base64,")
+    if vid_inlined != 1:
+        raise SystemExit("mp4 인라인 %d개 — 1개여야 합니다" % vid_inlined)
 dest = pathlib.Path("/workspace/downloads/darkjin_meeting_room_v4.html")
 dest.write_text(out, encoding="utf-8")
 print("download build: %s (%.0f KB, avatars inlined: %d, video inlined: %d)" % (dest, dest.stat().st_size/1024, out.count("data:image/webp;base64,"), vid_inlined))
