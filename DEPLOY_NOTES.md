@@ -34,6 +34,15 @@
 - 기존 5종 **ALL PASS**: `test_v4.py`(피클 영상 4겹으로 단언 갱신) · `test_v44.py` · `test_v451.py` · `test_v46.py` · `test_v461.py`(단일 파일 가드 3.32MB·인라인 7개)
 - 스크린샷(눈검수, 390×844): `downloads/meeting_v47_pickle_listening.png`(피클 타일이 경청 영상 중간 프레임·「듣는 중」) · `meeting_v47_pickle_sleepy.png` · `meeting_v47_pickle_phone.png`
 
+### ⑥ 배포
+- 커밋 `8f04d08` (2026-11-27 17:2x KST, 원격의 `7b35b2a`·`cd0b5ab`(grok.webp·banners/ai_desk_9.webp) 위로 rebase) → `git push origin main`
+- GitHub Pages: **built** (8f04d08, 2026-11-27T08:22:51Z) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.7
+  · `avatars/pickle_listening.mp4` **200 · 316,725B** · `pickle.mp4` 400,903B · `pickle_sleepy.mp4` 187,411B · `pickle_phone.mp4` 203,406B 모두 200
+- 라이브 실측(모바일 390×844, `verify_v47_live.py` → `live_v47_listening.png`)
+  · 진입 → 화상 6분할 → listening 재생 t 0.32s · rs 4 · **loop true** · op 1 · 640×598 · 8.00초 · moodNow listening · 「듣는 중」 · speaking pause/op 0 · 겹 [speaking, listening, sleepy, phone] · 0.9초 뒤 t 1.22s(계속 돈다)
+  · 1라운드 → 발언 순간 listening **paused·op 0** → speaking 재생 → 끝나면 listening 복귀(t 3.68s · op 1 · 「듣는 중」) · 자동 발동 0회(22% 확률이라 이 세션은 그냥 지나감) · 페이지 오류 0
+- ⚠ 푸시 메모: 이 환경의 `GH_TOKEN` 은 만료 → `env -u GH_TOKEN` 으로 뺄 것. 원격에 다른 작업 커밋이 쌓여 있으면 `git pull --rebase`(단, untracked `avatars/grok.webp`·`banners/ai_desk_9.webp` 가 같은 이름으로 들어오면 잠시 옮겼다가 되놓는다).
+
 ## v4.6.3 (2026-11-27) — 폰 영상 꽉 채우기(풀블리드) · 조는 영상은 눈 감기면 정지
 - 성진님 지시: ① "폰 때문에 옆이 공간이 생기네 꼭 폰 안보여도 되니 꽉차게 해주고." ② "조는 모습은 눈이 감기면 멈추고 있다가 자기 차례 되면 깨는 걸로 할 수 있나? 지금 것도 나쁘지는 않자만 보고 싶어"
 
