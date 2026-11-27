@@ -36,8 +36,9 @@
 - 스크린샷(눈검수): `downloads/meeting_v462_pickle_sleepy.png`(눈 감고 조는 중·보라 테두리·「😴 살짝 조는 중」) · `downloads/meeting_v462_pickle_phone.png`(폰 든 손까지 보이고 이름·상태는 위로·「📱 딴짓하다 걸림」) — 390×844
 
 ### ⑤ 배포
-- 커밋: 아래 「커밋」 참고 → `env -u GH_TOKEN git push origin main` (이 환경 GH_TOKEN 은 만료 — 403 이면 이 방식)
-- GitHub Pages `built` 확인 · https://darkjin7.github.io/ai-meeting-room/ · `avatars/pickle_sleepy.mp4`·`pickle_phone.mp4` 200 확인
+- 커밋 `af85cd2` (2026-11-27 14:4x KST) → `env -u GH_TOKEN git push origin main` (이 환경 GH_TOKEN 은 만료 — 403 이면 이 방식)
+- GitHub Pages: **built** (af85cd2, 2026-11-27T05:40:30Z) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.6.2 · `avatars/pickle_sleepy.mp4`(257,806B)·`pickle_phone.mp4`(288,671B)·`pickle.mp4` 모두 200
+- 라이브 실측(모바일 390×844): 입장 → 화상 6분할 → `setTileMood` 로 sleepy(readyState 4 · t 0.22s · 「😴 살짝 조는 중」) · phone(readyState 4 · 「📱 딴짓하다 걸림」) 모두 상대경로 영상이 실제 재생 · pageerror 0 (`downloads/meeting_v462_live_phone.png`)
 
 ## v4.6.1 (2026-11-27) — 입장 인트로 영상 3종 랜덤
 - 성진님 지시: "회의실 로딩 장면 3가지 랜덤으로 바꿔줘. 다음에 다른거 만들면 또 넣게"
