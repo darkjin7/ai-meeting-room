@@ -99,9 +99,9 @@ def main():
         assert v0[0]['src'] in (None, ''), '글로 보기인데 영상 src 가 붙음: %s' % v0[0]
         assert v0[0]['paused'] is True, '글로 보기인데 영상이 재생 중: %s' % v0[0]
         assert v0[0]['poster'] and v0[0]['poster'].endswith('pickle_poster.webp'), 'poster 없음: %s' % v0[0]
-        assert v0[0]['muted'] and v0[0]['loop'] and v0[0]['plays'] and v0[0]['autoplay'], '영상 속성 이상: %s' % v0[0]
+        assert v0[0]['muted'] and v0[0]['loop'] and v0[0]['plays'] and not v0[0]['autoplay'], '영상 속성 이상: %s' % v0[0]
         assert v0[0]['controls'] is False, '영상에 컨트롤이 붙음'
-        print('OK 글로 보기 — 영상은 src 없이 대기(poster·muted·loop·playsinline·autoplay)')
+        print('OK 글로 보기 — 영상은 src 없이 대기(poster·muted·loop·playsinline · v4.5.1 부터 autoplay 속성 없이 코드가 발언 중에만 재생)')
 
         # ── ① 글로 보기: 발언이 바뀔 때마다 카드가 세로 중앙으로 ──
         mp.wait_for_function("()=>!document.getElementById('toast').classList.contains('show')", timeout=6000)
@@ -157,26 +157,29 @@ def main():
         assert all(abs(e) <= 12 for _, e, _ in per_tile), 'focusTile 중앙 정렬 실패: %s' % per_tile
         print('OK focusTile 6장 전부 중앙 — 오차(px) %s' % per_tile)
 
-        # ── ② 화상 6분할 피클 영상 ──
+        # ── ② 화상 6분할 피클 영상 (v4.5.1 — 발언 중에만 재생 · 듣는 중에는 정지 이미지) ──
         mp.evaluate("()=>{ window.__siv = []; }")
         mp.click('#viewVideoBtn'); mp.wait_for_timeout(900)
         vv = mp.evaluate("()=>window.__mr4.videos()")
         assert len(vv) == 1, '화상 모드 피클 영상 1개 아님: %s' % vv
         v = vv[0]
         assert v['src'] and v['src'].endswith('avatars/pickle.mp4'), '영상 src 이상: %s' % v
-        assert v['rs'] >= 3 and v['w'] == 640 and v['h'] == 598, '영상이 실제로 열리지 않음: %s' % v
-        assert v['paused'] is False, '영상이 재생되지 않음: %s' % v
-        t1 = v['t']
-        mp.wait_for_timeout(1200)
-        v2 = mp.evaluate("()=>window.__mr4.videos()")[0]
-        assert v2['t'] > t1 + 0.5 or v2['t'] < t1 - 5, '영상 시간이 흐르지 않음: %s → %s' % (t1, v2['t'])
+        assert v['rs'] >= 1 and v['w'] == 640 and v['h'] == 598, '영상이 실제로 열리지 않음(metadata): %s' % v
+        # 듣는 중(idle) → 멈춰 있고 opacity 0, 아래깔린 정지 이미지는 보인다
+        idle = mp.evaluate("()=>window.__mr4.media().find(m=>m.id==='pickle')")
+        assert v['paused'] is True, '아무도 말하지 않는데 영상이 재생 중: %s' % v
+        assert idle['video']['op'] == '0', '듣는 중인데 영상이 보임: %s' % idle['video']
+        assert idle['poster'] and idle['poster']['nw'] == 360 and idle['poster']['c'], '정지 이미지 레이어가 없음: %s' % idle['poster']
+        assert idle['poster']['op'] == '1' and idle['poster']['disp'] != 'none', '듣는 중 정지 이미지가 안 보임: %s' % idle['poster']
+        print('OK 화상 모드 듣는 중 — 영상 pause + opacity 0 · 정지 이미지(pickle_poster 360x336) 표시 · src 유지')
         geo = mp.evaluate("""()=>{
             const t=document.querySelector('.tile[data-id="pickle"]');
             const b=t.querySelector('.vbob'); const v=b.querySelector('video.face');
             const rb=b.getBoundingClientRect(), rv=v.getBoundingClientRect(), s=getComputedStyle(v);
-            const st=getComputedStyle(t);
+            const p=b.querySelector('img.vposter'); const rp=p.getBoundingClientRect(), ps=getComputedStyle(p);
             return {tile:{w:Math.round(t.getBoundingClientRect().width),h:Math.round(t.getBoundingClientRect().height)},
                     bob:{w:Math.round(rb.width),h:Math.round(rb.height)}, video:{w:Math.round(rv.width),h:Math.round(rv.height)},
+                    poster:{w:Math.round(rp.width),h:Math.round(rp.height),fit:ps.objectFit,pos:ps.objectPosition,rad:ps.borderRadius},
                     fit:s.objectFit, pos:s.objectPosition, radius:s.borderRadius, nw:v.videoWidth, nh:v.videoHeight,
                     speaking:t.classList.contains('speaking')};
         }""")
@@ -185,6 +188,9 @@ def main():
         assert abs(geo['video']['w'] - geo['bob']['w']) <= 2 and abs(geo['video']['h'] - geo['bob']['h']) <= 2, '영상이 프레임과 크기가 다름: %s' % geo
         assert geo['bob']['w'] >= geo['tile']['w'] - 6 and geo['bob']['h'] >= geo['tile']['h'] - 6, '영상이 타일을 꽉 채우지 않음: %s' % geo
         assert geo['nw'] == 640 and geo['nh'] == 598 and abs(geo['nw']/geo['nh'] - 1.07) < 0.01, '영상 소스 비율이 타일과 다름: %s' % geo
+        assert abs(geo['poster']['w'] - geo['bob']['w']) <= 2 and abs(geo['poster']['h'] - geo['bob']['h']) <= 2, '정지 이미지가 프레임과 크기가 다름: %s' % geo
+        assert geo['poster']['fit'] == 'cover' and geo['poster']['rad'] == '0px' and geo['poster']['pos'].endswith('45%'), '정지 이미지 풀블리드 속성 이상: %s' % geo['poster']
+        assert geo['speaking'] is False, '듣는 중인데 발언 클래스가 붙음'
         # 화상 모드: 스크롤 없음 + 발언이 바뀌어도 스크롤 없음
         assert mp.evaluate("()=>Math.round(window.pageYOffset)") == 0, '화상 모드에서 페이지가 스크롤됨'
         mp.evaluate("()=>{ window.__siv = []; }")
@@ -196,24 +202,53 @@ def main():
             mp.wait_for_timeout(120)
         assert set(ys) == {0}, '화상 모드 발언 전환에서 스크롤 발생: %s' % sorted(set(ys))
         assert not [x for x in mp.evaluate("()=>window.__siv") if x == 'smooth'], '화상 모드에서 smooth 스크롤 호출'
-        mp.wait_for_timeout(600)
+        # 피클 차례가 오면 그때만 재생된다 — 라운드 전 구간을 80ms 마다 샘플링해 확인한다
+        mp.evaluate("""()=>{ window.__vidLog = [];
+            clearInterval(window.__vidTimer);
+            window.__vidTimer = setInterval(()=>{
+              const v=document.querySelector('video.vid'); const t=document.querySelector('.tile[data-id=\"pickle\"]');
+              if(!v||!t) return;
+              window.__vidLog.push({sp:t.classList.contains('speaking'), p:v.paused,
+                op:getComputedStyle(v).opacity, t:Math.round(v.currentTime*100)/100, src:!!v.getAttribute('src')});
+            }, 80); }""")
+        mp.evaluate("()=>{ window.__mr4.playRound(2); }")
+        mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=60000)
+        mp.wait_for_timeout(400)
+        log = mp.evaluate("()=>{ clearInterval(window.__vidTimer); return window.__vidLog; }")
+        played = [x for x in log if x['sp'] and not x['p'] and x['op'] == '1' and x['t'] > 0.2]
+        assert played, '피클 발언 중에 영상이 재생되지 않음: %s' % [x for x in log if x['sp']][:5]
+        bad_idle = [x for x in log if not x['sp'] and (not x['p'] or x['op'] != '0')]
+        assert not bad_idle, '듣는 중인데 영상이 재생/노출됨: %s' % bad_idle[:5]
+        assert all(x['src'] for x in log), '라운드 중 영상 src 가 사라진 구간이 있음'
+        t1 = played[0]['t']; t2 = played[-1]['t']
+        print('OK 피클 발언 중에만 재생 — 샘플 %d개 중 발언 중 재생 %d개(t %.2f→%.2f, opacity 1) · 듣는 중엔 모두 pause+opacity 0 · src 유지'
+              % (len(log), len(played), t1, t2))
+        mp.screenshot(path=DL + 'meeting_v44_mobile_pickle_speaking.png')
+        mp.screenshot(path=WORK + 'v44_mobile_pickle_speaking.png')
+        mp.wait_for_timeout(400)
         mp.screenshot(path=DL + 'meeting_v44_mobile_video6.png')
         mp.screenshot(path=WORK + 'v44_mobile_video6.png')
-        print('OK 화상 6분할 피클 영상 — %s · 640x598 · 재생 중(t %.2f→%.2f) · 타일 %dx%d 풀블리드 · 발언 전환 스크롤 0'
-              % (v['src'], t1, v2['t'], geo['video']['w'], geo['video']['h']))
+        print('OK 화상 6분할 피클 영상 — %s · 640x598 · 타일 %dx%d 풀블리드 · 발언 전환 스크롤 0'
+              % (v['src'], geo['video']['w'], geo['video']['h']))
+
+        # 발언이 끝나면 다시 멈춘다
+        vdone = mp.evaluate("()=>window.__mr4.media().find(m=>m.id==='pickle')")
+        assert vdone['speaking'] is False and vdone['video']['paused'] is True, '발언이 끝났는데 영상이 계속 재생: %s' % vdone['video']
+        assert vdone['video']['op'] == '0', '발언이 끝났는데 영상이 아직 보임: %s' % vdone['video']
+        print('OK 발언 종료 — 영상 자동 정지(opacity 0) · 정지 이미지로 복귀')
 
         # 글로 보기로 돌아가면 영상은 멈춘다
-        mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=40000)
         mp.click('#viewTextBtn'); mp.wait_for_timeout(500)
         v3 = mp.evaluate("()=>window.__mr4.videos()")[0]
         assert v3['paused'] is True, '글로 보기로 돌아왔는데 영상이 계속 재생: %s' % v3
-        # 다시 화상으로 → 이어서 재생
+        # 다시 화상으로 → 듣는 중이면 멈춘 채(정지 이미지), 발언 중이면 그때만 재생
         mp.click('#viewVideoBtn'); mp.wait_for_timeout(900)
         v4 = mp.evaluate("()=>window.__mr4.videos()")[0]
-        assert v4['paused'] is False, '화상으로 돌아왔는데 영상이 재생되지 않음: %s' % v4
-        print('OK 보기 전환 — 글로 보기에서 영상 정지 · 화상으로 돌아오면 다시 재생(t %.2f)' % v4['t'])
+        assert v4['paused'] is True, '듣는 중인데 화상 복귀 시 영상이 재생됨: %s' % v4
+        assert mp.evaluate("()=>window.__mr4.media().find(m=>m.id==='pickle').video.src").endswith('avatars/pickle.mp4'), '화상 복귀 후 영상 src 가 사라짐'
+        print('OK 보기 전환 — 글로 보기에서 영상 정지 · 화상으로 돌아오면 듣는 중이면 정지(정지 이미지, src 유지)')
 
-        # 데스크톱 1440x900 화상 모드 — 영상 크기/레이아웃
+        # 데스크톱 1440x900 화상 모드 — 영상 크기/레이아웃(듣는 중이라도 치수는 metadata 로 확보)
         ctx2 = b.new_context(viewport={'width': 1440, 'height': 900})
         dp = ctx2.new_page(); dp.add_init_script(MOCK)
         dp.on('pageerror', lambda e: errs.append('desktop-pageerror:' + str(e)))
@@ -225,16 +260,20 @@ def main():
         dg = dp.evaluate("""()=>{const b=document.querySelector('.tile[data-id="pickle"] .vbob');const v=b.querySelector('video.face');
             const rb=b.getBoundingClientRect(), rv=v.getBoundingClientRect();
             return {bob:[Math.round(rb.width),Math.round(rb.height)], video:[Math.round(rv.width),Math.round(rv.height)], nw:v.videoWidth};}""")
-        assert dv['paused'] is False and dv['rs'] >= 3, '데스크톱에서 영상 재생 실패: %s' % dv
+        assert dv['rs'] >= 1 and dv['w'] == 640, '데스크톱에서 영상 metadata 로드 실패: %s' % dv
+        assert dv['paused'] is True and dv['op'] == '0', '든는 중인데 데스크톱에서 영상이 재생/노출: %s' % dv
         assert abs(dg['video'][0]-dg['bob'][0]) <= 2 and dg['video'][0] >= 100, '데스크톱 풀블리드 채움 실패: %s' % dg
         assert dp.evaluate("()=>Math.round(window.pageYOffset)") == 0
+        # 발언 중에만 재생(데스크톱 확인)
+        dp.evaluate("()=>{ window.__mr4.playRound(1); }")
+        dp.wait_for_function("""()=>{const v=document.querySelector('video.vid');return v && !v.paused && v.currentTime>0.2;}""", timeout=30000)
         dp.screenshot(path=WORK + 'v44_desktop_video6.png')
         dp.screenshot(path=DL + 'meeting_v44_desktop_video6.png')
-        print('OK 데스크톱 1440x900 — 피클 영상 %dx%d 재생 · 스크롤 0' % (dg['video'][0], dg['video'][1]))
+        print('OK 데스크톱 1440x900 — 피클 영상 %dx%d · 듣는 중 정지 → 발언 중 재생 · 스크롤 0' % (dg['video'][0], dg['video'][1]))
         b.close()
 
     if errs:
         print('ERRORS:'); [print(' ', e) for e in errs]; sys.exit(1)
-    print('ALL PASS (v4.5)')
+    print('ALL PASS (v4.5.1)')
 
 main()

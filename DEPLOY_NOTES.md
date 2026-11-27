@@ -1,5 +1,44 @@
 # 배포 메모 — 다크진 AI 비서실 · 6분할 회의실
 
+## v4.5.1 (2026-11-27) — 글로 보기 깜박임 · 6분할 타일 소실 수정 · 피클은 발언 중에만 영상
+- 성진님 실기기(iOS Safari) 피드백: "글로 보는 페이지 아직 깜박거림이 나오고 있고 6분할 페이지에서 참여한 ai화면이 없어지는 버그가 있음. 피클은 계속 얼굴영상 움직이는데 영상이 하나라서 그런가? 지금 영상은 발언 할 때 영상인데"
+
+### ① 글로 보기 깜박임 — 원인은 "무대를 다시 그리는 일"이었다
+| 원인 | 수정 |
+|---|---|
+| `buildTiles()` 가 매번 `stage.innerHTML=""` 로 6타일을 파괴·재생성 (안건 열기·새 회의·안건 교체마다) → `<img>`/`<video>` 가 DOM 에서 떨어졌다 붙으며 디코딩·합성 레이어가 초기화 | 타일 DOM 을 **사람마다 최초 1회만 생성(`tilePool`)**. 이후 `buildTiles()` 는 있는 타일을 옮기기(appendChild)만 하고, 잠깐 필요 없는 타일은 stage 에서 내려 두되 **파괴하지 않는다** |
+| `renderBubble()` 이 발언이 바뀔 때마다 `bubble.innerHTML=""` → tag/role/text 노드를 새로 만듦(한 프레임 빈 본문) | 본문은 `mtag`·`mrole`·`msum` **3개 노드를 처음에 만들고 `textContent` 만 갱신** |
+| `.tile.speaking .wave{display:flex}` → 웨이브가 나타날 때마다 `자료 펼치기` 버튼·마이크가 좌우로 튐 | 웨이브는 **자리를 늘 차지**(display:flex 고정) + `.tile.speaking` 에서 `opacity` 만 1 |
+| `.wave i{animation:wv .9s infinite}` — 발언 중 내내 **height 를 애니메이션**(60fps 리플로우) | 애니메이션 삭제 → **정적 막대 높이**(화상 모드 `.vw` 와 같은 규칙) |
+| `.talk-item{animation:rise .25s}` — 기록이 하나 추가될 때마다 페이드 인(리페인트) | 애니메이션 삭제 |
+| `body` 배경이 큰 `radial-gradient` 2장 → 스크롤(자동 중앙 정렬) 때마다 루트 배경을 다시 칠함 | **body 는 단색**, 장식은 `.wrap::before{position:fixed}` 고정 레이어로 이동(스크롤해도 다시 안 칠함) |
+| 글로 보기 카드 아래에 화상용 `발언 중` 배지(`.vbadge`)가 늘 보이던 것 | `.tile .vbadge{display:none}` — 화상 모드 전용으로 |
+
+### ② 6분할에서 AI 화면이 없어지는 버그
+- **타일을 다시 만들지 않는 것**(①의 tilePool)이 근본 수정이다. 안건을 바꾸거나 새 회의를 열어도 `<img>`/`<video>` 노드가 그대로 살아 있고, 디코딩도 유지된다.
+- 추가 방어:
+  - `.tile{isolation:isolate}` — 영상 합성 레이어가 이웃 타일 위로 새지 않게 스태킹 컨텍스트 고정.
+  - 화상 모드 높이를 `100dvh` → **`100svh`**(도구모음이 보이는 가장 작은 화면). iOS 에서 주소창이 접히며 `dvh` 값이 바뀌어 마지막 줄 타일이 밀리거나 잘리는 문제를 없앤다.
+  - **미디어 자동 복구(`assertTileMedia`/`watchdogMedia`)**: `pageshow`·`visibilitychange`·`resize`·`orientationchange`·화상 진입 시 한 번씩 검사해, 실패한 이미지(`complete && naturalWidth===0`, 타일당 3회 제한)만 다시 요청하고 발언 중 영상은 다시 재생.
+  - 영상이 실제로 열리지 않는 기기(예: `data:` 영상)는 재생을 시도한 뒤 1.5초 동안 `readyState 0` 이면 `.off` 로 숨겨 **정지 이미지가 그대로 남는다**(검은 타일 방지).
+
+### ③ 피클은 '발언 중'일 때만 영상, '듣는 중'은 정지 이미지
+- 타일 구조: `.vbob` 안에 **아래층 `img.vposter`(pickle_poster.webp = 영상 첫 프레임) + 위층 `video.vid`**.
+- `body.view-video .vbob video.face{opacity:0}` / `.tile.speaking .vbob video.face{opacity:1}` — **opacity 만** 바꾼다(transition 없음).
+- `syncAvatarMedia()` 가 단일 판단자: `.tile.speaking`(그리고 `quiet` 아님) + 화상 모드일 때만 `play()`, 아니면 `pause()`. `setTileState`·`setView`·`quietAll`·`resumeAll`·`buildTiles` 에서 호출.
+- **`src` 는 화상 화면에 처음 들어갈 때 한 번만 붙이고 뗴지 않는다**(`armAvatarVideos`, `preload="metadata"`). `autoplay` 속성은 제거 — 재생 시점은 코드가 정한다.
+- 포스터는 화상 진입 전에 미리 받아 둔다(18KB) → 듣는 중·전환 순간에도 얼굴이 비지 않는다.
+- 확장을 위해 데이터 구조를 열어 둠: `PEOPLE[].video`, `PEOPLE[].poster` (앞으로 `idle`·`react` 영상도 같은 자리에 추가하면 된다).
+
+### 검증
+- `test_v451.py` (신규) ALL PASS — 글로 보기 1~4라운드 동안 `.stage` 안 **요소 노드 추가/삭제 0**(클래스·글자만 변경) · 타일 6장 크기 고정(370×354 → 370×333, 배지 제거 후) · 화상 왕복 5회+3라운드 111샘플 동안 6타일 항상 화면 안·가려짐 0·이미지 로드 유지 · 피클 영상은 발언 중에만 재생(68샘플) · 조용/계속 · 안건 교체 시 노드 재생성 0.
+- `test_v44.py` ALL PASS — 피클 영상 640×598 재생 → 발언이 끝나면 정지(opacity 0), 듣는 중엔 항상 pause+opacity 0, src 불변, 글로 보기 정지, 데스크톱 동일.
+- `test_v4.py` ALL PASS — 기존 기능 전부 유지(4라운드·기록 24건·게스트 조언·역할 분담·자막 바 68px·글로 보기 중앙 오차 0px·화상 스크롤 0).
+- 스크린샷(눈검수): `downloads/meeting_v451_mobile_video_idle.png`(듣는 중 정지 이미지) · `meeting_v451_mobile_video_pickle_speaking.png`(발언 중 영상) · `meeting_v451_mobile_text.png` · `meeting_v451_desktop_video6.png`. 데스크톱 비율·모바일 2×3 배치 그대로.
+- 단일 파일(`downloads/darkjin_meeting_room_v4.html`, 1019KB)도 확인 — 9장 webp + mp4 인라인, 포스터·영상 모두 로드.
+
+---
+
 ## v4.5 (2026-11-27) — 화상 6분할 타일 풀블리드(꽉 채우기)
 - 성진님 피드백: "회의실 사진을 꽉 채워줘 동그렇게 깔끔하긴 한데 작고 움직임도 잘 안보이고"
 

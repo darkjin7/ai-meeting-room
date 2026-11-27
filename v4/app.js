@@ -34,26 +34,48 @@
     return img;
   }
   /* holder 안을 캐릭터 썸네일로 채운다. 로드 실패 시 이모지로 조용히 대체.
-     opts.video 가 true 이고 그 인물에 영상이 있으면 정지 이미지 대신 움직이는 영상을 넣는다.
-     (지금은 화상 6분할의 큰 얼굴 자리에서만 쓴다 — 작은 목록 썸네일까지 영상을 돌리면 무겁다) */
+     opts.video 가 true 이고 그 인물에 영상이 있으면 정지 이미지 위에 움직이는 영상을 겹쳐 둔다.
+     (지금은 화상 6분할의 큰 얼굴 자리에서만 쓴다 — 작은 목록 썸네일까지 영상을 돌리면 무겁다)
+     v4.5.1 — 영상 타일은 "정지 이미지(포스터) 아래 + 영상 위" 2겹으로 만들고,
+              발언 중일 때만 영상을 opacity 1 로 켜 재생한다(듣는 중에는 정지 이미지). */
   function faceInto(holder, p, opts){
     holder.textContent = "";
     const wantVideo = !!(opts && opts.video && p && p.video);
-    if(!p || (!p.img && !wantVideo)){ holder.textContent = (p && p.emoji) || "•"; return holder; }
+    if(!p || (!p.img && !wantVideo)){ holder.textContent = (p && p.emoji) || "•"; return {}; }
     if(wantVideo){
+      /* 아래층: 영상 첫 프레임과 같은 그림(pickle_poster.webp) — 듣는 중·전환 순간에 보인다 */
+      const poster = document.createElement("img");
+      poster.className = "vposter";
+      poster.alt = "";
+      poster.width = 360; poster.height = 336;
+      poster.decoding = "async"; poster.draggable = false;
+      poster.dataset.src = p.poster || p.img || "";
+      poster.src = poster.dataset.src;   /* 정지는 정지 이미지가 바로 보여야 한다(18KB) — 영상만 화상 진입 시 내려받는다 */
+      poster.addEventListener("error", function(){ poster.style.display = "none"; });
+      /* 위층: 발언 중에만 재생하는 영상 */
       const v = motionVideo(p);
       v.addEventListener("error", function(){ stillFallback(holder, p); });
-      holder.appendChild(v);
-      return holder;
+      holder.append(poster, v);
+      return {video:v, poster:poster};
     }
     const img = faceImg(p);
     img.addEventListener("error", function(){ stillFallback(holder, p); });
     holder.appendChild(img);
-    return holder;
+    return {img:img};
   }
-  /* 영상이 안 열리는 브라우저(=H.264 미지원 등)는 정지 이미지 → 그것도 실패하면 이모지 */
+  /* 영상이 안 열리는 브라우저(=H.264 미지원 등)는 정지 이미지 → 그것도 실패하면 이모지.
+     v4.5.1 — 영상 요소는 지우지 않고 숨기기만 한다(다시 살릴 수 있게). */
   function stillFallback(holder, p){
-    holder.textContent = "";
+    const v = holder.querySelector("video.vid");
+    if(v){ v.classList.add("off"); try{ v.pause(); }catch(e){} }
+    /* 영상 타일: 아래깔린 정지 이미지(포스터)를 살리면 그만 — 이모지로 갈 필요 없다 */
+    const poster = holder.querySelector("img.vposter");
+    if(poster){
+      poster.style.display = "";
+      if(!poster.getAttribute("src") && poster.dataset.src) poster.src = poster.dataset.src;
+      return;
+    }
+    if(holder.querySelector("img.face")) return;
     holder.classList.remove("face-fallback");
     if(p && p.img){
       const img = faceImg(p);
@@ -69,17 +91,17 @@
   }
   /* v4.4 — iOS Safari 자동재생 규칙을 그대로 지킨다:
      muted + playsinline + autoplay + loop, 그리고 play() 실패(.catch)는 조용히 무시.
-     src 는 화상 화면에 들어갈 때 붙인다(data-src) — 글로 보기에서는 내려받지 않는다. */
+     src 는 화상 화면에 처음 들어갈 때 한 번만 붙인다(armAvatarVideos) —
+     v4.5.1 부터는 src 를 빼지도, 갈아 끼우지도 않고 play()/pause() + opacity 만 쓴다. */
   function motionVideo(p){
     const v = document.createElement("video");
     v.className = "face vid";
     v.muted = true; v.defaultMuted = true;
-    v.loop = true; v.autoplay = true; v.playsInline = true;
+    v.loop = true; v.autoplay = false; v.playsInline = true;
     v.preload = "none";
     v.width = 640; v.height = 598;   // v4.5 — 타일 비율(1.07)에 맞춘 풀블리드 영상
     v.setAttribute("muted", "");
     v.setAttribute("loop", "");
-    v.setAttribute("autoplay", "");
     v.setAttribute("playsinline", "");
     v.setAttribute("webkit-playsinline", "");
     v.setAttribute("disablepictureinpicture", "");
@@ -90,22 +112,90 @@
     v.dataset.who = p.id;
     return v;
   }
-  function startMotionVideos(){
+  /* 화상 화면에 처음 들어갈 때 딱 한 번: 영상 src·포스터 src 를 붙인다(이후에는 건드리지 않는다).
+     preload=metadata 로 바꾸고 붙인다 — 발언이 시작될 때 바로 재생되도록 치수·첫 프레임만 미리 받는다. */
+  function armAvatarVideos(){
     document.querySelectorAll("video.vid[data-src]").forEach(v=>{
-      if(!v.getAttribute("src")) v.src = v.dataset.src;
-      try{
-        const pr = v.play();
-        if(pr && pr.catch) pr.catch(()=>{});   // 자동재생 차단·코덱 미지원 → poster/정지 이미지로 조용히
-      }catch(e){}
+      if(!v.getAttribute("src")){ v.preload = "metadata"; v.src = v.dataset.src; }
     });
+    document.querySelectorAll("img.vposter[data-src]").forEach(im=>{
+      if(!im.getAttribute("src")) im.src = im.dataset.src;
+    });
+  }
+  /* 발언 중일 때만 영상을 재생하고, 듣는 중이면 멈춘다.
+     - src 는 그대로 둔다(떼었다 붙이면 iOS 에서 깜빡이거나 화면이 사라진다)
+     - opacity 는 CSS(.tile.speaking .vbob video.face)가 정한다
+     - 영상이 없거나 화상 모드가 아니면 아무것도 하지 않는다 */
+  function syncAvatarMedia(){
+    const inVideo = document.body.classList.contains("view-video");
+    Object.keys(tileRefs).forEach(id=>{
+      const r = tileRefs[id];
+      const v = r && r.vid;
+      if(!v) return;
+      const speaking = r.tile.classList.contains("speaking") && !r.tile.classList.contains("quiet");
+      if(!inVideo) return;
+      if(!v.getAttribute("src")) return;             // 아직 무장 전
+      if(v.classList.contains("off")) return;        // 코덱·정책으로 실패 → 정지 이미지 유지
+      if(speaking){
+        if(v.paused){
+          try{ const pr = v.play(); if(pr && pr.catch) pr.catch(()=>{}); }catch(e){}
+          /* 재생을 시작했는데 1.5초가 지나도록 아무것도 못 받았다면(readyState 0) 이 기기·이 방식으로는
+             영상이 안 열린다(data: 영상 등) → 영상을 숨기고 정지 이미지를 그대로 보여 준다. */
+          if(parseInt(v.dataset.watch, 10) !== 1){
+            v.dataset.watch = "1";
+            setTimeout(()=>{
+              v.dataset.watch = "0";
+              if(v.readyState === 0) v.classList.add("off");
+              else if(v.readyState >= 2) v.classList.remove("off");
+            }, 1500);
+          }
+        }
+      } else if(!v.paused){
+        try{ v.pause(); }catch(e){}
+      }
+    });
+  }
+  function startMotionVideos(){
+    armAvatarVideos();
+    syncAvatarMedia();
+    watchdogMedia(90);
   }
   function stopMotionVideos(){
     document.querySelectorAll("video.vid").forEach(v=>{ try{ v.pause(); }catch(e){} });
   }
+  /* v4.5.1 — 타일 미디어 자동 복구.
+     iOS Safari 는 앱이 백그라운드로 갔다 오거나 메모리가 빠듯할 때 이미지·영상 디코딩을 버려
+     "그 AI 화면만 빈다"는 일이 생긴다. 화상 화면으로 돌아오거나 창 크기가 바뀌면 한 번씩 확인해서,
+     실패한(complete && naturalWidth==0) 이미지만 다시 요청하고, 발언 중인 영상은 다시 재생한다.
+     시도 횟수는 타일당 3회로 제한한다(무한 재시도 금지). */
+  let mediaWatchT = null;
+  function watchdogMedia(delay){
+    clearTimeout(mediaWatchT);
+    mediaWatchT = setTimeout(assertTileMedia, delay || 120);
+  }
+  function assertTileMedia(){
+    Object.keys(tileRefs).forEach(id=>{
+      const r = tileRefs[id];
+      const imgs = r.tile.querySelectorAll("img");
+      [].forEach.call(imgs, im=>{
+        if(!im.getAttribute("src")) return;
+        if(!(im.complete && im.naturalWidth === 0)) return;   // 실패한 것만
+        const n = (parseInt(im.dataset.retry, 10) || 0);
+        if(n >= 3) return;
+        im.dataset.retry = String(n + 1);
+        const src = im.getAttribute("src");
+        setTimeout(()=>{ im.src = src; }, 40 * (n + 1));
+      });
+    });
+    syncAvatarMedia();
+  }
+  ["pageshow", "resize", "orientationchange"].forEach(ev=> window.addEventListener(ev, ()=> watchdogMedia(120), {passive:true}));
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") watchdogMedia(120); });
   function faceBox(p, tag, cls){
     const h = document.createElement(tag || "div");
     h.className = cls || "facebox";
-    return faceInto(h, p);
+    faceInto(h, p);
+    return h;
   }
   /* 게스트는 agendas.js 안에 {id,name,emoji,role,advice} 로 적혀 있다 — PEOPLE 의 사진을 붙인다 */
   function guestPerson(g){
@@ -384,6 +474,7 @@
       if(r.vstate) r.vstate.textContent = "조용";
     });
     document.body.classList.add("is-quiet");
+    syncAvatarMedia();   // 모두 조용 → 피클 영상도 멈춘다
     if(synthOK){ try{ window.speechSynthesis.cancel(); }catch(e){} }
     if(first) SFX.shush();
     setLive("조용히", "quiet");
@@ -403,6 +494,7 @@
     document.body.classList.remove("is-quiet");
     Object.keys(tileRefs).forEach(restoreTileState);
     if(state.activeSpeaker && tileRefs[state.activeSpeaker]) setTileState(state.activeSpeaker,"speaking","발언 중");
+    syncAvatarMedia();
     if(state.pausedAt){ state.pausedMs += Date.now()-state.pausedAt; state.pausedAt = 0; }
     if(state.agenda) startClock(state.pausedMs);
     setLive(state.phase==="roles" ? "역할 분담" : "회의 중", "");
@@ -520,62 +612,100 @@
     if(!silent) toast("🎤 코멘트 입력을 멈췄습니다");
   }
 
-  /* ═══════════════════ 타일 ═══════════════════ */
+  /* ═══════════════════ 타일 ═══════════════════
+     v4.5.1 — iOS Safari 깜빡임·타일 소실의 근본 원인은 "무대를 통째로 다시 그리는 것"이었다.
+     · buildTiles 마다 stage.innerHTML = "" → <img>/<video> 가 DOM 에서 떨어졌다 붙고,
+       아이폰은 그 순간 디코딩을 버려 빈 타일(검은 화면)로 남는 일이 있었다.
+     · 발언이 바뀔 때마다 본문(.bubble)을 innerHTML 로 갈아 끼워 글자·배경이 한 프레임 비었다.
+     그래서 v4.5.1 은 **타일 DOM 은 사람마다 최초 1회만 만들고(pool), 이후에는 절대 지우지 않는다.**
+     발언 전환은 클래스 토글 + 텍스트 노드 갱신만 한다. */
   const stage = $("#stage");
-  const tileRefs = {};
+  const tileRefs = {};      // 지금 회의에 올라와 있는 타일
+  const tilePool = {};      // 만들어진 모든 타일(회의가 바뀌어도 파괴하지 않는다)
 
+  function makeTile(p){
+    const t = el("div","tile");
+    t.dataset.id = p.id;
+
+    const head = el("div","thead");
+    const av = el("div","avatar");
+    faceInto(av, p);
+    av.style.borderColor = p.color + "55";
+    const who = el("div","who");
+    who.append(el("div","nm", p.name), el("div","rl", p.role));
+    const st = el("div","state","대기");
+    head.append(av, who, st);
+
+    /* 본문: 태그·역할·요약 세 노드를 처음에 만들고, 이후에는 textContent 만 바꾼다 */
+    const wrap = el("div","stagewrap");
+    const bubble = el("div","bubble empty");
+    const mtag = el("span","mtag"); mtag.style.display = "none";
+    const mrole = el("span","mrole"); mrole.style.display = "none";
+    const msum = el("span","msum","안건을 고르면 준비해 온 자료가 여기에 열립니다.");
+    bubble.append(mtag, mrole, msum);
+    wrap.append(bubble);
+
+    const foot = el("div","tfoot");
+    /* 웨이브: 발언 중이 아니어도 자리를 지킨다(display 를 켜고 끄면 옆 버튼이 튄다).
+       opacity 만 바꾸고 막대는 정적 높이다 — 계속 도는 크기 애니메이션은 iOS 리페인트 원인. */
+    const wave = el("div","wave");
+    for(let i=0;i<7;i++) wave.append(el("i"));
+    const roleTag = el("div","who-role");
+    const mic = el("span","mic","🔇");
+    roleTag.append(mic);
+    const matbtn = el("button","matbtn ghost","자료 펼치기");
+    matbtn.addEventListener("click", ()=> openMat(p.id));
+    foot.append(wave, roleTag, matbtn);
+
+    const qv = el("div","qveil");
+
+    /* v4.2 화상 6분할용 얼굴 — v4.5 부터는 타일 전체를 미디어가 꽉 채우는 풀블리드 */
+    const vs = el("div","vstage");
+    const vbob = el("div","vbob");
+    const media = faceInto(vbob, p, {video:true});   // 화상 6분할 타일 전체를 채우는 얼굴 — 피클만 움직인다
+    const vov = el("div","vov");       // 하단 그라데이션 + 이름/상태
+    const vnm = el("div","vnm", p.name);
+    const vmeta = el("div","vmeta");
+    const vst = el("span","vstate","대기");
+    const vw = el("div","vw");
+    for(let i=0;i<5;i++) vw.append(el("i"));
+    vmeta.append(vst, vw);
+    vov.append(vnm, vmeta);
+    vs.append(vbob, vov);
+    const vbadge = el("div","vbadge","발언 중");
+    const react = el("div","react");
+
+    t.append(head, wrap, foot, vs, vbadge, react, qv);
+    const refs = {id:p.id, tile:t, state:st, bubble, mtag, mrole, msum, matbtn, wave, mic,
+                  vstate:vst, vbob, vid:media && media.video, poster:media && media.poster,
+                  react, reactT:null};
+    return refs;
+  }
+
+  /* 무대에 올릴 타일을 맞춘다 — 새로 만들지 않고, 있는 타일을 옮기기만 한다 */
   function buildTiles(ids){
-    stage.innerHTML = "";
-    Object.keys(tileRefs).forEach(k=>{ delete tileRefs[k]; });
     const list = (ids && ids.length ? ids : AIS).map(id=> byId(id)).filter(Boolean);
-    list.forEach(p=>{
-      const t = el("div","tile");
-      t.dataset.id = p.id;
-
-      const head = el("div","thead");
-      const av = el("div","avatar");
-      faceInto(av, p);
-      av.style.borderColor = p.color + "55";
-      const who = el("div","who");
-      who.append(el("div","nm", p.name), el("div","rl", p.role));
-      const st = el("div","state","대기");
-      head.append(av, who, st);
-
-      const wrap = el("div","stagewrap");
-      const bubble = el("div","bubble empty","안건을 고르면 준비해 온 자료가 여기에 열립니다.");
-      wrap.append(bubble);
-
-      const foot = el("div","tfoot");
-      const wave = el("div","wave");
-      for(let i=0;i<7;i++) wave.append(el("i"));
-      const roleTag = el("div","who-role");
-      roleTag.innerHTML = '<span class="mic">🔇</span>';
-      const matbtn = el("button","matbtn ghost","자료 펼치기");
-      matbtn.addEventListener("click", ()=> openMat(p.id));
-      foot.append(wave, roleTag, matbtn);
-
-      const qv = el("div","qveil");
-
-      /* v4.2 화상 6분할용 얼굴 — v4.5 부터는 타일 전체를 미디어가 꽉 채우는 풀블리드 */
-      const vs = el("div","vstage");
-      const vbob = el("div","vbob");
-      faceInto(vbob, p, {video:true});   // 화상 6분할 타일 전체를 채우는 얼굴 — 피클만 움직인다
-      const vov = el("div","vov");       // 하단 그라데이션 + 이름/상태
-      const vnm = el("div","vnm", p.name);
-      const vmeta = el("div","vmeta");
-      const vst = el("span","vstate","대기");
-      const vw = el("div","vw");
-      for(let i=0;i<5;i++) vw.append(el("i"));
-      vmeta.append(vst, vw);
-      vov.append(vnm, vmeta);
-      vs.append(vbob, vov);
-      const vbadge = el("div","vbadge","발언 중");
-      const react = el("div","react");
-
-      t.append(head, wrap, foot, vs, vbadge, react, qv);
-      stage.append(t);
-      tileRefs[p.id] = {tile:t, state:st, bubble, matbtn, wave, vstate:vst, vbob, react, reactT:null};
+    const want = list.map(p=> p.id);
+    Object.keys(tileRefs).forEach(id=>{
+      if(want.indexOf(id) >= 0) return;
+      const t = tileRefs[id].tile;
+      if(t.parentNode === stage) stage.removeChild(t);   // 잠시 내려 둠(파괴 아님)
+      delete tileRefs[id];
     });
+    want.forEach(id=>{
+      if(!tilePool[id]) tilePool[id] = makeTile(byId(id));
+      tileRefs[id] = tilePool[id];
+    });
+    const cur = [].map.call(stage.children, n=> n.dataset.id);
+    if(cur.join("|") !== want.join("|")){
+      want.forEach(id=> stage.appendChild(tileRefs[id].tile));   // 순서만 다시 맞춘다(이동)
+    }
+    Object.keys(tileRefs).forEach(id=>{
+      const r = tileRefs[id];
+      if(r.tile.parentNode !== stage) stage.appendChild(r.tile);
+    });
+    syncAvatarMedia();
+    watchdogMedia(150);
   }
 
   function setTileState(id, kind, label){
@@ -588,6 +718,7 @@
     if(kind==="quiet"){ r.state.classList.add("s-quiet"); }
     r.state.textContent = label || (kind==="speaking"?"발언 중":kind==="ready"?"자료 준비":kind==="assigned"?"배정":kind==="quiet"?"조용":"대기");
     if(r.vstate) r.vstate.textContent = videoLabel(r);
+    syncAvatarMedia();   // 발언 중일 때만 피클 영상을 재생하고, 듣는 중에는 멈춘다
   }
   /* 화상 6분할 타일의 상태 문구 — 화상통화처럼 "듣는 중 / 발언 중"으로 보여 준다 */
   function videoLabel(r){
@@ -602,13 +733,22 @@
   function renderBubble(id, tag, text, opts){
     const r = tileRefs[id]; if(!r) return;
     opts = opts || {};
-    r.bubble.innerHTML = "";
+    /* 노드를 새로 만들지 않는다 — 글자만 바꾼다(innerHTML 교체는 iOS 에서 한 프레임 비어 보인다) */
     r.bubble.classList.remove("empty");
-    if(tag) r.bubble.append(el("span","mtag", tag));
-    if(opts.role) r.bubble.append(el("span","mrole", opts.role));
-    r.bubble.append(el("span","msum", text));
-    r.bubble.scrollTop = 0;
+    if(r.mtag){ r.mtag.textContent = tag || ""; r.mtag.style.display = tag ? "" : "none"; }
+    if(r.mrole){ r.mrole.textContent = opts.role || ""; r.mrole.style.display = opts.role ? "" : "none"; }
+    const next = text || "";
+    if(r.msum.textContent !== next){ r.msum.textContent = next; r.bubble.scrollTop = 0; }
     if(opts.showBtn) r.matbtn.classList.remove("ghost");
+  }
+  /* 본문을 비운다(자료 없는 타일) — 노드는 그대로 두고 문구만 바꾼다 */
+  function clearBubble(id, msg){
+    const r = tileRefs[id]; if(!r) return;
+    if(r.mtag){ r.mtag.textContent = ""; r.mtag.style.display = "none"; }
+    if(r.mrole){ r.mrole.textContent = ""; r.mrole.style.display = "none"; }
+    r.msum.textContent = msg || "";
+    r.bubble.classList.add("empty");
+    r.bubble.scrollTop = 0;
   }
 
   /* ═══════════════════ 화상 6분할 ↔ 글로 보기 (v4.2) ═══════════════════ */
@@ -1030,8 +1170,7 @@
       const p = a.panels[id];
       const r = tileRefs[id];
       if(!p){
-        r.bubble.innerHTML = ""; r.bubble.classList.add("empty");
-        r.bubble.textContent = "이번 안건 자료 없음";
+        clearBubble(id, "이번 안건 자료 없음");
         r.matbtn.classList.add("ghost");
         setTileState(id,"","자료 없음");
         return;
@@ -1930,6 +2069,11 @@
   document.addEventListener("pointerdown", unlockOnce, {passive:true});
   document.addEventListener("touchstart", unlockOnce, {passive:true});
 
+  /* 테스트용: DOM 노드마다 고유 번호(같은 노드인지 비교) */
+  const nodeKeyMap = new WeakMap();
+  let nodeKeySeq = 0;
+  function nodeKey(n){ if(!n) return 0; if(!nodeKeyMap.has(n)) nodeKeyMap.set(n, ++nodeKeySeq); return nodeKeyMap.get(n); }
+
   // 테스트용 훅
   window.__mr4 = {
     state: state,
@@ -1951,8 +2095,31 @@
       who:v.dataset.who, src:v.getAttribute("src"), poster:v.getAttribute("poster"),
       paused:v.paused, t:Math.round(v.currentTime*100)/100, rs:v.readyState,
       w:v.videoWidth, h:v.videoHeight, muted:v.muted, loop:v.loop,
-      plays:v.playsInline, autoplay:v.autoplay, controls:v.controls
+      plays:v.playsInline, autoplay:v.autoplay, controls:v.controls,
+      op:getComputedStyle(v).opacity, off:v.classList.contains("off")
     })),
+    /* v4.5.1 — 타일별 미디어 상태(타일 소실·영상 재생 조건 감시) */
+    media: ()=> Object.keys(tileRefs).map(id=>{
+      const r = tileRefs[id];
+      const rect = r.tile.getBoundingClientRect();
+      const img = r.tile.querySelector(".vbob img.face");
+      const pos = r.poster;
+      const v = r.vid;
+      const cast = (x)=> x ? {nw:x.naturalWidth, c:x.complete, src:x.getAttribute("src"),
+                              op:getComputedStyle(x).opacity, disp:getComputedStyle(x).display} : null;
+      return {id:id, speaking:r.tile.classList.contains("speaking"),
+              rect:{w:Math.round(rect.width), h:Math.round(rect.height), t:Math.round(rect.top), l:Math.round(rect.left)},
+              img:cast(img), poster:cast(pos),
+              video: v ? {src:v.getAttribute("src"), paused:v.paused, rs:v.readyState,
+                          t:Math.round(v.currentTime*100)/100, op:getComputedStyle(v).opacity,
+                          off:v.classList.contains("off")} : null};
+    }),
+    tileIds: ()=> [].map.call(stage.children, n=> n.dataset.id),
+    nodeIds: ()=> Object.keys(tileRefs).map(id=>{
+      const r = tileRefs[id];
+      return {id:id, tile:nodeKey(r.tile), img:nodeKey(r.tile.querySelector(".vbob img.face") || r.tile.querySelector(".thead img.face")),
+              poster:nodeKey(r.poster), video:nodeKey(r.vid), bubble:nodeKey(r.msum), state:nodeKey(r.state)};
+    }),
     scrollPad: ()=> { const p=document.getElementById("scrollPad"); return p ? Math.round(p.getBoundingClientRect().height) : -1; },
     view: () => state.view,
     subtitle: () => { const t=document.getElementById("vsTx"), b=document.getElementById("vsub"); return {text:(t&&t.textContent)||"", h: b? Math.round(b.getBoundingClientRect().height):0}; },
