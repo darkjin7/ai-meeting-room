@@ -28,6 +28,12 @@
 - `test_v46.py`(인트로 주소를 `intro_1~3.mp4` 중 하나로 확인하도록만 수정) · `test_v4.py` · `test_v44.py` · `test_v451.py` 모두 **ALL PASS**
 - 스크린샷(눈검수): `downloads/meeting_v461_intro1.png`(전원 셀카) · `downloads/meeting_v461_intro2.png`(일렬 정면) — 390×844
 
+### ⑤ 배포
+- 커밋 `107cfb5`(본체) · `9756c3a`(화면 표기를 v4.6.1 로) → `git push origin main`
+- GitHub Pages: **built** (9756c3a) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.6.1 · `avatars/intro_1~3.mp4`(288/289/288KB)·`intro_1~3_poster.webp` 200 · `avatars/intro_meeting.mp4` 404(의도된 삭제 — index.html 이 더는 그 주소를 안 부름)
+- 라이브 실측(모바일 390×844, 3번 입장): 회의 테이블 → 일렬 정면 → 회의 테이블 · 모두 readyState 4 · paused false · 854×480 · 콘솔 오류 0 (`work/meeting-room/live_v461_intro.png`)
+- ⚠ 푸시 메모: 이 환경의 `GH_TOKEN` 은 만료(gh api 는 저장 자격증명으로 동작). `git push` 가 403 이면 **`env -u GH_TOKEN git push origin main`** 로 올린다.
+
 ## v4.6 (2026-11-27) — 회의 서류철 로비 · 다음 안건 메모 · 입장 인트로 영상
 - 성진님 지시: "들어가면 준비된 회의 안건 고르는 거랑 다음에 회의를 할 안건을 적고 입장.. 영상이 있으면 다들 의자에 앉거나 화상회의 준비하는 그런 영상 나오고 우리가 만든 페이지 로딩 되면 좋겠어"
 - 흐름: **회의 브리핑 서류(로비) → 🚪 회의실 입장 → 착석 인트로(3.9초) → 고른 안건의 6분할 화상 회의실**
