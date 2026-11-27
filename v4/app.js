@@ -14,9 +14,12 @@
      `videos:{idle:'...', react:'...'}` 처럼 상태별 주소를 적은 뒤, motionVideo() 를 상태마다 하나씩
      만들어 겹쳐 두고 타일 클래스(`.tile.speaking` / `.tile.sleepy`)로 opacity 만 바꾼다.
      (iOS Safari 에서 src 교체·DOM 제거는 깜박임과 빈 타일의 원인이다)
-     v4.6.2 — 피클에게 첫 상태 영상 `sleepy`(눈 감고 조는 3.5초 루프)와 `phone`(몰래 폰 보다 들킴 2.2초 루프)가 붙었다.
+     v4.6.2 — 피클에게 첫 상태 영상 `sleepy`(눈 감고 조는 영상)와 `phone`(몰래 폰 보다 들킴 2.2초 루프)가 붙었다.
        · speaking 영상은 지금처럼 class `vid` — 기존 검증(video.vid 1개)이 보는 그 요소
-       · 나머지 상태 영상은 class `vlay` + data-state — 겹으로만 쌓이고 opacity 로만 켜진다 */
+       · 나머지 상태 영상은 class `vlay` + data-state — 겹으로만 쌓이고 opacity 로만 켜진다
+     v4.6.3 — `sleepy` 는 **한 번만 재생하고 마지막 프레임(눈을 꼭 감은 얼굴)에서 멈춘다**(VIDEO_ONCE).
+       성진님: "조는 모습은 눈이 감기면 멈추고 있다가 자기 차례 되면 깨는 걸로" — 영상이 끝나면 loop 없이
+       마지막 프레임에 그대로 머물고, setTileMood 로 조는 상태에 **다시 들어올 때만** currentTime=0 부터 재생한다. */
   const PEOPLE = [
     /* v4.4 — 피클만 움직이는 영상 아바타. 정지 이미지는 영상 poster/실패 시 대체용으로 그대로 둔다.
        v4.6.2 — 듣는 중에 조는 모습(sleepy)·몰래 폰 보는 모습(phone). 발언 차례가 오면 setTileMood 가 즉시 깨운다. */
@@ -35,6 +38,10 @@
   /* 상태별 영상 표 — speaking 외 상태(sleepy …)는 PEOPLE 에 videos 로 적으면 여기서 speaking 과 합쳐진다.
      (주소 문자열을 PEOPLE 안에 중복해 적지 않는 이유: 단일 파일 빌드가 mp4 를 두 번 인라인해 파일이 두 배가 된다) */
   PEOPLE.forEach(p=>{ if(p.video) p.videos = Object.assign({speaking:p.video}, p.videos || {}); });
+  /* v4.6.3 — 한 번만 재생하고 마지막 프레임에서 멈출 상태 영상.
+     `sleepy` 는 눈이 감기는 순간까지의 클립이라 루프로 돌리면 눈을 다시 뜨는 대목이 섞인다(3.5초 루프였던 v4.6.2).
+     여기 적힌 상태는 <video loop=false> 로 만들고, 끝나면 그 프레임에 멈춰 '자는 얼굴'로 남는다. */
+  const VIDEO_ONCE = {sleepy:true};
 
   /* ── v4.3 캐릭터 썸네일 ──
      모든 자리에서 크기는 CSS 로 고정하고 img 에 width/height/object-fit 을 명시한다.
@@ -117,16 +124,17 @@
   function motionVideo(p, state){
     state = state || "speaking";
     const src = (p && p.videos && p.videos[state]) || (p && p.video) || "";
+    const once = !!VIDEO_ONCE[state];   // v4.6.3 — sleepy 처럼 한 번만 틀고 마지막 프레임에서 멈추는 상태
     const v = document.createElement("video");
     /* v4.6.2 — speaking 은 class `vid`(기존 검증·재생 경로), 그 밖의 상태는 `vlay` + data-state */
     v.className = "face " + (state === "speaking" ? "vid" : "vlay");
     v.dataset.state = state;
     v.muted = true; v.defaultMuted = true;
-    v.loop = true; v.autoplay = false; v.playsInline = true;
+    v.loop = !once; v.autoplay = false; v.playsInline = true;
     v.preload = "none";
     v.width = 640; v.height = 598;   // v4.5 — 타일 비율(1.07)에 맞춘 풀블리드 영상
     v.setAttribute("muted", "");
-    v.setAttribute("loop", "");
+    if(once) v.removeAttribute("loop"); else v.setAttribute("loop", "");
     v.setAttribute("playsinline", "");
     v.setAttribute("webkit-playsinline", "");
     v.setAttribute("disablepictureinpicture", "");
@@ -135,6 +143,15 @@
     if(p && p.poster) v.poster = p.poster;
     v.dataset.src = src;
     v.dataset.who = p.id;
+    /* v4.6.3 — once 상태 영상이 끝나면 그 자리(마지막 프레임)에 남긴다. done 표시가 없으면
+       syncAvatarMedia 가 'paused 니까 다시 재생' 하며 처음으로 되감아 버린다(눈을 다시 뜨는 것처럼 보임). */
+    if(once){
+      v.addEventListener("ended", function(){ v.dataset.done = "1"; });
+      v.addEventListener("timeupdate", function(){
+        if(!v.duration || !isFinite(v.duration)) return;
+        if(v.currentTime >= v.duration - 0.04) v.dataset.done = "1";
+      });
+    }
     return v;
   }
   /* 화상 화면에 처음 들어갈 때 딱 한 번: 영상 src·포스터 src 를 붙인다(이후에는 건드리지 않는다).
@@ -173,7 +190,9 @@
         if(v.classList.contains("off")) return;        // 코덱·정책으로 실패 → 정지 이미지 유지
         if(!v.getAttribute("src")) return;              // 아직 무장 전
         if(st === want){
-          if(v.paused){
+          /* v4.6.3 — 한 번만 트는 영상(sleepy)이 끝나 마지막 프레임에 머무는 중이면 다시 재생하지 않는다 */
+          if(v.dataset.done === "1"){ if(!v.paused) { try{ v.pause(); }catch(e){} } }
+          else if(v.paused){
             try{ const pr = v.play(); if(pr && pr.catch) pr.catch(()=>{}); }catch(e){}
             /* 재생을 시작했는데 1.5초가 지나도록 아무것도 못 받았다면(readyState 0) 이 기기·이 방식으로는
                영상이 안 열린다(data: 영상 등) → 그 겹만 숨기고 정지 이미지를 그대로 보여 준다. */
@@ -773,6 +792,14 @@
     mood = (MOODS.indexOf(mood) >= 0 && r.vids && r.vids[mood]) ? mood : "";
     /* 말하는 중에는 다른 상태를 켜지 않는다 — 깨어 있는 쪽이 이긴다 */
     if(mood && r.tile.classList.contains("speaking")) mood = "";
+    const was = r.mood || "";
+    /* v4.6.3 — 한 번만 트는 영상(sleepy)은 이 상태에 **새로 들어올 때만** 처음부터 다시 튼다.
+       끝까지 틀어 마지막 프레임(눈 감은 얼굴)에 머물던 영상이니, 재진입이 아니면 되감지 않는다. */
+    if(mood && mood !== was && VIDEO_ONCE[mood] && r.vids[mood]){
+      const v = r.vids[mood];
+      delete v.dataset.done;
+      try{ v.currentTime = 0; }catch(e){}
+    }
     r.mood = mood;
     MOODS.forEach(m=> r.tile.classList.toggle(m, mood === m));
     if(r.state) r.state.textContent = mood ? MOOD_TEXT[mood] : r.stateLbl;
@@ -1260,7 +1287,7 @@
     const pt = document.getElementById("lobbyPickTitle");
     if(pt) pt.textContent = cur ? cur.title : "—";
     const dn = document.getElementById("docNo");
-    if(dn){ const d = new Date(); dn.textContent = "v4.6.2 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
+    if(dn){ const d = new Date(); dn.textContent = "v4.6.3 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
   }
 
   function renderMemos(){
@@ -2584,7 +2611,9 @@
       const one = (x)=> x ? {src:x.getAttribute("src"), paused:x.paused,
                              t:Math.round(x.currentTime*100)/100, rs:x.readyState,
                              op:getComputedStyle(x).opacity, off:x.classList.contains("off"),
-                             w:x.videoWidth, h:x.videoHeight} : null;
+                             w:x.videoWidth, h:x.videoHeight,
+                             loop:x.loop, ended:x.ended, dur:Math.round((x.duration||0)*100)/100,
+                             done:x.dataset.done || ""} : null;
       return {id:id, mood:r.mood || "",
               sleepy:r.tile.classList.contains("sleepy"), phone:r.tile.classList.contains("phone"),
               speaking:r.tile.classList.contains("speaking"),

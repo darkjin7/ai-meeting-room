@@ -1,21 +1,24 @@
-"""v4.6.2 — 피클 '조는 중(sleepy)' 아바타 영상.
+"""v4.6.3 — 피클 '조는 중(sleepy)' 아바타 영상 — 눈이 감기는 순간까지 재생하고 그 프레임에서 멈춘다.
 
 원본: attachments/2026-11-27/470953036_1795756046285661-721a46f539ad4606af64de05b86a6540.mp4
       (피클 · 8.04초 · 720x1280 · H.264 + AAC 3.2MB — 눈을 감고 조는 장면)
 
-원본은 8초짜리 한 호흡이다.
-  0.0~2.0s  눈 뜨고 정면
-  2.2~5.4s  눈꺼풀이 내려오고 고개가 살짝 떨궈짐(완전히 감김)
-  5.5~6.0s  눈을 살짝 떠서 슬쩍 봄
-  6.0~8.0s  다시 눈 뜨고 정면
-화상 타일에서 '듣는 중' 내내 틀 영상이므로 앞뒤의 또렷한 '눈 뜬' 구간은 잘라 내고,
-조는 구간(1.95~5.95s)만 4초 루프로 쓴다. 끝(슬쩍 뜸)과 시작(눈꺼풀 내려옴)은
-0.5초 크로스페이드로 이어 붙여 이음매가 보이지 않게 한다.
+성진님 요청(v4.6.3)
+  "조는 모습은 눈이 감기면 멈추고 있다가 자기 차례 되면 깨는 걸로 할 수 있나?
+   지금 것도 나쁘지는 않자만 보고 싶어"
+  → v4.6.2 는 1.95~5.45초(눈 감김 → 슬쩍 뜸)를 0.5초 크로스페이드로 이어 붙여 4초 루프였다.
+    눈을 살짝 뜨는 대목이 섞여 '조는 중'이 끊겼다.
+  → v4.6.3 은 **눈을 뜨고 있다가 완전히 감기는 지점까지만**(0.00~3.00초) 잘라 쓴다.
+    그 뒤로 영상은 끝나고(loop=false) 마지막 프레임(눈을 꼭 감은 얼굴)에서 그대로 멈춰 있는다.
+    발언 차례가 오면 코드가 speaking 영상으로 바꾸며 눈을 뜬다. 크로스페이드 없음.
 
-크롭·축소 기준은 v4.5 의 pickle.mp4(make_pickle_video.py)와 같다 —
-  y=445 에서 720x673(타일 비율 1.07) → 640x598. 원본이 같은 구도로 만들어져
-  첫 프레임(눈 뜬 장면)이 pickle.mp4 첫 프레임과 같은 얼굴 위치로 겹치는 것을 확인했다.
-결과: avatars/pickle_sleepy.mp4 (무음 · H.264 · faststart · 250~380KB)
+끝 타임코드(3.00초)를 고른 근거 — 24fps 프레임 확인
+  2.20s 눈 반쯤 · 2.58s 눈꺼풀 닿음 · **2.83s 완전히 감김(속눈썹 선만)** · 2.95s 그대로 감김
+  3.02s 부터는 고개가 더 떨궈지며 얼굴이 프레임 아래로 내려간다(= 다른 타일과 구도가 어긋나기 시작)
+  → 눈이 완전히 감기고 고개 위치가 다른 타일(speaking·phone)과 같은 3.00초에서 끊는다.
+
+크롭 기준은 v4.5 pickle.mp4 · v4.6.2 sleepy 와 같다 — y=445 에서 720x673(타일 비율 1.07) → 640x598 풀블리드.
+결과: avatars/pickle_sleepy.mp4 (무음 · H.264 · faststart · 약 200~300KB · 3.00초)
 """
 import os, shutil, subprocess, sys
 from PIL import Image
@@ -30,11 +33,11 @@ CROP_Y = 445
 CROP_H = 673
 OUT_W, OUT_H = 640, 598
 FPS = 24
-SEG_START = "1.95"           # 조는 구간만
-SEG_LEN = "3.50"          # 5.45s 에서 끊는다 — 그 뒤로는 눈이 완전히 떠서 '조는 중'이 깨진다
-XFADE = 12                   # 0.5초 — 끝(슬쩍 뜸) ↔ 시작(눈꺼풀 내려옴)
-CRF_TRY = [29, 28, 27, 26, 25, 24, 30]   # 250~380KB 에 드는 첫 CRF 를 쓴다
-KB_MIN, KB_MAX = 250, 380
+SEG_START = "0.00"           # 눈 뜬 정면 — 조는 중으로 넘어가는 시작
+SEG_LEN = "3.00"             # 3.00초 = 눈이 완전히 감긴 프레임(2.83s) 뒤 고개가 더 내려가기 전
+XFADE = 0                    # 루프가 아니다 — 마지막 프레임에서 멈추므로 이어 붙이지 않는다
+CRF_TRY = [26, 25, 27, 24, 28, 23, 29]
+KB_MIN, KB_MAX = 170, 330
 
 
 def sh(cmd):
@@ -54,19 +57,14 @@ def main():
     src = sorted(os.listdir(TMP + "/src"))
     print("세그먼트 %ss + %ss → 프레임 %d장" % (SEG_START, SEG_LEN, len(src)))
 
-    frames = []
+    out = []
     for name in src:
         im = Image.open(os.path.join(TMP + "/src", name)).convert("RGB")
         im = im.crop((0, CROP_Y, 720, CROP_Y + CROP_H)).resize((OUT_W, OUT_H), Image.LANCZOS)
-        frames.append(im)
-
-    n = len(frames)
-    out = frames[:n - XFADE]
-    for i in range(XFADE):
-        a = (i + 1) / XFADE
-        out.append(Image.blend(frames[n - XFADE + i], frames[i], a))
+        out.append(im)
     for i, img in enumerate(out, 1):
         img.save(TMP + "/out/%04d.jpg" % i, quality=90)
+    out[-1].save(TMP + "/last_frame.png")     # 눈검수용 마지막 프레임
 
     best = None
     for crf in CRF_TRY:
@@ -86,10 +84,12 @@ def main():
 
     crf, kb, path = best
     shutil.copyfile(path, OUT_MP4)
+    shutil.copyfile(TMP + "/last_frame.png", os.path.join(ROOT, "diag/sleepy_last_frame.png"))
     shutil.rmtree(TMP, ignore_errors=True)
-    print("mp4   : %s  %.0fKB (crf %d · %d프레임 = %.2f초 루프)" % (OUT_MP4, kb, crf, len(out), len(out) / FPS))
-    if not (200 <= kb <= 420):
-        print("!! 용량이 목표(250~380KB) 밖 — 확인 필요")
+    print("mp4   : %s  %.0fKB (crf %d · %d프레임 = %.2f초 · 마지막 프레임에서 정지)"
+          % (OUT_MP4, kb, crf, len(out), len(out) / FPS))
+    if not (KB_MIN <= kb <= KB_MAX):
+        print("!! 용량이 목표(170~330KB) 밖 — 확인 필요")
 
 
 main()

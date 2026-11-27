@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.6.2 — 회의 서류철 로비 · 입장 인트로 3종 · 피클 조는 중</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.6.3 — 피클 조는 중·딴짓 영상 꽉 채움 · 눈 감기면 정지</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -790,13 +790,9 @@
   /* 딴짓(폰) — 경고성 주황 */
   body.view-video .tile.phone{border-color:rgba(245,192,74,.6)}
   body.view-video .tile.phone .vmeta{color:#ffd89a}
-  /* v4.6.2 — 폰을 든 손은 프레임 아래쪽에 있다. 하단 이름·상태 그라데이션이 그대로 덮으면 폰이 가려지므로
-     이 상태만 이름·상태를 위로 올리고 아래쪽은 띄운다(폰이 그대로 보인다). */
-  body.view-video .tile.phone .vov{
-    top:0;bottom:auto;
-    padding:9px 9px 22px;
-    background:linear-gradient(rgba(0,0,0,.8),rgba(0,0,0,.42) 55%,transparent);
-  }
+  /* v4.6.3 — 폰 상태도 이름·상태는 다른 타일과 똑같이 **하단**에 둔다.
+     v4.6.2 의 'phone 만 위로 올리기' 예외는 없앴다: 폰 영상이 다른 타일과 같은 얼굴 클로즈업(풀블리드)으로
+     다시 뽑혀서 아래쪽에 가릴 것이 없고, 6분할 그리드에서 이 타일만 이름 위치가 달라 보였다. */
   body.view-video .vbob video.face.off{ display:none }
   body.view-video .vbob video.face::-webkit-media-controls{display:none!important}
   body.view-video .vbob video.face::-webkit-media-controls-enclosure{display:none!important}
@@ -1102,7 +1098,7 @@
         <div class="dh-top">
           <span class="dh-org">다크진 AI 비서실</span>
           <span>회의 브리핑 서류</span>
-          <span class="dh-no" id="docNo">v4.6.2 · DOC 2026-1127</span>
+          <span class="dh-no" id="docNo">v4.6.3 · DOC 2026-1127</span>
         </div>
         <h2 class="dh-title">회의 브리핑 서류</h2>
         <p class="dh-sub">이번에 다룰 안건을 고르고, 다음 회의에 다룰 안건을 적어 두십시오.</p>
