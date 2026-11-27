@@ -34,6 +34,15 @@
 - 기존 5종 **ALL PASS**: `test_v4.py` · `test_v44.py` · `test_v451.py` · `test_v46.py` · `test_v461.py`
 - 스크린샷(눈검수, 390×844): `downloads/meeting_v463_pickle_sleepy.png`(눈 꼭 감은 채 멈춘 얼굴·보라 테두리·「😴 살짝 조는 중」) · `downloads/meeting_v463_pickle_phone.png`(눈 크게 뜨고 입 벌린 '들킴'·주황 테두리·이름·상태 하단)
 
+### ⑤ 배포
+- 커밋 `5438641` (2026-11-27 15:25 KST) → `env -u GH_TOKEN git push origin main` (이 환경 GH_TOKEN 은 만료 — 403 이면 이 방식)
+- GitHub Pages: **built** (5438641, 2026-11-27T06:25:48Z) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.6.3
+  · `avatars/pickle_sleepy.mp4` 187,411B · `pickle_phone.mp4` 203,406B · `pickle.mp4` 400,903B 모두 200
+- 라이브 실측(모바일 390×844, `verify_v463_live.py` → `live_v463_sleepy.png`·`live_v463_phone.png`)
+  · sleepy: 재생 중 t 0.32s · **loop false** · 문구 「😴 살짝 조는 중」 → **끝에서 t 3.00/3.00 · paused · done=1 · 1.5초 뒤에도 그대로**
+  · phone: t 0.32s · loop true · 문구 「📱 딴짓하다 걸림」 · 영상 182×170 = 타일 186×174(테두리 빼고 꽉) · 이름·상태 하단 2px
+  · 라운드 1회 뒤 페이지 오류 0
+
 ## v4.6.2 (2026-11-27) — 피클의 '듣는 중' 상태 영상: 😴 조는 중 · 📱 딴짓(폰)
 - 성진님 지시: ① 피클이 눈 감고 조는 720×1280 영상 → `sleepy` ② 회의 중 몰래 폰 보다 들켜 깜짝 놀라는 영상 → `phone`
   "듣는 중일 때 간헐적으로 sleepy·phone 중 하나가 랜덤으로, 발언 차례가 오면 즉시 깨서 speaking 으로"
