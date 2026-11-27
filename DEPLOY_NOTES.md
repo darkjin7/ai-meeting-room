@@ -6,10 +6,10 @@
 ### ① 클립 3종 (`avatars/intro_1~3.mp4` + `intro_1~3_poster.webp`)
 | # | 원본 | 장면 | 파일 | 포스터 |
 |---|---|---|---|---|
-| 1 | `downloads/group_assets/vid_1_255875777.mp4` (1.1초부터 3.85초) | 9인 전원 셀카(카메라 플래시) | 281KB · 3.88초 · 854×480 · 무음 | 29KB |
-| 2 | `downloads/group_assets/vid_2_877722805.mp4` (2.0초부터) | 9인 일렬 정면 | 283KB · 3.88초 · 854×480 · 무음 | 26KB |
-| 3 | `downloads/group_assets/vid_3_994233736.mp4` (1.0초부터) | 8인 회의 테이블(기존 `intro_meeting.mp4` 자리) | 282KB · 3.88초 · 854×480 · 무음 | 28KB |
-- 인코딩: `ffmpeg -ss … -t 3.85 -vf scale=854:480:flags=lanczos,fps=24 -c:v libx264 -preset slow -profile:v high -b:v 600k -maxrate 900k -bufsize 1800k -pass 1/2 -an -movflags +faststart` (2패스, 소리 없음). 포스터는 640×360→512×288 webp q66.
+| 1 | `downloads/group_assets/vid_1_255875777.mp4` (1.1초부터 3.85초) | 9인 전원 셀카(카메라 플래시) | 270KB · 3.88초 · 854×480 · 무음 | 29KB |
+| 2 | `downloads/group_assets/vid_2_877722805.mp4` (2.0초부터) | 9인 일렬 정면 | 271KB · 3.88초 · 854×480 · 무음 | 26KB |
+| 3 | `downloads/group_assets/vid_3_994233736.mp4` (1.0초부터) | 8인 회의 테이블(기존 `intro_meeting.mp4` 자리) | 270KB · 3.88초 · 854×480 · 무음 | 27KB |
+- 인코딩: `ffmpeg -ss … -t 3.85 -vf scale=854:480:flags=lanczos,fps=24 -c:v libx264 -preset slow -profile:v high -b:v 560k -maxrate 840k -bufsize 1600k -pass 1/2 -an -movflags +faststart` (2패스, 소리 없음). 포스터는 512×288 webp q62.
 - 기존 `avatars/intro_meeting.mp4`(473KB 960×540) · `intro_poster.webp`(79KB)는 **삭제**(3번 클립이 같은 장면을 더 작게 대신한다).
 
 ### ② 코드 (`v4/app.js` · `v4/head.html`)
@@ -21,16 +21,16 @@
 ### ③ 빌드 (`build_v4.sh`)
 - 앱 코드의 `INTRO_CLIPS` 에 적힌 `"./avatars/intro_N.mp4"` 를 정규식으로 찾아 **전부** 인라인한다 → 클립을 늘려도 스크립트를 고칠 필요가 없다. webp 정규식에 숫자를 포함(`[a-z0-9_]+`)해 `intro_1_poster.webp` 도 인라인.
 - 가드: 인트로 3종(약 1.15MB 인라인)을 담느라 단일 파일 상한을 2MB → **2.5MB(2560KB)** 로 올림. 중복 주소·파일 누락·인라인 안 된 자산이 남으면 빌드 실패.
-- 결과: `downloads/darkjin_meeting_room_v4.html` **2292KB** (webp 12장 + pickle.mp4 + 인트로 3종 = 영상 4개 인라인).
+- 결과: `downloads/darkjin_meeting_room_v4.html` **2216KB** (2.17MB) (webp 12장 + pickle.mp4 + 인트로 3종 = 영상 4개 인라인).
 
 ### ④ 검증 (2026-11-27, 로컬 390×844)
-- `test_v461.py` (신규) **ALL PASS** — 클립 3종 실측(3.88초·854×480·무음·281~283KB) · 90회 뽑기에서 3종 모두(34/32/24)·연속 중복 0 · 안건을 번갈아 3번 입장해 3종이 모두 실제 재생(readyState 4, paused false, 시간 증가) · 포스터·배경이 클립과 일치 · 모바일 인트로 화면 안·가로 넘침 0 · 단일 파일 2292KB·영상 4개 인라인·인라인 영상 실제 재생 · 콘솔 오류 0
+- `test_v461.py` (신규) **ALL PASS** — 클립 3종 실측(3.88초·854×480·무음·270~271KB) · 90회 뽑기에서 3종 모두(34/32/24)·연속 중복 0 · 안건을 번갈아 3번 입장해 3종이 모두 실제 재생(readyState 4, paused false, 시간 증가) · 포스터·배경이 클립과 일치 · 모바일 인트로 화면 안·가로 넘침 0 · 단일 파일 2216KB·영상 4개 인라인·인라인 영상 실제 재생 · 콘솔 오류 0
 - `test_v46.py`(인트로 주소를 `intro_1~3.mp4` 중 하나로 확인하도록만 수정) · `test_v4.py` · `test_v44.py` · `test_v451.py` 모두 **ALL PASS**
 - 스크린샷(눈검수): `downloads/meeting_v461_intro1.png`(전원 셀카) · `downloads/meeting_v461_intro2.png`(일렬 정면) — 390×844
 
 ### ⑤ 배포
 - 커밋 `107cfb5`(본체) · `9756c3a`(화면 표기를 v4.6.1 로) → `git push origin main`
-- GitHub Pages: **built** (9756c3a) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.6.1 · `avatars/intro_1~3.mp4`(288/289/288KB)·`intro_1~3_poster.webp` 200 · `avatars/intro_meeting.mp4` 404(의도된 삭제 — index.html 이 더는 그 주소를 안 부름)
+- GitHub Pages: **built** (9756c3a) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.6.1 · `avatars/intro_1~3.mp4`(270/271/270KB)·`intro_1~3_poster.webp` 200 · `avatars/intro_meeting.mp4` 404(의도된 삭제 — index.html 이 더는 그 주소를 안 부름)
 - 라이브 실측(모바일 390×844, 3번 입장): 회의 테이블 → 일렬 정면 → 회의 테이블 · 모두 readyState 4 · paused false · 854×480 · 콘솔 오류 0 (`work/meeting-room/live_v461_intro.png`)
 - ⚠ 푸시 메모: 이 환경의 `GH_TOKEN` 은 만료(gh api 는 저장 자격증명으로 동작). `git push` 가 403 이면 **`env -u GH_TOKEN git push origin main`** 로 올린다.
 
