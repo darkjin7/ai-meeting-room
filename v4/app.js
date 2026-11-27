@@ -1116,6 +1116,23 @@
   let introTimers = [];
   let introHandlers = null;              // 영상 ended/error 리스너 — 새 인트로를 틀 때 반드시 뗀다
 
+  /* ── v4.6.1 — 입장 인트로 영상 3종 랜덤 ──
+     성진님 지시: "회의실 로딩 장면 3가지 랜덤으로 바꿔줘. 다음에 다른거 만들면 또 넣게"
+     ▶ 새 인트로 영상을 추가하는 방법 (딱 두 단계)
+       ① avatars/ 폴더에 무음·3.8~3.9초·854x480 H.264 MP4 를 intro_4.mp4 로 넣고,
+          같은 장면의 포스터 이미지를 intro_4_poster.webp(640x360 안팎) 로 넣는다.
+       ② 아래 INTRO_CLIPS 배열 맨 끝에 intro_4.mp4 · intro_4_poster.webp 를 가리키는 항목 한 줄만 추가한다
+          (예: src·poster·label 세 값을 적은 객체 하나 — 빌드가 이 배열을 그대로 읽는다).
+     → 입장할 때마다 배열에서 직전에 튼 것만 피해서 랜덤으로 골라 튼다. 코드는 더 고칠 게 없다.
+     → build_v4.sh 가 ./avatars/intro_N.mp4 와 ./avatars/intro_N_poster.webp 를 단일 파일에 인라인한다
+        (주소는 배열에서 한 번씩만 적어야 한다 — 두 번 적으면 빌드가 멈춘다). */
+  const INTRO_CLIPS = [
+    { src:"./avatars/intro_1.mp4", poster:"./avatars/intro_1_poster.webp", label:"전원 셀카" },
+    { src:"./avatars/intro_2.mp4", poster:"./avatars/intro_2_poster.webp", label:"일렬 정면" },
+    { src:"./avatars/intro_3.mp4", poster:"./avatars/intro_3_poster.webp", label:"회의 테이블" }
+  ];
+  let lastIntroIdx = -1;                 // 직전에 튼 클립 번호 (같은 영상이 연달아 나오지 않게)
+
   function nextMemos(){
     try{
       const v = JSON.parse(LS.get(K_NEXT) || "[]");
@@ -1305,6 +1322,17 @@
     introTimers.push(setTimeout(()=>{ if(vid){ try{ vid.currentTime = 0; }catch(e){} } }, 420));
   }
 
+  /* 직전 클립(lastIntroIdx)은 빼고 나머지에서 균등하게 뽑는다.
+     클립이 1개뿐이면 그걸 그대로, 처음(=-1)이면 전체에서 뽑는다. */
+  function pickIntroIdx(){
+    const n = INTRO_CLIPS.length;
+    if(n === 0) return -1;
+    if(n === 1) return 0;
+    if(lastIntroIdx < 0) return Math.floor(Math.random() * n);
+    const r = Math.floor(Math.random() * (n - 1));       // 0 .. n-2
+    return r >= lastIntroIdx ? r + 1 : r;                // 자기 자신을 건너뛴 자리
+  }
+
   function playIntro(a){
     const box = document.getElementById("intro");
     const vid = document.getElementById("introVid");
@@ -1316,6 +1344,20 @@
     clearIntroHandlers();
     introDone = false;
     introA = a;
+    const ci = pickIntroIdx();
+    const clip = ci >= 0 ? INTRO_CLIPS[ci] : null;
+    if(clip){
+      lastIntroIdx = ci;                                 // 이번 클립을 '직전' 으로 기억
+      box.setAttribute("data-intro", String(ci + 1));
+      vid.setAttribute("data-clip", clip.label || ("intro_" + (ci + 1)));
+      vid.setAttribute("poster", clip.poster);
+      if(vid.getAttribute("src") !== clip.src){
+        vid.setAttribute("src", clip.src);
+        try{ vid.load(); }catch(e){}
+      }
+      const bg = box.querySelector(".intro-bg");
+      if(bg) bg.style.backgroundImage = 'url("' + clip.poster + '")';
+    }
     setLive("착석 중", "");
     box.classList.add("show");
     box.setAttribute("aria-hidden", "false");
@@ -2451,6 +2493,20 @@
       introTime: (()=>{ const v=document.getElementById("introVid"); return v ? Math.round(v.currentTime*100)/100 : -1; })()
     }),
     addMemo: addMemo,
-    delMemo: delMemo
+    delMemo: delMemo,
+    /* v4.6.1 — 인트로 3종 랜덤 검증용 훅 */
+    introClips: () => INTRO_CLIPS.map((c,i)=>({ idx:i, src:c.src, poster:c.poster, label:c.label })),
+    introState: () => ({
+      lastIdx: lastIntroIdx,
+      count: INTRO_CLIPS.length,
+      clip: (()=>{ const v=document.getElementById("introVid"); return v ? (v.getAttribute("data-clip")||"") : ""; })(),
+      src: (()=>{ const v=document.getElementById("introVid"); return v ? (v.getAttribute("src")||"") : ""; })(),
+      poster: (()=>{ const v=document.getElementById("introVid"); return v ? (v.getAttribute("poster")||"") : ""; })(),
+      bg: (()=>{ const b=document.querySelector("#intro .intro-bg"); return b ? (b.style.backgroundImage||"") : ""; })(),
+      readyState: (()=>{ const v=document.getElementById("introVid"); return v ? v.readyState : -1; })(),
+      paused: (()=>{ const v=document.getElementById("introVid"); return v ? v.paused : true; })(),
+      time: (()=>{ const v=document.getElementById("introVid"); return v ? Math.round(v.currentTime*100)/100 : -1; })()
+    }),
+    pickIntroIdx: () => { const i = pickIntroIdx(); lastIntroIdx = i; return i; }   // 분포만 볼 때(영상 재생 없이)
   };
 })();

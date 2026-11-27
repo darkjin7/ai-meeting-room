@@ -11,44 +11,57 @@ cp index.html index.v4.html
 # v4.4 — 피클 움직이는 영상도 이 파일에만 base64 로 함께 넣는다(약 +375KB).
 #         저장소에 올라가는 index.html 은 ./avatars/*.webp · pickle.mp4 상대경로 그대로 (Pages 에서 캐시됨).
 #         iOS Safari 가 data: 영상을 못 열면 코드가 poster/정지 이미지로 조용히 대체한다.
+# v4.6.1 — 입장 인트로 영상 3종(intro_1~3.mp4 + 포스터)도 인라인한다. 앱 코드의 INTRO_CLIPS 배열에
+#          적힌 주소를 그대로 훑으므로, 새 클립(intro_4 …)을 넣어도 이 스크립트는 고칠 필요가 없다.
 python3 - <<'PY'
 import base64, pathlib, re
 html = pathlib.Path("index.html").read_text(encoding="utf-8")
-def sub(m):
+
+# ── 1) 아바타 이미지(webp)는 전부 인라인 ──
+def sub_webp(m):
     rel = m.group(0)
     p = pathlib.Path(rel)
-    if not p.exists():
-        return rel
-    return "data:image/webp;base64," + base64.b64encode(p.read_bytes()).decode("ascii")
-out = re.sub(r"\./avatars/[a-z_]+\.webp", sub, html)
-mp4 = pathlib.Path("avatars/pickle.mp4")
-vid_inlined = 0
-if mp4.exists():
-    vid_src = '"./avatars/pickle.mp4"'
-    dup = out.count(vid_src)
-    if dup > 1:   # v4.5.1 — 주소를 여러 번 적으면 mp4 가 그만큼 인라인되어 파일이 배로 커진다
-        raise SystemExit("pickle.mp4 주소가 %d번 나온다 — PEOPLE/app.js 의 중복 문자열을 지워 주세요" % dup)
-    out = out.replace(vid_src, '"data:video/mp4;base64,' + base64.b64encode(mp4.read_bytes()).decode("ascii") + '"')
-    vid_inlined = out.count("data:video/mp4;base64,")
-    if vid_inlined != 1:
-        raise SystemExit("mp4 인라인 %d개 — 1개여야 합니다" % vid_inlined)
+    return "data:image/webp;base64," + base64.b64encode(p.read_bytes()).decode("ascii") if p.exists() else rel
+html = re.sub(r"\./avatars/[a-z0-9_]+\.webp", sub_webp, html)
 
-# v4.6 — 입장 인트로 영상도 이 파일 하나에 담는다(성진님 휴대폰에서 바로 열리게). 2MB 를 넘으면 실패.
-intro = pathlib.Path("avatars/intro_meeting.mp4")
-intro_inlined = 0
-if intro.exists():
-    insrc = '"./avatars/intro_meeting.mp4"'
-    idup = out.count(insrc)
-    if idup > 1:
-        raise SystemExit("intro_meeting.mp4 주소가 %d번 나온다 — 1번만 적어야 합니다" % idup)
-    if idup == 1:
-        out = out.replace(insrc, '"data:video/mp4;base64,' + base64.b64encode(intro.read_bytes()).decode("ascii") + '"')
-        intro_inlined = out.count("data:video/mp4;base64,") - vid_inlined
+def inline_once(html, rel, mime, what):
+    pat = '"%s"' % rel
+    n = html.count(pat)
+    if n > 1:
+        raise SystemExit("%s 주소(%s)가 %d번 나온다 — 1번만 적어야 한다" % (what, rel, n))
+    if n == 0:
+        return html, 0
+    p = pathlib.Path(rel)
+    if not p.exists():
+        raise SystemExit("%s 파일이 없다: %s" % (what, rel))
+    b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+    return html.replace(pat, '"data:%s;base64,%s"' % (mime, b64)), 1
+
+# ── 2) 피클 움직이는 영상 ──
+html, n_pickle = inline_once(html, "./avatars/pickle.mp4", "video/mp4", "pickle.mp4")
+
+# ── 3) 입장 인트로 클립 — 코드(INTRO_CLIPS)에 적힌 순서대로 ──
+intro_srcs = list(dict.fromkeys(re.findall(r'"(\./avatars/intro_[0-9]+\.mp4)"', html)))
+if not intro_srcs:
+    raise SystemExit("INTRO_CLIPS 에 인트로 영상이 하나도 없다")
+n_intro = 0
+for rel in intro_srcs:
+    html, k = inline_once(html, rel, "video/mp4", "인트로")
+    n_intro += k
+missing = [r for r in intro_srcs if ('"%s"' % r) in html]   # 아직 주소로 남아 있으면 인라인 실패
+if missing:
+    raise SystemExit("인트로 영상이 인라인되지 않았다: %s" % ", ".join(missing))
+left = re.findall(r'"\./avatars/[a-z0-9_]+\.(?:webp|css|png)"', html)
+if left:
+    raise SystemExit("인라인되지 않은 자산이 남았다: %s" % ", ".join(sorted(set(left))))
+
 dest = pathlib.Path("/workspace/downloads/darkjin_meeting_room_v4.html")
-dest.write_text(out, encoding="utf-8")
-kb = dest.stat().st_size/1024
-print("download build: %s (%.0f KB, avatars inlined: %d, video inlined: %d, intro inlined: %d)" % (dest, kb, out.count("data:image/webp;base64,"), vid_inlined, intro_inlined))
-if kb > 2048:
-    raise SystemExit("단일 파일이 %.0f KB — 2MB 를 넘었습니다" % kb)
+dest.write_text(html, encoding="utf-8")
+kb = dest.stat().st_size / 1024
+print("download build: %s (%.0f KB, avatars inlined: %d, pickle video: %d, intro clips: %s)"
+      % (dest, kb, html.count("data:image/webp;base64,"), n_pickle,
+         ", ".join(p.name for p in map(pathlib.Path, intro_srcs))))
+if kb > 2560:   # v4.6.1 — 인트로 3종(약 1.15MB 인라인)을 담느라 2MB → 2.5MB 로 올림
+    raise SystemExit("단일 파일이 %.0f KB — 2.5MB 를 넘었습니다" % kb)
 PY
 echo "built: work/meeting-room/index.html ($(wc -l < index.html) lines)"

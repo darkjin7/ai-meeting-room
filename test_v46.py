@@ -9,7 +9,7 @@
    · 기본 선택 1건 · 고른 안건 이름이 하단 '선택한 안건'과 일치 · 선택은 localStorage 에 남는다
    · 🚪 회의실 입장 버튼이 토스트에 가리지 않는다(첫 화면에서 자료 준비 토스트를 띄우지 않음)
 ② 다음 회의 안건 메모 — 저장(누적·새로고침 유지) · 복사(피클에게 보내는 요청문) · 삭제
-③ 입장 인트로 — avatars/intro_meeting.mp4 가 실제로 재생되고(재생 시간 증가), 고른 안건 이름이 뜬다.
+③ 입장 인트로 — avatars/intro_1~3.mp4 중 하나가 실제로 재생되고(재생 시간 증가), 고른 안건 이름이 뜬다.
    · 건너뛰기 → 곧바로 그 안건의 6분할 회의실(화상 보기) · 타일 6장
    · 영상이 끝나면(3.9초) 자동으로 회의실 진입 · 로비는 닫힌다
    · 이미 보던 안건으로 다시 입장하면 인트로를 다시 틀지 않고 이어서 본다
@@ -184,7 +184,7 @@ def main():
         if not p.is_visible('#introVid'):
             bad('인트로 영상 요소가 안 보임')
         vsrc = p.get_attribute('#introVid', 'src') or ''
-        if 'intro_meeting.mp4' not in vsrc:
+        if not any(('intro_%d.mp4' % i) in vsrc for i in (1, 2, 3)):
             bad('인트로 영상 주소 이상: %r' % vsrc[:80])
         else:
             ok('인트로 영상 = %s' % vsrc)
