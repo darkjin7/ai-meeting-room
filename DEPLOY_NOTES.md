@@ -1,5 +1,36 @@
 # 배포 메모 — 다크진 AI 비서실 · 6분할 회의실
 
+## v4.7.1 (2026-11-27) — 딴짓(phone)은 한 번만 재생하고 곧바로 경청 복귀
+- 성진님 피드백: "조는 건 못 봤는데 **딴짓이 계속 반복됨**. **한 번만 하고 경청**을 해야지... 조는 것도 반복으로 되있나 확인해줘"
+- 원인: v4.7 의 `VIDEO_ONCE = {sleepy:true}` 에 `phone` 이 빠져 있어 `pickle_phone.mp4` 가 `<video loop>` 로 **무한 반복**됐다(2.21초 클립이 계속 돈다). 졸기(sleepy)는 v4.6.3 그대로 `loop=false` + 마지막 프레임 정지라 반복이 아니었다.
+
+### ① 코드 (`v4/app.js`)
+- `const VIDEO_ONCE = {sleepy:true, phone:true}` → phone 도 `<video loop=false>`, `loop` 속성 제거.
+- `motionVideo()` 의 once 끝처리를 `finish()` 한 곳으로 합쳤다: `dataset.done="1"` + **`state==="phone"` 이면 `backToListening(p.id)`** — `ended` 와 마지막 0.04초(`timeupdate`) 둘 다에서 불린다.
+- `backToListening(id)` 는 `r.mood === "phone"` 일 때만 `setTileMood(id, "")` → 기본 `listening`(경청) 겹이 곧바로 재생되고 문구도 「듣는 중」으로 돌아온다(마지막 프레임에 머물지 않는다). 발언 차례(speaking)·졸기(sleepy)로 이미 바뀌었으면 손대지 않는다.
+- 안전 타이머: 영상이 안 도는 경우(글로 보기·코덱 실패·버퍼링)에도 배지가 '📱 딴짓'으로 남지 않게 `setTileMood` 가 phone 진입 시 **3.5초** 타이머를 걸어 `backToListening` 을 한 번 더 부른다(클립 2.21초보다 넉넉).
+- 재진입: phone 은 1회 클립이므로 `setTileMood` 의 기존 규칙(새로 들어올 때만 `done` 삭제 + `currentTime=0`)이 그대로 적용돼, 다시 켜면 처음부터 한 번 더 재생된다.
+- `sleepy` 는 변경 없음 — 1회 재생 후 눈 감은 마지막 프레임에서 정지, 발언 차례에 `setTileState(speaking)` 이 깨운다(v4.6.3 그대로, **반복 아님** 확인).
+- 검증용 훅 `__mr4.setTileState(id, kind, label)` 추가(발언 차례에 잠이 깨는지 테스트용). 표기: `<title>`·서류철 문서번호·`docNo` → **v4.7.1**.
+
+### ② 빌드
+- `bash build_v4.sh` → `downloads/darkjin_meeting_room_v4.html` **3155KB** (webp 12 + 영상 7: 피클 4 + 인트로 3 · pickle videos 1/1/1/1).
+
+### ③ 검증 (2026-11-27 로컬 · 모두 ALL PASS)
+- `test_v47.py`(v4.7.1 갱신) — 기존 ①~④ + **⑤ 딴짓 1회**: VIDEO_ONCE 에 phone · title/문서번호 v4.7.1 · phone·sleepy `loop=false` · 켜면 0.31s 재생(listening op 0) · **2.21초 뒤 mood '' · listening 재생 op 1 · phone paused/done=1 · 문구 '듣는 중'** · 6초 지켜도 재발 없음(phone t 2.21 고정, listening t 0.94→6.95) · 다시 켜면 0.11s 부터(되감기) · 글로 보기 배지 「📱 딴짓」→3.5초 뒤 자동 해제 · sleepy 는 3.00초에서 정지 유지 → 발언 차례에 해제 · 콘솔 오류 0
+- `test_v462.py`(단언 갱신) — phone `loop=false(1회)` · 1회 종료 후 mood '' · listening 복귀 · 문구 '듣는 중' · 스크린샷은 1.6~1.9초 '들킨' 표정(1회 클립이라 한 번 더 켜서 촬영) · 발언↔경청 전환 라운드는 `maxPerSession:0` 으로 이벤트를 끄고 측정(이벤트는 ⑥~⑧에서 따로 검증)
+- 나머지 5종 **ALL PASS**: `test_v4.py` · `test_v44.py` · `test_v451.py` · `test_v46.py` · `test_v461.py`
+- 실행 환경 메모: `LD_LIBRARY_PATH=/workspace/work/chrome/libs/usr/lib/x86_64-linux-gnu FONTCONFIG_PATH=/workspace/work/chrome python3 test_v47.py`(이 컨테이너는 libnspr4 를 chrome/libs 에서 찾는다)
+
+### ④ 배포
+- 커밋 `60bc12e` → `env -u GH_TOKEN git push origin main` (원격 `1360072` 위)
+- GitHub Pages 라이브(<https://darkjin7.github.io/ai-meeting-room/>) — `<title>` v4.7.1 확인(17:49 KST), `verify_v471_live.py` 실측(모바일 390×844):
+  · 기본 listening · loop(phone/sleepy) **False/False** · phone dur 2.21s
+  · 딴짓 중 t 1.46s(loop False · listening pause/op 0 · 「📱 딴짓하다 걸림」) → **종료 mood '' · phone paused/done=1/t 2.21 · listening t 0.81s op 1 · 「듣는 중」**
+  · 6초 뒤 mood '' · phone t 2.21→2.21(안 늘어남) · listening t 1.17→7.19 · 페이지 오류 0
+  · 라운드: 발언 중 listening pause/op 0 + speaking op 1 → 끝나면 listening t 3.55 op 1 · 자동 발동 0회
+- 스크린샷: `live_v471_phone.png`(들킨 표정·「📱 딴짓하다 걸림」) · `live_v471_back_to_listening.png`(복귀 후 정면 경청 얼굴·「듣는 중」) · `downloads/meeting_v47_pickle_phone.png` · `downloads/meeting_v47_pickle_listening.png`
+
 ## v4.7 (2026-11-27) — 피클 '듣는 중' 경청 영상을 기본으로 · 졸기/딴짓은 어쩌다 한 번
 - 성진님 지시: Hark 가 만든 피클 경청 영상(8초 루프)을 기본으로 넣고, "어쩌다 졸고 딴짓하는 거지 계속 반복하니까 별로네" → sleepy/phone 발동을 희소화
 
