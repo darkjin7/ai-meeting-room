@@ -139,8 +139,10 @@ def main():
         assert len(srcs) == 8, '8인 아바타가 다 안 쓰임: %d %s' % (len(srcs), srcs)
         tile_faces = p.eval_on_selector_all('.tile .avatar img.face','e=>e.length')
         vbob_faces = p.eval_on_selector_all('.tile .vstage .vbob img.face','e=>e.length')
+        vbob_vids = p.eval_on_selector_all('.tile .vstage .vbob video.face','e=>e.length')
         guest_faces = p.eval_on_selector_all('#guestBar .gi .gie img.face','e=>e.length')
-        assert tile_faces == 6 and vbob_faces == 6, '타일 아바타 6개 아님: %d / %d' % (tile_faces, vbob_faces)
+        assert tile_faces == 6 and vbob_faces == 5, '타일 아바타 6개 아님: %d / %d' % (tile_faces, vbob_faces)
+        assert vbob_vids == 1, '화상 얼굴 자리에 피클 영상 1개가 없음: %d' % vbob_vids
         assert guest_faces == 2, '참관 게스트 썸네일 2개 아님: %d' % guest_faces
         assert p.eval_on_selector_all('.tile .vstage .vbob','e=>e.filter(x=>x.textContent.trim()).length') == 0, '화상 타일에 이모지가 남아 있음'
         print('OK 8인 캐릭터 아바타 로드 — naturalWidth 256x256 %d장 · 타일 6 · 게스트 2 · 상대경로 ./avatars/*.webp' % len(srcs))
@@ -366,7 +368,26 @@ def main():
 
         # 말하는 카드 강조(테두리·배경만) + 카드 높이 불변 + 📝 글로 보기 자동 스크롤 복원 (v4.2.1)
         base_h = tile_heights(mp)
-        mp.evaluate("()=>{ window.__siv = []; }")
+        # v4.4 — 발언 카드가 화면 '세로 중앙'으로 와야 한다.
+        #   (v4.2.1 은 카드가 화면에 걸치기만 하면 안 움직여서, 아래·위 가장자리에 걸친 채 발언이 넘어갔다)
+        #   매 프레임 지금 말하는 카드의 중앙 오차(err = 카드 중심 − 보이는 영역 중심)를 기록한다.
+        mp.evaluate("""()=>{
+            window.__center = [];
+            (function loop(){
+              const t = document.querySelector('.tile.speaking');
+              if(t && window.__mr4){
+                const b = window.__mr4.visibleCenter();
+                const r = t.getBoundingClientRect();
+                window.__center.push({id:t.dataset.id, err:Math.round(r.top + r.height/2 - b.center),
+                                      top:Math.round(r.top), bottom:Math.round(r.bottom),
+                                      bandTop:Math.round(b.top), bandBottom:Math.round(b.bottom),
+                                      y:Math.round(window.pageYOffset)});
+              }
+              requestAnimationFrame(loop);
+            })();
+        }""")
+        # 발언 간격을 실제 음성 속도(≈0.7초)에 가깝게 해 자동 스크롤이 안착하는지 보게 한다
+        mp.evaluate("()=>{ localStorage.setItem('darkjin_mr4_speed','0.25'); window.__mr4.state.speed=0.25; }")
         mp.evaluate("()=>window.scrollTo(0, document.documentElement.scrollHeight)")   # 발언 카드가 화면 밖에 있도록 아래로 내려 둔다
         mp.wait_for_timeout(200)
         mp.click('#nextRoundBtn')
@@ -375,31 +396,31 @@ def main():
         assert sp and sp['border'].replace(' ','') == 'rgb(46,224,106)', '말하는 카드 테두리 강조 없음: %s' % (sp and sp['border'])
         assert sp['shadow'] == 'none', '발언 카드에 boxShadow 변화가 남아 있음: %s' % sp['shadow']
         assert 'rgb' in sp['bg'], '말하는 카드 배경 강조 없음'
-        # 글로 보기에서는 발언자가 바뀌면 그 카드로 부드럽게 이동해서 화면 안에 들어와야 한다
-        # (6인이 연달아 말하면 smooth 스크롤이 계속 끊기므로, 재생 중 안착하지 못하면
-        #  '발언 카드로 smooth 이동'이라는 규칙 자체를 focusTile 호출로 결정적으로 확인한다)
-        VIS = """()=>{const t=document.querySelector('.tile.speaking');if(!t)return false;const r=t.getBoundingClientRect();return r.top >= -2 && r.bottom <= innerHeight + 2}"""
-        settled = False
-        try:
-            mp.wait_for_function(VIS, timeout=6000); settled = True
-        except Exception:
-            mp.wait_for_function("()=>window.__mr4.state.busy===false", timeout=30000)
-            mp.evaluate("()=>window.scrollTo(0,0)")
-            mp.wait_for_timeout(300)
-            mp.evaluate("()=>{ window.__siv = []; }")
-            mp.evaluate("()=>window.__mr4.focusTile('claude')")
-            mp.wait_for_function("""()=>{const t=document.querySelector('.tile[data-id=\"claude\"]');const r=t.getBoundingClientRect();return r.top >= -2 && r.bottom <= innerHeight + 2}""", timeout=12000)
-        sm = [b for b in mp.evaluate("()=>window.__siv") if b == 'smooth']
-        assert sm, '글로 보기인데 발언 카드 자동 스크롤(smooth)이 없음: %s' % mp.evaluate("()=>window.__siv")
-        sv = mp.evaluate("(id)=>{const t=document.querySelector('.tile[data-id=\"'+id+'\"]');const r=t.getBoundingClientRect();return {id:id, top:Math.round(r.top), bot:Math.round(r.bottom), vh:innerHeight}}", sp['id'])
         hs = []
-        while True:
+        while mp.evaluate("()=>window.__mr4.state.busy"):
             hs.append(tile_heights(mp))
-            if not mp.evaluate("()=>window.__mr4.state.busy"): break
             mp.wait_for_timeout(70)
         bad = [h for h in hs if h != base_h]
         assert not bad, '발언 전환 중 카드 높이가 변함(iOS 떨림): %s' % bad[:2]
-        print('OK 발언 떨림 없음 — 카드 높이 %s 일정 · 글로 보기 자동 스크롤 smooth %d회 · 발언 카드 화면 안(%s)%s' % (base_h[:2], len(sm), sv['id'], '' if settled else ' · focusTile 결정적 확인'))
+        mp.wait_for_timeout(500)
+        log = mp.evaluate("()=>window.__center")
+        per = []
+        for s in log:
+            if not per or per[-1]['id'] != s['id']: per.append(dict(s))
+            else: per[-1].update(s)
+        assert len(per) >= 5, '발언자 순서 기록이 부족: %s' % [x['id'] for x in per]
+        max_scroll = mp.evaluate("()=>Math.round(document.documentElement.scrollHeight - innerHeight)")
+        stuck = []
+        for x in per:
+            if abs(x['err']) <= 12: continue
+            # 문서 끝/처음에 걸려 더 못 올리는 경우는 카드 전체가 보이면 통과
+            at_edge = x['y'] <= 2 or x['y'] >= max_scroll - 2
+            if at_edge and x['top'] >= x['bandTop'] - 1 and x['bottom'] <= x['bandBottom'] + 1: continue
+            stuck.append(x)
+        assert not stuck, '발언 카드가 화면 세로 중앙에 오지 않음: %s' % stuck
+        sv = per[-1]
+        mp.evaluate("()=>{ localStorage.setItem('darkjin_mr4_speed','2'); window.__mr4.state.speed=2; }")
+        print('OK 발언 떨림 없음 — 카드 높이 %s 일정 · 글로 보기 발언 카드 세로 중앙(보이는 영역 %d~%d 중심 %d) · %d명 순서대로 중앙 오차(px) %s' % (base_h[:2], per[0]['bandTop'], per[0]['bandBottom'], (per[0]['bandTop']+per[0]['bandBottom'])//2, len(per), [(x['id'], x['err']) for x in per]))
 
         for n in (2, 3):
             mp.click('#nextRoundBtn')
@@ -439,8 +460,9 @@ def main():
         assert mp.inner_text('#vsTx').strip(), '자막 바가 비어 있음'
         # v4.3 — 6분할 얼굴 자리에 실제 캐릭터 사진이 원형 프레임을 꽉 채운다(정사각 유지·object-fit:cover)
         VFACE = "els=>els.map(i=>({src:i.getAttribute('src'),nw:i.naturalWidth,w:Math.round(i.getBoundingClientRect().width),h:Math.round(i.getBoundingClientRect().height),fit:getComputedStyle(i).objectFit,rad:getComputedStyle(i).borderRadius}))"
+        # v4.4 — 피클 얼굴 자리는 정지 이미지 대신 움직이는 영상(videos → 5장 + video 1)
         vface = mp.eval_on_selector_all('.tile .vstage .vbob img.face', VFACE)
-        assert len(vface) == 6, '화상 타일 얼굴 6개 아님: %d' % len(vface)
+        assert len(vface) == 5, '화상 타일 얼굴 5개(피클은 영상) 아님: %d' % len(vface)
         assert all(f['nw'] == 256 for f in vface), '화상 타일 아바타 로드 실패: %s' % [f['src'] for f in vface if f['nw'] != 256]
         assert all(f['w'] >= 50 and abs(f['w'] - f['h']) <= 1 for f in vface), '화상 타일 얼굴이 원형 프레임을 안 채움: %s' % vface
         assert all(f['fit'] == 'cover' for f in vface), '화상 타일 얼굴 object-fit 이 cover 아님: %s' % set(f['fit'] for f in vface)

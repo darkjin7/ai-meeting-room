@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.2.1 — 화상 자막 높이 고정 · 글로 보기 자동 스크롤</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.4 — 글로 보기 발언 카드 중앙 정렬 · 피클 움직이는 영상</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -24,7 +24,9 @@
     font-size:14px;line-height:1.5;
     padding-bottom:env(safe-area-inset-bottom);
     -webkit-font-smoothing:antialiased;
+    overflow-anchor:none;   /* v4.4 — 내용이 바뀔 때 브라우저가 스크롤을 멋대로 보정하지 않게(중앙 정렬이 흔들리지 않게) */
   }
+  .scrollpad{height:0}
   .wrap{max-width:1440px;margin:0 auto;padding:0 0 28px}
   body.meeting-on .wrap{padding-bottom:118px}
 
@@ -706,6 +708,7 @@
   }
   body.view-video .prep,body.view-video .banner,body.view-video .talk,body.view-video .minutes,
   body.view-video .refnote,body.view-video .guestbar,body.view-video .panel,body.view-video .conclusion{display:none}
+  body.view-video .scrollpad{display:none}
   body.view-video .topbar{position:static;flex:0 0 auto}
   body.view-video .stagehd{flex:0 0 auto;padding:3px 12px 0;min-height:0}
   body.view-video .stagehd .descr{display:none}
@@ -729,6 +732,13 @@
   }
   /* v4.3 — 6분할 얼굴은 실제 캐릭터 이미지(256x256 webp)를 원형 프레임에 꽉 채운다 */
   body.view-video .vbob img.face{border-radius:50%;width:100%;height:100%;object-fit:cover}
+  /* v4.4 — 피클은 움직이는 영상. 얼굴이 잘리지 않게 1:1(480x480)로 미리 다듬은 영상을 원에 꽉 채운다 */
+  body.view-video .vbob video.face{
+    display:block;border-radius:50%;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
+    background:#0b0f17;pointer-events:none;
+  }
+  body.view-video .vbob video.face::-webkit-media-controls{display:none!important}
+  body.view-video .vbob video.face::-webkit-media-controls-enclosure{display:none!important}
   body.view-video .tile.speaking .vbob{
     border-color:var(--green);
     background:radial-gradient(circle at 50% 36%,#1b3527,#0e1a14 72%);
@@ -954,6 +964,8 @@
       <li class="min-empty" id="minEmpty">아직 기록이 없습니다. 준비실에서 안건을 골라 주세요.</li>
     </ol>
   </section>
+  <!-- v4.4 — 발언 카드 세로 중앙 정렬용 여백: 마지막 카드도 화면 중앙까지 올라올 수 있게 JS 가 필요한 만큼만 늘린다 -->
+  <div class="scrollpad" id="scrollPad" aria-hidden="true"></div>
 </div>
 
 <!-- 오너 콘솔: 회의 중 언제든 코멘트 -->
@@ -1548,7 +1560,9 @@ window.AGENDA_LIB = (function(){
   const GUEST_POOL = ["meta_muse","keyring"];
   /* v4.3 — 비서실 8인 SD 캐릭터 아바타. img 는 256x256 webp(저장소 `avatars/`), 실패하면 emoji 로 대체된다. */
   const PEOPLE = [
-    {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6", img:"./avatars/pickle.webp"},
+    /* v4.4 — 피클만 움직이는 영상 아바타. 정지 이미지는 영상 poster/실패 시 대체용으로 그대로 둔다. */
+    {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6", img:"./avatars/pickle.webp",
+      video:"./avatars/pickle.mp4", poster:"./avatars/pickle_poster.webp"},
     {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4", img:"./avatars/gemini.webp"},
     {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8", img:"./avatars/cue.webp"},
     {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c", img:"./avatars/hark.webp"},
@@ -1571,17 +1585,74 @@ window.AGENDA_LIB = (function(){
     if(p && p.img) img.src = p.img;
     return img;
   }
-  /* holder 안을 캐릭터 썸네일로 채운다. 로드 실패 시 이모지로 조용히 대체 */
-  function faceInto(holder, p){
+  /* holder 안을 캐릭터 썸네일로 채운다. 로드 실패 시 이모지로 조용히 대체.
+     opts.video 가 true 이고 그 인물에 영상이 있으면 정지 이미지 대신 움직이는 영상을 넣는다.
+     (지금은 화상 6분할의 큰 얼굴 자리에서만 쓴다 — 작은 목록 썸네일까지 영상을 돌리면 무겁다) */
+  function faceInto(holder, p, opts){
     holder.textContent = "";
-    if(!p || !p.img){ holder.textContent = (p && p.emoji) || "•"; return holder; }
+    const wantVideo = !!(opts && opts.video && p && p.video);
+    if(!p || (!p.img && !wantVideo)){ holder.textContent = (p && p.emoji) || "•"; return holder; }
+    if(wantVideo){
+      const v = motionVideo(p);
+      v.addEventListener("error", function(){ stillFallback(holder, p); });
+      holder.appendChild(v);
+      return holder;
+    }
     const img = faceImg(p);
-    img.addEventListener("error", function(){
-      holder.classList.add("face-fallback");
-      holder.textContent = p.emoji || "•";
-    });
+    img.addEventListener("error", function(){ stillFallback(holder, p); });
     holder.appendChild(img);
     return holder;
+  }
+  /* 영상이 안 열리는 브라우저(=H.264 미지원 등)는 정지 이미지 → 그것도 실패하면 이모지 */
+  function stillFallback(holder, p){
+    holder.textContent = "";
+    holder.classList.remove("face-fallback");
+    if(p && p.img){
+      const img = faceImg(p);
+      img.addEventListener("error", function(){
+        holder.classList.add("face-fallback");
+        holder.textContent = (p && p.emoji) || "•";
+      });
+      holder.appendChild(img);
+      return;
+    }
+    holder.classList.add("face-fallback");
+    holder.textContent = (p && p.emoji) || "•";
+  }
+  /* v4.4 — iOS Safari 자동재생 규칙을 그대로 지킨다:
+     muted + playsinline + autoplay + loop, 그리고 play() 실패(.catch)는 조용히 무시.
+     src 는 화상 화면에 들어갈 때 붙인다(data-src) — 글로 보기에서는 내려받지 않는다. */
+  function motionVideo(p){
+    const v = document.createElement("video");
+    v.className = "face vid";
+    v.muted = true; v.defaultMuted = true;
+    v.loop = true; v.autoplay = true; v.playsInline = true;
+    v.preload = "none";
+    v.width = 480; v.height = 480;
+    v.setAttribute("muted", "");
+    v.setAttribute("loop", "");
+    v.setAttribute("autoplay", "");
+    v.setAttribute("playsinline", "");
+    v.setAttribute("webkit-playsinline", "");
+    v.setAttribute("disablepictureinpicture", "");
+    v.setAttribute("disableremoteplayback", "");
+    v.setAttribute("aria-label", ((p && p.name) || "") + " 움직이는 아바타");
+    if(p && p.poster) v.poster = p.poster;
+    v.dataset.src = p.video;
+    v.dataset.who = p.id;
+    return v;
+  }
+  function startMotionVideos(){
+    document.querySelectorAll("video.vid[data-src]").forEach(v=>{
+      if(!v.getAttribute("src")) v.src = v.dataset.src;
+      try{
+        const pr = v.play();
+        if(pr && pr.catch) pr.catch(()=>{});   // 자동재생 차단·코덱 미지원 → poster/정지 이미지로 조용히
+      }catch(e){}
+    });
+  }
+  function stopMotionVideos(){
+    document.querySelectorAll("video.vid").forEach(v=>{ try{ v.pause(); }catch(e){} });
   }
   function faceBox(p, tag, cls){
     const h = document.createElement(tag || "div");
@@ -2040,7 +2111,7 @@ window.AGENDA_LIB = (function(){
       /* v4.2 화상 6분할용 얼굴 — 캐릭터 + 이름 + 상태/웨이브 (긴 본문 없음) */
       const vs = el("div","vstage");
       const vbob = el("div","vbob");
-      faceInto(vbob, p);
+      faceInto(vbob, p, {video:true});   // 화상 6분할 얼굴 자리 — 피클만 움직인다
       const vnm = el("div","vnm", p.name);
       const vmeta = el("div","vmeta");
       const vst = el("span","vstate","대기");
@@ -2108,6 +2179,10 @@ window.AGENDA_LIB = (function(){
       if(state.lastLine) setSubtitle(state.lastLine.id, state.lastLine.tag, state.lastLine.text);
       else setSubtitle(null, "", "", true);
       window.scrollTo(0,0);
+      startMotionVideos();          // v4.4 — 화상 화면에 들어올 때만 영상을 내려받아 재생
+    } else {
+      stopMotionVideos();           // 글로 보기·다른 화면에서는 영상을 멈춰 배터리·CPU를 아낀다
+      if(state.activeSpeaker) setTimeout(()=> focusTile(state.activeSpeaker), 60);
     }
     if(!opts.silent) toast(v === "video" ? "🎥 화상 6분할 — 캐릭터 화면으로 봅니다" : "📝 글로 보기 — 1열 큰 글씨로 봅니다");
     return v;
@@ -2451,6 +2526,7 @@ window.AGENDA_LIB = (function(){
     document.getElementById("ownerDirection").value = "";
 
     buildTiles(partList());
+    resetScrollPad();
     renderPrep();
     renderMaterials();
     renderOwnerChips();
@@ -2678,20 +2754,116 @@ window.AGENDA_LIB = (function(){
     });
   }
 
-  function focusTile(id){
-    /* v4.2.1 — 자동 스크롤은 📝 글로 보기에서만. 🎥 화상 6분할 모드에서는 절대 실행하지 않는다.
-       화면 밖으로 나간 카드만 부드럽게 끌어온다(이미 보이면 스크롤 자체를 하지 않아 흔들리지 않는다). */
-    if(state.view !== "text") return;
-    if(document.body.classList.contains("view-video")) return;
-    const r = tileRefs[id];
-    if(!r || !r.tile) return;
-    const t = r.tile;
-    const rect = t.getBoundingClientRect();
+  /* ═══════════════ 발언 카드 세로 중앙 정렬 (v4.4) ═══════════════
+     v4.2.1 은 scrollIntoView({block:"nearest"}) 로 "화면에 걸치기만 하면 안 움직임" 이었다.
+     그래서 카드가 화면 아래·위 가장자리에 걸친 채로 발언이 넘어가 "중앙으로 안 온다"고 느껴진다.
+     → 카드의 세로 중심을 "실제로 보이는 영역"의 중앙에 맞춘다.
+       (위 스티키 헤더와 아래 고정 오너 콘솔을 뺀 구간의 중앙)
+     🎥 화상 6분할 모드에서는 절대 스크롤하지 않는다(화면 떨림 방지). */
+  const scroller = {raf:0, to:null};
+
+  function cancelScrollTween(){
+    if(scroller.raf){ cancelAnimationFrame(scroller.raf); scroller.raf = 0; }
+    scroller.to = null;
+  }
+  /* 위 고정 바·아래 고정 콘솔을 제외한 보이는 영역의 중앙 Y (뷰포트 기준) */
+  function visibleCenter(){
     const vh = window.innerHeight || document.documentElement.clientHeight;
-    if(rect.top >= 4 && rect.bottom <= vh - 4) return;
+    let top = 0, bottom = vh;
+    const tb = document.querySelector(".topbar");
+    if(tb){
+      const r = tb.getBoundingClientRect();
+      if(r.height > 0 && r.bottom > 0) top = Math.min(vh * 0.45, Math.max(0, r.bottom));
+    }
+    const ob = document.getElementById("ownerBar");
+    if(ob && ob.offsetHeight > 0){
+      let st = null;
+      try{ st = getComputedStyle(ob); }catch(e){}
+      if(st && st.display !== "none" && st.position === "fixed"){
+        const r = ob.getBoundingClientRect();
+        if(r.height > 0 && r.top < vh) bottom = Math.min(bottom, r.top);
+      }
+    }
+    if(bottom - top < 160){ top = 0; bottom = vh; }   // 창이 아주 낮을 때는 전체 화면 기준
+    return {top:top, bottom:bottom, center: top + (bottom - top) / 2, vh:vh};
+  }
+  /* 마지막 카드도 중앙까지 올라올 수 있게 문서 끝 여백을 필요한 만큼만 늘린다(줄이지는 않는다) */
+  function growScrollPad(extra){
+    const pad = document.getElementById("scrollPad");
+    if(!pad || !(extra > 0)) return false;
+    const cur = parseFloat(pad.style.height) || 0;
+    pad.style.height = Math.round(cur + extra) + "px";
+    return true;
+  }
+  function resetScrollPad(){
+    const pad = document.getElementById("scrollPad");
+    if(pad) pad.style.height = "";
+  }
+
+  function scrollToY(y, smooth, done){
+    const cur = window.pageYOffset || document.documentElement.scrollTop || 0;
+    const target = Math.max(0, Math.round(y));
+    cancelScrollTween();
+    if(!smooth || Math.abs(target - cur) < 2){
+      window.scrollTo(0, target);
+      scroller.to = target;
+      if(done) setTimeout(done, 0);
+      return;
+    }
+    const start = cur, dist = target - cur, t0 = performance.now();
+    const dur = Math.min(520, Math.max(260, Math.abs(dist) * 0.45));
+    scroller.to = target;
+    const step = function(now){
+      const k = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - k, 3);   // ease-out
+      window.scrollTo(0, Math.round(start + dist * e));
+      if(k < 1){ scroller.raf = requestAnimationFrame(step); }
+      else { scroller.raf = 0; window.scrollTo(0, target); if(done) done(); }
+    };
+    scroller.raf = requestAnimationFrame(step);
+  }
+  /* 사용자가 직접 스크롤하면 자동 이동은 바로 손을 뗀다(발언 이동과 손 스크롤이 싸우지 않게) */
+  ["touchstart", "wheel", "mousedown", "keydown"].forEach(function(ev){
+    window.addEventListener(ev, cancelScrollTween, {passive:true});
+  });
+
+  function focusTile(id){
+    if(state.view !== "text"){ cancelScrollTween(); return false; }
+    if(document.body.classList.contains("view-video")) return false;
+    const r = tileRefs[id];
+    if(!r || !r.tile || !r.tile.isConnected) return false;
+    const t = r.tile;
+    if(!t.offsetHeight) return false;                       // 숨은 카드는 건드리지 않는다
+    const band = visibleCenter();
+    const cur = window.pageYOffset || document.documentElement.scrollTop || 0;
+    const rect = t.getBoundingClientRect();
+    const want = cur + (rect.top + rect.height / 2) - band.center;
+    let maxY = Math.max(0, (document.documentElement.scrollHeight || 0) - band.vh);
+    if(want > maxY + 4){
+      // 문서 끝 여백을 늘려 끝쪽 카드도 중앙에 올 수 있게 한다
+      if(growScrollPad(want - maxY + 8)) maxY = Math.max(0, (document.documentElement.scrollHeight || 0) - band.vh);
+    }
+    const target = Math.min(maxY, Math.max(0, want));
+    const ref = scroller.raf ? scroller.to : cur;
+    if(ref != null && Math.abs(target - ref) < 8) return false;   // 이미 그 자리(또는 그 자리로 가는 중)
     let smooth = true;
     try{ smooth = !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }catch(e){}
-    t.scrollIntoView({behavior: smooth ? "smooth" : "auto", block: "nearest"});
+    /* 안착 후 한 번만 다시 맞춘다 — iOS 주소창·툴바가 접히며 보이는 높이가 바뀌거나
+       늦게 온 이미지/글자로 카드가 몇 px 밀렸을 때, 애니메이션 없이 조용히 제자리로. */
+    const settle = function(){
+      if(state.view !== "text" || document.body.classList.contains("view-video")) return;
+      const r2 = tileRefs[id];
+      if(!r2 || !r2.tile) return;
+      const b2 = visibleCenter();
+      const rect2 = r2.tile.getBoundingClientRect();
+      const err = (rect2.top + rect2.height / 2) - b2.center;
+      if(Math.abs(err) <= 18) return;
+      const max2 = Math.max(0, (document.documentElement.scrollHeight || 0) - b2.vh);
+      const y2 = (window.pageYOffset || 0) + err;
+      window.scrollTo(0, Math.min(max2, Math.max(0, Math.round(y2))));
+    };
+    scrollToY(target, smooth, settle);
+    return true;
   }
 
   async function playRound(n){
@@ -3312,6 +3484,25 @@ window.AGENDA_LIB = (function(){
     state: state,
     setView: setView,
     focusTile: focusTile,
+    visibleCenter: visibleCenter,
+    centerOf: (id)=>{
+      const r = tileRefs[id];
+      if(!r || !r.tile) return null;
+      const b = visibleCenter();
+      const rect = r.tile.getBoundingClientRect();
+      const y = window.pageYOffset || document.documentElement.scrollTop || 0;
+      return {id:id, top:Math.round(rect.top), bottom:Math.round(rect.bottom), center:Math.round(rect.top + rect.height/2),
+              bandTop:Math.round(b.top), bandBottom:Math.round(b.bottom), bandCenter:Math.round(b.center),
+              err:Math.round(rect.top + rect.height/2 - b.center), scrollY:Math.round(y),
+              maxScroll:Math.round(Math.max(0, (document.documentElement.scrollHeight||0) - b.vh)), vh:Math.round(b.vh)};
+    },
+    videos: ()=> [].map.call(document.querySelectorAll("video.vid"), v=>({
+      who:v.dataset.who, src:v.getAttribute("src"), poster:v.getAttribute("poster"),
+      paused:v.paused, t:Math.round(v.currentTime*100)/100, rs:v.readyState,
+      w:v.videoWidth, h:v.videoHeight, muted:v.muted, loop:v.loop,
+      plays:v.playsInline, autoplay:v.autoplay, controls:v.controls
+    })),
+    scrollPad: ()=> { const p=document.getElementById("scrollPad"); return p ? Math.round(p.getBoundingClientRect().height) : -1; },
     view: () => state.view,
     subtitle: () => { const t=document.getElementById("vsTx"), b=document.getElementById("vsub"); return {text:(t&&t.textContent)||"", h: b? Math.round(b.getBoundingClientRect().height):0}; },
     sub: setSubtitle,   // 검증용: 자막을 직접 갈아 끼워 높이 고정 확인

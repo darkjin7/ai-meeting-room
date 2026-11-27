@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.2.1 — 화상 자막 높이 고정 · 글로 보기 자동 스크롤</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.4 — 글로 보기 발언 카드 중앙 정렬 · 피클 움직이는 영상</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -24,7 +24,9 @@
     font-size:14px;line-height:1.5;
     padding-bottom:env(safe-area-inset-bottom);
     -webkit-font-smoothing:antialiased;
+    overflow-anchor:none;   /* v4.4 — 내용이 바뀔 때 브라우저가 스크롤을 멋대로 보정하지 않게(중앙 정렬이 흔들리지 않게) */
   }
+  .scrollpad{height:0}
   .wrap{max-width:1440px;margin:0 auto;padding:0 0 28px}
   body.meeting-on .wrap{padding-bottom:118px}
 
@@ -706,6 +708,7 @@
   }
   body.view-video .prep,body.view-video .banner,body.view-video .talk,body.view-video .minutes,
   body.view-video .refnote,body.view-video .guestbar,body.view-video .panel,body.view-video .conclusion{display:none}
+  body.view-video .scrollpad{display:none}
   body.view-video .topbar{position:static;flex:0 0 auto}
   body.view-video .stagehd{flex:0 0 auto;padding:3px 12px 0;min-height:0}
   body.view-video .stagehd .descr{display:none}
@@ -729,6 +732,13 @@
   }
   /* v4.3 — 6분할 얼굴은 실제 캐릭터 이미지(256x256 webp)를 원형 프레임에 꽉 채운다 */
   body.view-video .vbob img.face{border-radius:50%;width:100%;height:100%;object-fit:cover}
+  /* v4.4 — 피클은 움직이는 영상. 얼굴이 잘리지 않게 1:1(480x480)로 미리 다듬은 영상을 원에 꽉 채운다 */
+  body.view-video .vbob video.face{
+    display:block;border-radius:50%;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
+    background:#0b0f17;pointer-events:none;
+  }
+  body.view-video .vbob video.face::-webkit-media-controls{display:none!important}
+  body.view-video .vbob video.face::-webkit-media-controls-enclosure{display:none!important}
   body.view-video .tile.speaking .vbob{
     border-color:var(--green);
     background:radial-gradient(circle at 50% 36%,#1b3527,#0e1a14 72%);
@@ -954,6 +964,8 @@
       <li class="min-empty" id="minEmpty">아직 기록이 없습니다. 준비실에서 안건을 골라 주세요.</li>
     </ol>
   </section>
+  <!-- v4.4 — 발언 카드 세로 중앙 정렬용 여백: 마지막 카드도 화면 중앙까지 올라올 수 있게 JS 가 필요한 만큼만 늘린다 -->
+  <div class="scrollpad" id="scrollPad" aria-hidden="true"></div>
 </div>
 
 <!-- 오너 콘솔: 회의 중 언제든 코멘트 -->
