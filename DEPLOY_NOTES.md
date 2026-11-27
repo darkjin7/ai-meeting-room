@@ -37,6 +37,11 @@
 - 스크린샷(눈검수): `downloads/meeting_v451_mobile_video_idle.png`(듣는 중 정지 이미지) · `meeting_v451_mobile_video_pickle_speaking.png`(발언 중 영상) · `meeting_v451_mobile_text.png` · `meeting_v451_desktop_video6.png`. 데스크톱 비율·모바일 2×3 배치 그대로.
 - 단일 파일(`downloads/darkjin_meeting_room_v4.html`, 1019KB)도 확인 — 9장 webp + mp4 인라인, 포스터·영상 모두 로드.
 
+### 배포
+- 커밋 `da05024` (2026-11-27 11:30 KST) → `git push origin main`
+- GitHub Pages: https://darkjin7.github.io/ai-meeting-room/ — HTTP 200 · `<title>` v4.5.1 확인 · `./avatars/*.webp`·`pickle.mp4` 모두 200
+- 라이브 URL 실측(모바일 390×844): 6타일 · 이미지 5장 로드 · 포스터 360 · 영상 `paused`(듣는 중) → 발언 중 `play`(t 0.31, opacity 1) · 페이지 오류 0
+
 ---
 
 ## v4.5 (2026-11-27) — 화상 6분할 타일 풀블리드(꽉 채우기)
