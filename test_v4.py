@@ -476,7 +476,7 @@ def main():
         assert len(bleed) == 6, '화상 타일 6개 아님: %d' % len(bleed)
         assert all(abs(x['media'][0]-x['frame'][0]) <= 1 and abs(x['media'][1]-x['frame'][1]) <= 1 for x in bleed), '미디어가 프레임과 크기가 다름: %s' % bleed
         assert all(x['frame'][0] >= x['tile'][0]-6 and x['frame'][1] >= x['tile'][1]-6 for x in bleed), '미디어가 타일을 꽉 채우지 않음: %s' % bleed
-        assert all(x['fit'] == 'cover' and x['rad'] == '0px' and x['pos'].endswith('22%') for x in bleed), '풀블리드 속성 이상: %s' % bleed
+        assert all(x['fit'] == 'cover' and x['rad'] == '0px' and x['pos'].endswith('45%') for x in bleed), '풀블리드 속성 이상: %s' % bleed
         # 화상 모드 타일 상태는 화상통화처럼 '듣는 중 / 발언 중'
         vstates = set(mp.eval_on_selector_all('.tile .vstate','e=>e.map(x=>x.textContent)'))
         assert vstates <= {'듣는 중','발언 중','배정','대기','조용'}, '화상 타일 상태 문구 이상: %s' % vstates
