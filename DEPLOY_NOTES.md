@@ -29,9 +29,9 @@
 - 스크린샷(눈검수): `downloads/meeting_v461_intro1.png`(전원 셀카) · `downloads/meeting_v461_intro2.png`(일렬 정면) — 390×844
 
 ### ⑤ 배포
-- 커밋 `107cfb5`(본체) · `9756c3a`(화면 표기를 v4.6.1 로) → `git push origin main`
-- GitHub Pages: **built** (9756c3a) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.6.1 · `avatars/intro_1~3.mp4`(270/271/270KB)·`intro_1~3_poster.webp` 200 · `avatars/intro_meeting.mp4` 404(의도된 삭제 — index.html 이 더는 그 주소를 안 부름)
-- 라이브 실측(모바일 390×844, 3번 입장): 회의 테이블 → 일렬 정면 → 회의 테이블 · 모두 readyState 4 · paused false · 854×480 · 콘솔 오류 0 (`work/meeting-room/live_v461_intro.png`)
+- 커밋 `107cfb5`(본체) · `9756c3a`(화면 표기를 v4.6.1 로) · `fd52781`(클립 인코딩 560kbps·포스터 512×288 → 단일 파일 2216KB) → `git push origin main`
+- GitHub Pages: **built** (fd52781) · https://darkjin7.github.io/ai-meeting-room/ HTTP 200 · `<title>` v4.6.1 · `avatars/intro_1~3.mp4`(270/271/270KB)·`intro_1~3_poster.webp` 200 · `avatars/intro_meeting.mp4` 404(의도된 삭제 — index.html 이 더는 그 주소를 안 부름)
+- 라이브 실측(모바일 390×844, 3번 입장): 회의 테이블(intro_3) → 전원 셀카(intro_1) → 일렬 정면(intro_2) · 모두 readyState 4 · paused false · 854×480 · 콘솔 오류 0 (`work/meeting-room/live_v461_intro.png`)
 - ⚠ 푸시 메모: 이 환경의 `GH_TOKEN` 은 만료(gh api 는 저장 자격증명으로 동작). `git push` 가 403 이면 **`env -u GH_TOKEN git push origin main`** 로 올린다.
 
 ## v4.6 (2026-11-27) — 회의 서류철 로비 · 다음 안건 메모 · 입장 인트로 영상
