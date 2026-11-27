@@ -1,5 +1,39 @@
 # 배포 메모 — 다크진 AI 비서실 · 6분할 회의실
 
+## v4.7 (2026-11-27) — 피클 '듣는 중' 경청 영상을 기본으로 · 졸기/딴짓은 어쩌다 한 번
+- 성진님 지시: Hark 가 만든 피클 경청 영상(8초 루프)을 기본으로 넣고, "어쩌다 졸고 딴짓하는 거지 계속 반복하니까 별로네" → sleepy/phone 발동을 희소화
+
+### ① `avatars/pickle_listening.mp4` (`make_pickle_listening.py`)
+| 원본 | 결과 |
+|---|---|
+| `attachments/2026-11-27/c8523dc2-…-listening_8s_loop-….mp4` (1080×1080 · 30fps · 8.00초 · 무음) | `avatars/pickle_listening.mp4` **309KB** · 8.00초 · **640×598** · 무음 · H.264 High · 24fps · `-movflags +faststart` · crf 27 |
+- **크롭 기준은 두 눈동자의 무게중심**이다(눈검수 대신 계측). speaking(`pickle.mp4`)의 눈: 중심 (322.8, 191.8) · 눈 사이 236.9px. 원본 47프레임 평균: 중심 (547, 559) · 눈 사이 231.0px → 폭 624px(h 583)를 잘라 640×598 로 (배율 1.0256) → 출력 눈 사이 230~237px(머리를 살짝 돌리는 동안의 자연 변동), 중심 오차 4px 이내.
+- 30→24fps 로 프레임을 다시 뽑아 192장(8.00초). 오디오 없음.
+- **루프는 자르지 않았다**: 첫↔마지막 프레임 평균차 **2.91**(첫↔중간 24.10) — 이어 붙임이 이미 자연스러워 크로스페이드·트리밍 없이 그대로 쓰고 HTML 에서 `loop=true` 로 돌린다.
+- 클립 내용: 살짝 고개를 돌리고 끄덕이며 미소·눈깜빡임 — 8초 동안 구도가 흔들리지 않는다(`diag/listening_first_frame.png`·`_last_frame.png`).
+
+### ② 코드 — 피클 영상 4겹(`v4/app.js` · `v4/head.html`)
+- `PEOPLE.pickle.videos = {listening, sleepy, phone}` + `video`(=speaking) → **4겹**(`video.vid` 1 + `video.vlay` 3). `src` 교체 없이 `opacity` + `play()/pause()` 만.
+- `avatarMood(r)`: 조용 → 없음 / 발언 중 → **speaking** / sleepy·phone 이벤트 → 그 겹 / 그 밖엔 **listening**. 재생은 `syncAvatarMedia` 가 `body.view-video` 일 때만 하므로 첫 입장 전·글로 보기에서는 정지 상태 그대로(리소스 절약 원칙 유지).
+- CSS: `body.view-video .vbob video.face.vlay[data-state="listening"]{opacity:1}` 이 기본이고, `.tile.speaking`·`.tile.sleepy`·`.tile.phone`·`.tile.quiet` 일 때만 0. (규칙 순서·특이도로 해결 — 레이아웃·두께 변화 없음.)
+- 확인: 화상 진입 → listening 재생(t 1.17→1.98) · speaking pause/op 0 · 「듣는 중」 / 발언 순간 listening pause·op 0 → 발언 끝나면 listening 복귀 / 🤫 조용 → listening 정지·op 0(「조용」) → ▶️ 계속 → 재생 / 글로 보기 → 전부 pause.
+
+### ③ 졸기·딴짓 희소화 (`MOOD_EVENT` · `moodGatePass` · `maybeMoodEvent`)
+- v4.6.2~4.6.3 은 `rest>=2` 면 **매 라운드 무조건** 켰다(4라운드 내내 반복 → "계속 반복하니까 별로네").
+- 이제: **세션(입장~종료/안건 새로 열기) 최대 2회** · `rest >= 3`(피클 차례 없이 다른 AI 3명이 지나간 뒤) · 확률 **22%** · 발동한 라운드의 **다음 라운드는 쿨다운**(라운드 간격 2 이상). 한 라운드에서 여러 번 굴려도 상한·쿨다운이 막는다.
+- 세션 카운터는 `openAgenda`·`newMeeting` 에서 `resetMoodSession()` 으로 0 부터.
+- `__mr4.setTileMood('pickle','sleepy'|'phone'|'')` 수동 API 는 그대로(테스트·시연 100% 재현). 검증용 `__mr4.moodPolicy()`, `__mr4.setMoodPolicy({debugProb|maxPerSession|minRest|prob|cooldownRounds})`, `__mr4.moodGate(round, rest, rand)`, `__mr4.resetMoodSession()` 추가.
+- 표기: `<title>`·서류철 문서번호·`docNo` → **v4.7**.
+
+### ④ 빌드
+- `bash build_v4.sh` → `downloads/darkjin_meeting_room_v4.html` **3153KB** (webp 12 + 영상 7: 피클 4 + 인트로 3). 가드 3000 → **3400KB(3.32MB)**, 피클 speaking/listening 주소가 각각 1번인지도 빌드가 확인한다.
+
+### ⑤ 검증 (2026-11-27, 로컬 · 모두 ALL PASS)
+- **`test_v47.py` (신규)** — 파일(8.00초·640×598·무음·faststart·309KB·24fps) · 눈 사이 230.5px(speaking 236.4)·중심 (318.5, 190.4)(speaking (322.7, 191.6)) · 루프 이음매 2.91(첫↔중간 24.10) · 모바일 화상 6분할 기본 listening 재생(loop·op 1)·풀블리드 182×170=프레임 · 발언 순간 정지→ 종료 후 복귀 · 콘솔 오류 0
+- **`test_v462.py` (v4.7 로 갱신)** — 4겹 · 네 겹 src · 듣는 중 기본 재생/루프 · sleepy 정지·재진입 · phone 루프·하단 통일 · 딴짓 벗으면 listening 복귀 · 발언 중 깨어남/종료 후 listening 복귀 · **희소화**: 정책값(2/3/22%/1) · `moodGate` 경계(rest 2 차단 · rand 0.21 발동 / 0.23 차단) · 상한 0 이면 차단 · 확률 1 강제 4라운드에서 발동 2회 이내·모두 rest>=3·라운드 간격>1 · 쿨다운 · 확률 강제 해제 · 글로 보기 정지(listening 포함) · 단일 파일 3153KB 인라인 7개 재생
+- 기존 5종 **ALL PASS**: `test_v4.py`(피클 영상 4겹으로 단언 갱신) · `test_v44.py` · `test_v451.py` · `test_v46.py` · `test_v461.py`(단일 파일 가드 3.32MB·인라인 7개)
+- 스크린샷(눈검수, 390×844): `downloads/meeting_v47_pickle_listening.png`(피클 타일이 경청 영상 중간 프레임·「듣는 중」) · `meeting_v47_pickle_sleepy.png` · `meeting_v47_pickle_phone.png`
+
 ## v4.6.3 (2026-11-27) — 폰 영상 꽉 채우기(풀블리드) · 조는 영상은 눈 감기면 정지
 - 성진님 지시: ① "폰 때문에 옆이 공간이 생기네 꼭 폰 안보여도 되니 꽉차게 해주고." ② "조는 모습은 눈이 감기면 멈추고 있다가 자기 차례 되면 깨는 걸로 할 수 있나? 지금 것도 나쁘지는 않자만 보고 싶어"
 

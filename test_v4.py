@@ -141,13 +141,13 @@ def main():
         tile_faces = p.eval_on_selector_all('.tile .avatar img.face','e=>e.length')
         vbob_faces = p.eval_on_selector_all('.tile .vstage .vbob img.face','e=>e.length')
         vbob_vids = p.eval_on_selector_all('.tile .vstage .vbob video.face','e=>e.length')
-        # v4.6.2 — 상태 영상은 src 교체가 아니라 상태마다 한 겹씩 쌓는다:
-        #           speaking(video.vid) 1 + sleepy·phone(video.vlay) 2 = 3
+        # v4.6.2 — 상태 영상은 src 교체가 아니라 상태마다 한 겹씩 쌓는다.
+        # v4.7 — speaking(video.vid) 1 + listening·sleepy·phone(video.vlay) 3 = 4겹(피클 타일만)
         vbob_speaking = p.eval_on_selector_all('.tile .vstage .vbob video.vid','e=>e.length')
         vbob_layers = p.eval_on_selector_all('.tile .vstage .vbob video.vlay','e=>e.length')
         guest_faces = p.eval_on_selector_all('#guestBar .gi .gie img.face','e=>e.length')
         assert tile_faces == 6 and vbob_faces == 5, '타일 아바타 6개 아님: %d / %d' % (tile_faces, vbob_faces)
-        assert vbob_vids == 3 and vbob_speaking == 1 and vbob_layers == 2, \
+        assert vbob_vids == 4 and vbob_speaking == 1 and vbob_layers == 3, \
             '화상 얼굴 자리 영상 구성 이상(전체 %d · speaking %d · 상태겹 %d)' % (vbob_vids, vbob_speaking, vbob_layers)
         assert guest_faces == 2, '참관 게스트 썸네일 2개 아님: %d' % guest_faces
         assert p.eval_on_selector_all('.tile .vstage .vbob','e=>e.filter(x=>x.textContent.trim()).length') == 0, '화상 타일에 이모지가 남아 있음'

@@ -209,15 +209,15 @@ def main():
         # ══════════ ⑤ 단일 파일 ══════════
         single = Path('/workspace/downloads/darkjin_meeting_room_v4.html')
         kb = single.stat().st_size / 1024
-        # v4.6.2 — 피클 상태 영상(speaking·sleepy·phone) 3편 + 인트로 3편, 가드 2.93MB
-        if kb > 3000:
-            bad('단일 파일 %.0fKB — 2.93MB 를 넘음' % kb)
+        # v4.7 — 피클 영상(speaking·listening·sleepy·phone) 4편 + 인트로 3편, 가드 3.32MB
+        if kb > 3400:
+            bad('단일 파일 %.0fKB — 3.32MB 를 넘음' % kb)
         txt = single.read_text(encoding='utf-8')
         n_inline = txt.count('data:video/mp4;base64,')
-        if n_inline != 6:
-            bad('단일 파일에 인라인된 영상이 %d개 (피클 3 + 인트로 3 = 6개 여야 함)' % n_inline)
+        if n_inline != 7:
+            bad('단일 파일에 인라인된 영상이 %d개 (피클 4 + 인트로 3 = 7개 여야 함)' % n_inline)
         else:
-            ok('단일 파일 %.0fKB · 영상 6개 인라인(피클 3·인트로 3)' % kb)
+            ok('단일 파일 %.0fKB · 영상 7개 인라인(피클 4·인트로 3)' % kb)
         sp = ctx.new_page(); sp.add_init_script(MOCK)
         sp.on('pageerror', lambda e: errs.append('single pageerror:' + str(e)))
         sp.goto('file://' + str(single)); sp.wait_for_timeout(700)

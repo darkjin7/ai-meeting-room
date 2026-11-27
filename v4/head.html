@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#080a0f" />
-<title>다크진 AI 비서실 · 6분할 회의실 v4.6.3 — 피클 조는 중·딴짓 영상 꽉 채움 · 눈 감기면 정지</title>
+<title>다크진 AI 비서실 · 6분할 회의실 v4.7 — 피클이 듣는 중 기본 영상 · 졸기/딴짓은 어쩌다 한 번</title>
 <style>
   :root{
     --bg:#070910; --panel:#0f1219; --tile-a:#171b26; --tile-b:#11151d;
@@ -780,7 +780,14 @@
      · 평소엔 둘 다 opacity 0 (아래에 깔린 포스터가 보인다)
      · .tile.speaking → speaking 겹만  /  .tile.sleepy → sleepy 겹만 (발언 중이면 잠을 깨므로 양립하지 않는다) */
   body.view-video .vbob video.face.vlay{ z-index:1;opacity:0 }
+  /* v4.7 — '듣는 중(listening)'이 기본 겹. Hark 가 만든 8초 루프라 정지 사진 대신 살아 있는 얼굴이 보인다.
+     특별 이벤트(발언 중·조는 중·딴짓·조용)가 켜지면 그동안만 이 겹을 내린다(두께·배치 변화 없음). */
+  body.view-video .vbob video.face.vlay[data-state="listening"]{ opacity:1 }
   body.view-video .tile.speaking .vbob video.face.vlay{ opacity:0 }
+  body.view-video .tile.speaking .vbob video.face.vlay[data-state="listening"]{ opacity:0 }
+  body.view-video .tile.sleepy .vbob video.face.vlay[data-state="listening"]{ opacity:0 }
+  body.view-video .tile.phone .vbob video.face.vlay[data-state="listening"]{ opacity:0 }
+  body.view-video .tile.quiet .vbob video.face.vlay[data-state="listening"]{ opacity:0 }
   body.view-video .tile.sleepy .vbob video.face.vlay[data-state="sleepy"]{ opacity:1 }
   body.view-video .tile.phone .vbob video.face.vlay[data-state="phone"]{ opacity:1 }
   body.view-video .vbob video.face.vlay.off{ display:none }
@@ -1098,7 +1105,7 @@
         <div class="dh-top">
           <span class="dh-org">다크진 AI 비서실</span>
           <span>회의 브리핑 서류</span>
-          <span class="dh-no" id="docNo">v4.6.3 · DOC 2026-1127</span>
+          <span class="dh-no" id="docNo">v4.7 · DOC 2026-1127</span>
         </div>
         <h2 class="dh-title">회의 브리핑 서류</h2>
         <p class="dh-sub">이번에 다룰 안건을 고르고, 다음 회의에 다룰 안건을 적어 두십시오.</p>

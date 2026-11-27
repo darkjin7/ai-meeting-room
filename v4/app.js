@@ -19,13 +19,19 @@
        · 나머지 상태 영상은 class `vlay` + data-state — 겹으로만 쌓이고 opacity 로만 켜진다
      v4.6.3 — `sleepy` 는 **한 번만 재생하고 마지막 프레임(눈을 꼭 감은 얼굴)에서 멈춘다**(VIDEO_ONCE).
        성진님: "조는 모습은 눈이 감기면 멈추고 있다가 자기 차례 되면 깨는 걸로" — 영상이 끝나면 loop 없이
-       마지막 프레임에 그대로 머물고, setTileMood 로 조는 상태에 **다시 들어올 때만** currentTime=0 부터 재생한다. */
+       마지막 프레임에 그대로 머물고, setTileMood 로 조는 상태에 **다시 들어올 때만** currentTime=0 부터 재생한다.
+     v4.7 — `listening`(Hark 가 만든 8초 루프)이 **듣는 중의 기본 겹**이 되면서 피클 타일 영상은 4겹이다:
+       speaking(pickle.mp4) + listening(pickle_listening.mp4) + sleepy + phone. 여전히 src 교체 없이
+       opacity + play()/pause() 만 쓴다. 졸기·딴짓은 '어쩌다 한 번'만 켜진다(maybeMoodEvent). */
   const PEOPLE = [
     /* v4.4 — 피클만 움직이는 영상 아바타. 정지 이미지는 영상 poster/실패 시 대체용으로 그대로 둔다.
        v4.6.2 — 듣는 중에 조는 모습(sleepy)·몰래 폰 보는 모습(phone). 발언 차례가 오면 setTileMood 가 즉시 깨운다. */
     {id:"pickle",  name:"피클(다크)", emoji:"⚡", role:"총괄 · 자료 취합·진행",   color:"#8b7cf6", img:"./avatars/pickle.webp",
       video:"./avatars/pickle.mp4", poster:"./avatars/pickle_poster.webp",
-      videos:{sleepy:"./avatars/pickle_sleepy.mp4", phone:"./avatars/pickle_phone.mp4"}},
+      /* v4.7 — `listening`(듣는 중)이 **기본 영상**이다. 말하지 않을 때 이 겹이 계속 돌고(loop),
+         sleepy·phone 은 '어쩌다 한 번' 얹히는 특별 이벤트 겹이다(playRound 의 maybeMoodEvent). */
+      videos:{listening:"./avatars/pickle_listening.mp4",
+              sleepy:"./avatars/pickle_sleepy.mp4", phone:"./avatars/pickle_phone.mp4"}},
     {id:"gemini",  name:"Gemini",    emoji:"🌀", role:"대본·카피·구조 분석",     color:"#4285f4", img:"./avatars/gemini.webp"},
     {id:"cue",     name:"Cue",       emoji:"🔍", role:"트렌드·수치 리서치",      color:"#38bdf8", img:"./avatars/cue.webp"},
     {id:"hark",    name:"Hark",      emoji:"🧐", role:"검증·리스크·조건 확인",   color:"#f0a23c", img:"./avatars/hark.webp"},
@@ -169,13 +175,17 @@
      - src 는 그대로 둔다(떼었다 붙이면 iOS 에서 깜빡이거나 화면이 사라진다)
      - 보임/숨김은 CSS 가 타일 클래스로 정하고, 여기서는 play()/pause() 만 한다
      - 영상이 없거나 화상 모드가 아니면 아무것도 하지 않는다 */
-  /* 어느 영상 겹을 켜야 하는가 — 발언 중(speaking) > 조는 중(sleepy) > 없음.
-     조용(quiet) 이면 전부 끈다. 두 상태가 겹치지 않게 한 곳에서만 정한다. */
+  /* 어느 영상 겹을 켜야 하는가 — 발언 중(speaking) > 조는 중/딴짓(sleepy·phone) > 듣는 중(listening).
+     조용(quiet) 이면 전부 끈다. 두 상태가 겹치지 않게 한 곳에서만 정한다.
+     v4.7 — 특별 이벤트가 없을 때의 **기본값이 '듣는 중' 영상**이다(정지 사진이 아니라 살아 있는 얼굴).
+       재생은 syncAvatarMedia 가 화상 모드(view-video)일 때만 하므로, 첫 입장 전·글로 보기에서는
+       예전처럼 영상을 받지도 틀지도 않고 정지 이미지만 보인다(리소스 절약 원칙 그대로). */
   function avatarMood(r){
     if(!r) return "";
     if(r.tile.classList.contains("quiet")) return "";
     if(r.tile.classList.contains("speaking")) return "speaking";
     if(r.mood && r.vids && r.vids[r.mood]) return r.mood;
+    if(r.vids && r.vids.listening) return "listening";
     return "";
   }
   function syncAvatarMedia(){
@@ -320,7 +330,11 @@
     lastLine:null,       // 화상 모드 자막에 남길 마지막 대사 {id, tag, text}
     lastOrder:[],        // 방금 재생한 라운드의 랜덤 발언 순서
     orders:{},           // 라운드별 마지막 발언 순서
-    orderLog:[]          // 재생 때마다 쌓이는 순서 기록 (검증·복기용)
+    orderLog:[],         // 재생 때마다 쌓이는 순서 기록 (검증·복기용)
+    /* v4.7 — 졸기/딴짓 발동 기록(세션 단위). openAgenda·newMeeting 에서 리셋된다. */
+    moodEvents:0,
+    moodRound:0,
+    moodLog:[]
   };
 
   const $ = s => document.querySelector(s);
@@ -787,6 +801,45 @@
   const MOODS = ["sleepy", "phone"];
   const MOOD_TEXT  = {sleepy:"😴 조는 중",   phone:"📱 딴짓"};          // 글로 보기 카드 헤더 배지
   const MOOD_LABEL = {sleepy:"😴 살짝 조는 중", phone:"📱 딴짓하다 걸림"};   // 화상 타일 하단 상태
+  /* ═════ v4.7 — 졸기·딴짓은 '어쩌다 한 번'만 (성진님: "어쩌다 졸고 딴짓하는 거지 계속 반복하니까 별로네") ═════
+     v4.6.2~4.6.3 은 피클 차례 없이 다른 AI 가 2명만 말하면 매 라운드 무조건 켰다 — 4라운드를 도는 동안
+     계속 반복돼 '회의'보다 '딴짓하는 비서'가 눈에 걸렸다. 이제는 한 회의 세션(입장~종료, 안건을 새로 열 때 리셋)
+     통틀어 **최대 2회**, 그것도 피클 차례 없이 **다른 AI 3명이 지나간 뒤**부터 22% 확률로만 켠다.
+     한 번 켜면 그 라운드와 다음 라운드는 건너뛴다(쿨다운 1라운드).
+     `__mr4.setTileMood('pickle','sleepy'|'phone'|'')` 는 그대로라 테스트·시연은 100% 재현된다. */
+  const MOOD_EVENT = {
+    maxPerSession: 2,      // 한 세션(입장~종료) 총 발동 상한
+    minRest: 3,            // 피클 차례 없이 다른 AI 가 3명 넘게 말한 뒤에만 후보
+    prob: 0.22,            // 후보가 될 때마다 22% — 대부분의 라운드는 그냥 지나간다
+    cooldownRounds: 1,     // 발동한 라운드 +1 라운드는 쉰다(연달아 나오지 않게)
+    debugProb: null        // 검증용: 숫자를 넣으면 그 확률로 고정(기본 null = prob)
+  };
+  function resetMoodSession(){
+    state.moodEvents = 0;
+    state.moodRound = 0;
+    state.moodLog = [];
+  }
+  /* 라운드 중 다른 AI 가 말할 때마다 불린다. 조건을 모두 통과한 '가끔'에만 sleepy/phone 을 켠다 */
+  function moodGatePass(roundNo, rest, rand){
+    if(rest < MOOD_EVENT.minRest) return false;                                  // 다른 AI 3명이 지나간 뒤부터
+    if(state.moodEvents >= MOOD_EVENT.maxPerSession) return false;              // 세션 상한(최대 2회)
+    if(state.moodRound && roundNo - state.moodRound <= MOOD_EVENT.cooldownRounds) return false;   // 쿨다운
+    const p = (MOOD_EVENT.debugProb == null) ? MOOD_EVENT.prob : MOOD_EVENT.debugProb;
+    return rand < p;                                                            // 22% — 대부분은 그냥 지나간다
+  }
+  function maybeMoodEvent(roundNo, rest){
+    const r = tileRefs.pickle;
+    if(!r || !r.vids) return false;
+    if(r.mood) return false;                                     // 이미 켜져 있으면 그대로 둔다
+    if(!moodGatePass(roundNo, rest, Math.random())) return false;
+    const m = MOODS[Math.floor(Math.random() * MOODS.length)];
+    if(!setTileMood("pickle", m)) return false;
+    state.moodEvents++;
+    state.moodRound = roundNo;
+    state.moodLog.push({round:roundNo, rest:rest, mood:m, at:Date.now()});
+    if(state.moodLog.length > 40) state.moodLog.shift();
+    return true;
+  }
   function setTileMood(id, mood){
     const r = tileRefs[id]; if(!r) return false;
     mood = (MOODS.indexOf(mood) >= 0 && r.vids && r.vids[mood]) ? mood : "";
@@ -1287,7 +1340,7 @@
     const pt = document.getElementById("lobbyPickTitle");
     if(pt) pt.textContent = cur ? cur.title : "—";
     const dn = document.getElementById("docNo");
-    if(dn){ const d = new Date(); dn.textContent = "v4.6.3 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
+    if(dn){ const d = new Date(); dn.textContent = "v4.7 · DOC " + d.getFullYear() + "-" + pad(d.getMonth()+1) + pad(d.getDate()); }
   }
 
   function renderMemos(){
@@ -1483,6 +1536,7 @@
     state.ownerDir = "";
     state.notes = [];
     state.round = 0; state.roundSet = {}; state.talked = {};
+    resetMoodSession();          // v4.7 — 새 세션(입장)이면 졸기/딴짓 발동 횟수도 0 부터
     state.paused = false; state.pausedAt = 0; state.pausedMs = 0;
     document.body.classList.remove("is-quiet");
     releasePause();
@@ -1870,10 +1924,8 @@
         rest = 0;
       } else {
         rest++;
-        if(rest >= 2 && tileRefs.pickle && !tileRefs.pickle.mood){
-          /* 다른 AI 둘이 지나가면 살짝 딴짓 — 조는 중/폰 보는 중을 한 번씩 골라 켠다 */
-          setTileMood("pickle", MOODS[Math.floor(Math.random() * MOODS.length)]);
-        }
+        /* v4.7 — 예전엔 여기서 rest>=2 면 무조건 켰다. 이제는 maybeMoodEvent 가 상한·확률·쿨다운을 본다. */
+        maybeMoodEvent(rd.n, rest);
       }
       const line = lineFor(id, rd);
       if(!line) continue;
@@ -2096,6 +2148,7 @@
     setSubtitle(null, "", "", true);
     state.agenda = null; state.option = null; state.ownerDir = "";
     state.notes = []; state.round = 0; state.roundSet = {}; state.talked = {};
+    resetMoodSession();          // v4.7 — 회의를 끝내면 다음 세션은 다시 0 부터
     document.body.classList.remove("meeting-on");
     document.getElementById("prepCard").classList.remove("collapsed");
     document.getElementById("prepCard").classList.remove("has-agenda");
@@ -2523,6 +2576,7 @@
       const v = r.vid;
       const sl = r.vids && r.vids.sleepy;
       const ph = r.vids && r.vids.phone;
+      const ls = r.vids && r.vids.listening;
       const cast = (x)=> x ? {nw:x.naturalWidth, c:x.complete, src:x.getAttribute("src"),
                               op:getComputedStyle(x).opacity, disp:getComputedStyle(x).display} : null;
       const vcast = (x)=> x ? {src:x.getAttribute("src"), paused:x.paused, rs:x.readyState,
@@ -2534,7 +2588,7 @@
               vstate:(r.vstate && r.vstate.textContent) || "",
               rect:{w:Math.round(rect.width), h:Math.round(rect.height), t:Math.round(rect.top), l:Math.round(rect.left)},
               img:cast(img), poster:cast(pos),
-              video: vcast(v), sleep: vcast(sl), phon: vcast(ph)};
+              video: vcast(v), sleep: vcast(sl), phon: vcast(ph), listen: vcast(ls)};
     }),
     tileIds: ()=> [].map.call(stage.children, n=> n.dataset.id),
     nodeIds: ()=> Object.keys(tileRefs).map(id=>{
@@ -2617,12 +2671,31 @@
       return {id:id, mood:r.mood || "",
               sleepy:r.tile.classList.contains("sleepy"), phone:r.tile.classList.contains("phone"),
               speaking:r.tile.classList.contains("speaking"),
+              moodNow:avatarMood(r),      // v4.7 — 지금 켜야 하는 겹(speaking/listening/sleepy/phone/"")
               vstate:(r.vstate && r.vstate.textContent) || "",
               state:(r.state && r.state.textContent) || "",
               layers:Object.keys(r.vids || {}),
               sleep: one(r.vids && r.vids.sleepy), phon: one(r.vids && r.vids.phone),
+              listen: one(r.vids && r.vids.listening),
               speak: one(r.vid)};
     }),
+    /* v4.7 — '어쩌다 한 번' 정책 검증용 훅 */
+    moodPolicy: () => ({maxPerSession:MOOD_EVENT.maxPerSession, minRest:MOOD_EVENT.minRest,
+                        prob:MOOD_EVENT.prob, cooldownRounds:MOOD_EVENT.cooldownRounds,
+                        debugProb:MOOD_EVENT.debugProb, events:state.moodEvents,
+                        lastRound:state.moodRound, log:state.moodLog.slice()}),
+    setMoodPolicy: (o)=>{ o = o || {};
+      if("maxPerSession" in o) MOOD_EVENT.maxPerSession = o.maxPerSession;
+      if("minRest" in o) MOOD_EVENT.minRest = o.minRest;
+      if("prob" in o) MOOD_EVENT.prob = o.prob;
+      if("cooldownRounds" in o) MOOD_EVENT.cooldownRounds = o.cooldownRounds;
+      "debugProb" in o ? (MOOD_EVENT.debugProb = o.debugProb) : (MOOD_EVENT.debugProb = null);
+      return {maxPerSession:MOOD_EVENT.maxPerSession, minRest:MOOD_EVENT.minRest,
+              prob:MOOD_EVENT.prob, cooldownRounds:MOOD_EVENT.cooldownRounds,
+              debugProb:MOOD_EVENT.debugProb};
+    },
+    resetMoodSession: ()=> resetMoodSession(),
+    moodGate: (roundNo, rest, rand)=> moodGatePass(roundNo, rest, rand),   // 확률·상한·쿨다운 경계 검증용
     pickIntroIdx: () => { const i = pickIntroIdx(); lastIntroIdx = i; return i; }   // 분포만 볼 때(영상 재생 없이)
   };
 })();

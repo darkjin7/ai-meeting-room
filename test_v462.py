@@ -1,26 +1,29 @@
-"""v4.6.3 검증 — 피클의 상태 영상 `sleepy`(조는 중 · 눈 감기면 정지) · `phone`(딴짓 · 풀블리드)
+"""v4.7 검증 — 피클 '듣는 중(listening)' 기본 영상 · 졸기/딴짓 희소화
 
 성진님 지시
-  "폰 때문에 옆이 공간이 생기네 꼭 폰 안보여도 되니 꽉차게 해주고." → v4.6.3 phone 풀블리드
-  "조는 모습은 눈이 감기면 멈추고 있다가 자기 차례 되면 깨는 걸로 할 수 있나?" → v4.6.3 sleepy 정지
+  Hark 가 만든 피클 경청 영상(8초 루프)을 기본으로 → 말하지 않을 때도 살아 있는 얼굴
+  "어쩌다 졸고 딴짓하는 거지 계속 반복하니까 별로네" → sleepy/phone 은 '어쩌다 한 번'
 
 무엇을 재는가
 ① 파일 — avatars/pickle_sleepy.mp4 · pickle_phone.mp4 가 640x598 · 무음 H.264 · faststart
    (sleepy 3.0초 · phone 2.2초)
    · sleepy: **첫 프레임은 눈을 뜨고(눈동자 파란 픽셀 다수), 마지막 프레임은 눈을 감은 상태**(파란 픽셀 0)
    · phone : 첫 프레임이 원본 720x673(y=445) 크롭과 거의 같다 → 좌우 흐린 여백·비네트가 없다(풀블리드)
-② 구조 — 피클 타일에 영상이 상태마다 한 겹씩(speaking=video.vid 1 + sleepy·phone=video.vlay 2).
-   상태를 바꿔도 요소·src 가 그대로다(CSS 클래스·opacity 로만 전환)
-③ sleepy — 재생 중 loop===false · 3초를 다 틀면 마지막 프레임(눈 감은 얼굴)에서 paused 로 멈춰 있고
+② 구조 — 피클 타일에 영상이 상태마다 한 겹씩
+   (speaking=video.vid 1 + listening·sleepy·phone=video.vlay 3 = 4겹). 상태를 바꿔도 요소·src 그대로
+③ 기본 — 화상 6분할에 들어가면 피클은 **듣는 중(listening)** 영상이 loop=true 로 계속 돌고 있다
+   (speaking 겹은 pause · opacity 0 · 상태 문구 「듣는 중」 · moodNow=listening)
+④ sleepy — 재생 중 loop===false · 3초를 다 틀면 마지막 프레임(눈 감은 얼굴)에서 paused 로 멈춰 있고
    done 표시로 다시 되감기지 않는다(같은 상태를 다시 setTileMood 해도 재생 안 함).
    상태를 벗었다가 다시 들어올 때만 currentTime 0 에서 다시 재생된다.
-④ phone — .tile.phone · '📱 딴짓하다 걸림' · 루프 재생 · sleepy 겹 정지.
+⑤ phone — .tile.phone · '📱 딴짓하다 걸림' · 루프 재생 · sleepy 겹 정지.
    이름·상태(.vov)는 다른 타일과 같이 **하단**에 있다(v4.6.2 의 위로 올리기 예외 제거 확인)
-⑤ 복귀 — 피클 발언 차례(playRound)가 오면 즉시 잠이 깨고 .sleepy/.phone 이 사라지며 speaking 영상이 재생
-⑥ 자동 — 라운드에서 피클 차례 없이 다른 AI 가 2명 넘게 말하면 sleepy/phone 중 하나가 스스로 켜진다
-⑦ 글로 보기 — 화상이 아닐 때는 상태 배지만 바뀌고 영상은 재생되지 않는다
-⑧ 단일 파일(downloads/darkjin_meeting_room_v4.html) — sleepy·phone 이 인라인되어 실제로 재생된다
-⑨ 모바일 390x844 스크린샷 — downloads/meeting_v463_pickle_sleepy.png · meeting_v463_pickle_phone.png
+⑥ 복귀 — 발언 차례가 오면 즉시 깨고 speaking 이 재생, 발언이 끝나면 listening 으로 돌아온다
+⑦ 희소화 — 정책값(상한 2 · rest>=3 · 22% · 쿨다운 1라운드)과 경계(moodGate),
+   실제 4라운드에서 발동이 2회를 넘지 않고 모든 발동이 rest>=3 · 라운드 간격 >1 임을 확인
+⑧ 글로 보기 — 화상이 아닐 때는 listening 영상도 정지한다
+⑨ 단일 파일(downloads/darkjin_meeting_room_v4.html) — listening·sleepy·phone 이 인라인되어 실제 재생
+⑩ 모바일 390x844 스크린샷 — downloads/meeting_v47_pickle_sleepy.png · meeting_v47_pickle_phone.png
 """
 import re
 import subprocess
@@ -190,21 +193,50 @@ def main():
         p.evaluate("()=>window.__mr4.enterRoom('yt-growth')")
         p.wait_for_timeout(600)
 
-        # ══════════ ② 구조 — 상태마다 한 겹 ══════════
-        p.click('#viewVideoBtn'); p.wait_for_timeout(900)
+        # ══════════ ② 구조 — 상태마다 한 겹 (v4.7: 4겹) ══════════
+        p.click('#viewVideoBtn'); p.wait_for_timeout(1400)
         layers = p.evaluate("()=>window.__mr4.moods().find(m=>m.id==='pickle')")
-        if sorted(layers['layers']) != ['phone', 'sleepy', 'speaking']:
-            bad('피클 영상 겹이 %s (speaking·sleepy·phone 3겹이어야 함)' % layers['layers'])
+        if sorted(layers['layers']) != ['listening', 'phone', 'sleepy', 'speaking']:
+            bad('피클 영상 겹이 %s (speaking·listening·sleepy·phone 4겹이어야 함)' % layers['layers'])
         else:
-            ok('피클 타일 영상 3겹 — speaking(vid) + sleepy·phone(vlay) · src 교체 없이 겹으로만')
+            ok('피클 타일 영상 4겹 — speaking(vid) + listening·sleepy·phone(vlay) · src 교체 없이 겹으로만')
         dom0 = p.evaluate("()=>window.__mr4.nodeIds().find(n=>n.id==='pickle')")
-        src0 = {k: (layers[k] or {}).get('src') for k in ('speak', 'sleep', 'phon')}
-        if not (src0['speak'] and src0['sleep'] and src0['phon']):
+        src0 = {k: (layers[k] or {}).get('src') for k in ('speak', 'listen', 'sleep', 'phon')}
+        if not (src0['speak'] and src0['listen'] and src0['sleep'] and src0['phon']):
             bad('영상 src 가 비었다: %s' % src0)
-        elif not (src0['sleep'].endswith('pickle_sleepy.mp4') and src0['phon'].endswith('pickle_phone.mp4')):
+        elif not (src0['listen'].endswith('pickle_listening.mp4') and src0['sleep'].endswith('pickle_sleepy.mp4')
+                  and src0['phon'].endswith('pickle_phone.mp4')):
             bad('겹 src 가 엉뚱함: %s' % src0)
         else:
-            ok('세 겹 src — pickle.mp4 / pickle_sleepy.mp4 / pickle_phone.mp4')
+            ok('네 겹 src — pickle.mp4 / pickle_listening.mp4 / pickle_sleepy.mp4 / pickle_phone.mp4')
+
+        # ══════════ ③ 기본 — 듣는 중(listening) 영상이 계속 돌고 있다 ══════════
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m && m.listen && !m.listen.paused && m.listen.t > 0.2 && m.listen.rs >= 2;}""", timeout=9000)
+        ld = p.evaluate("()=>window.__mr4.moods().find(m=>m.id==='pickle')")
+        if ld['moodNow'] != 'listening':
+            bad('듣는 중 기본 겹이 %r (listening 이어야 함)' % ld['moodNow'])
+        if ld['vstate'] != '듣는 중':
+            bad('듣는 중 상태 문구가 %r' % ld['vstate'])
+        if ld['listen']['op'] != '1':
+            bad('listening 영상 opacity %s (1이어야 함)' % ld['listen']['op'])
+        if ld['listen']['loop'] is not True:
+            bad('listening 영상 loop=%s (8초 루프여야 함)' % ld['listen']['loop'])
+        if not ld['speak']['paused'] or ld['speak']['op'] != '0':
+            bad('듣는 중인데 speaking 영상이 %s' % ld['speak'])
+        if ld['listen']['w'] != 640 or ld['listen']['h'] != 598:
+            bad('listening 영상 치수 %sx%s' % (ld['listen']['w'], ld['listen']['h']))
+        if ld['vstate'] == '듣는 중' and ld['listen']['op'] == '1' and ld['listen']['loop'] is True \
+                and ld['speak']['paused'] and ld['speak']['op'] == '0':
+            ok('듣는 중 기본 — pickle_listening.mp4 재생 t=%.2fs op=1 loop=true(%.2f초) · speaking pause/op 0 · 「듣는 중」'
+               % (ld['listen']['t'], ld['listen']['dur']))
+        t_a0 = ld['listen']['t']
+        p.wait_for_timeout(700)
+        ld2 = p.evaluate("()=>window.__mr4.moods().find(m=>m.id==='pickle')")
+        if not ld2['listen']['t'] > t_a0:
+            bad('listening 영상 재생 시간이 늘지 않음 %.2f → %.2f' % (t_a0, ld2['listen']['t']))
+        else:
+            ok('listening 재생 중 %.2fs → %.2fs (계속 도는 루프)' % (t_a0, ld2['listen']['t']))
 
         # ══════════ ③ sleepy — 3초를 틀고 눈 감은 마지막 프레임에서 멈춘다 ══════════
         p.evaluate("()=>window.__mr4.setTileMood('pickle','sleepy')")
@@ -218,6 +250,8 @@ def main():
             bad('sleepy 영상 opacity %s (1이어야 함)' % s['sleep']['op'])
         if not (s['speak']['paused'] and s['speak']['op'] == '0'):
             bad('sleepy 인데 speaking 영상이 %s' % s['speak'])
+        if not (s['listen']['paused'] and s['listen']['op'] == '0'):
+            bad('sleepy 인데 listening 영상이 계속 %s' % s['listen'])
         if s['sleep']['w'] != 640 or s['sleep']['h'] != 598:
             bad('sleepy 영상 치수 %sx%s' % (s['sleep']['w'], s['sleep']['h']))
         if s['sleep']['loop'] is not False:
@@ -262,8 +296,8 @@ def main():
         p.wait_for_function("""()=>{const t=document.getElementById('toast');
             return !t || !t.classList.contains('show');}""", timeout=6000)   # 화면 전환 토스트가 사라진 뒤 찍는다
         p.wait_for_timeout(500)
-        p.screenshot(path=DL + 'meeting_v463_pickle_sleepy.png')
-        print('  shot', DL + 'meeting_v463_pickle_sleepy.png')
+        p.screenshot(path=DL + 'meeting_v47_pickle_sleepy.png')
+        print('  shot', DL + 'meeting_v47_pickle_sleepy.png')
 
         # 상태를 벗었다가 다시 들어오면 처음(눈 뜬 프레임)부터 다시 튼다
         p.evaluate("()=>window.__mr4.setTileMood('pickle','')")
@@ -319,13 +353,19 @@ def main():
         # (일부러 pause 시키면 다음 syncAvatarMedia 가 다시 틀어 버리므로, 재생 중에 그 순간을 기다려 찍는다)
         p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
             return m && m.phon && m.phon.t >= 1.50 && m.phon.t <= 1.62;}""", timeout=6000)
-        p.screenshot(path=DL + 'meeting_v463_pickle_phone.png')
-        print('  shot', DL + 'meeting_v463_pickle_phone.png')
+        p.screenshot(path=DL + 'meeting_v47_pickle_phone.png')
+        print('  shot', DL + 'meeting_v47_pickle_phone.png')
+
+        # phone 을 벗으면 다시 듣는 중 영상으로 돌아온다
+        p.evaluate("()=>window.__mr4.setTileMood('pickle','')")
+        p.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+            return m && m.listen && !m.listen.paused && m.listen.op === '1';}""", timeout=8000)
+        ok('딴짓 벗음 — listening 영상이 다시 재생(op 1)')
 
         # 구조 불변 — 상태를 두 번 바꿔도 DOM 노드·src 그대로
         dom1 = p.evaluate("()=>window.__mr4.nodeIds().find(n=>n.id==='pickle')")
         src1 = {k: (p.evaluate("()=>window.__mr4.moods().find(m=>m.id==='pickle')")[k] or {}).get('src')
-                for k in ('speak', 'sleep', 'phon')}
+                for k in ('speak', 'listen', 'sleep', 'phon')}
         if dom0 != dom1:
             bad('상태 전환에서 타일 DOM 노드가 바뀜: %s → %s' % (dom0, dom1))
         elif src1 != src0:
@@ -367,51 +407,87 @@ def main():
         after = p.evaluate("()=>window.__mr4.moods().find(x=>x.id==='pickle')")
         if not after['speak']['paused'] or after['speak']['op'] != '0':
             bad('발언이 끝났는데 speaking 영상이 계속 재생/노출: %s' % after['speak'])
+        elif after['moodNow'] != 'listening' or after['listen']['op'] != '1' or after['listen']['paused']:
+            bad('발언이 끝났는데 듣는 중 영상으로 돌아오지 않음: %s / %s' % (after['moodNow'], after['listen']))
         else:
-            ok('발언 종료 — speaking 영상 정지(op 0) · 상태 문구 %r' % after['vstate'])
+            ok('발언 종료 — speaking 정지(op 0) · listening 재생 복귀(op 1) · 상태 문구 %r' % after['vstate'])
 
-        # ══════════ ⑥ 자동 — 다른 AI 둘이 지나가면 스스로 딴짓/조기 ══════════
-        p.evaluate("""()=>{ window.__auto=[]; clearInterval(window.__a);
-            window.__a=setInterval(()=>{ const m=window.__mr4.moods().find(x=>x.id==='pickle');
-              if(!m) return;
-              window.__auto.push({sp:m.speaking, mood:m.mood, vt:m.vstate,
-                                  slp:m.sleep&&m.sleep.paused, ph_p:m.phon&&m.phon.paused,
-                                  sl_op:m.sleep&&m.sleep.op, ph_op:m.phon&&m.phon.op,
-                                  sl_done:m.sleep&&m.sleep.done, sl_t:m.sleep&&m.sleep.t}); }, 60); }""")
-        seen = {}
-        rounds = 0
-        while rounds < 4 and not seen:
-            rounds += 1
-            p.evaluate("(n)=>{ window.__mr4.playRound(n); }", rounds)
-            p.wait_for_function("()=>window.__mr4.state.busy===false && window.__mr4.state.round>=%d" % rounds, timeout=90000)
-            p.wait_for_timeout(300)
-            auto = p.evaluate("()=>window.__auto")
-            for x in auto:
-                if x['mood']:
-                    seen[x['mood']] = x
-            if seen:
-                break
-        p.evaluate("()=>clearInterval(window.__a)")
-        auto = p.evaluate("()=>window.__auto")
-        if not seen:
-            bad('%d라운드 동안 피클이 스스로 조는/딴짓 상태로 바뀌지 않음' % rounds)
+        # ══════════ ⑥ 졸기/딴짓은 '어쩌다 한 번' — 상한 2회 · rest>=3 · 22% · 쿨다운 ══════════
+        pol = p.evaluate("()=>window.__mr4.moodPolicy()")
+        want = {'maxPerSession': 2, 'minRest': 3, 'prob': 0.22, 'cooldownRounds': 1}
+        gap = {k: (pol[k], v) for k, v in want.items() if pol[k] != v}
+        if gap:
+            bad('희소화 정책값이 다름: %s' % gap)
         else:
-            k = list(seen)[0]
-            x = seen[k]
-            # sleepy 는 3초를 다 틀면 마지막 프레임에서 멈춘다 — '재생 중'과 '끝나서 멈춘 상태' 둘 다 정상
-            if k == 'sleepy':
-                playing = (x['slp'] is False and x['sl_op'] == '1') or x['sl_done'] == '1'
+            ok('희소화 정책 — 세션 최대 %d회 · rest>=%d · 확률 %.0f%% · 쿨다운 %d라운드'
+               % (pol['maxPerSession'], pol['minRest'], pol['prob'] * 100, pol['cooldownRounds']))
+        # 확률·조건 경계(moodGate) — 발동하지 않는 쪽이 기본값이다
+        p.evaluate("()=>window.__mr4.resetMoodSession()")
+        gate = p.evaluate("""()=>{ const g=(r,rest,x)=>window.__mr4.moodGate(r,rest,x);
+            return {rest2:g(1,2,0.0), p21:g(1,3,0.21), p23:g(1,3,0.23), first:g(1,3,0.0)};}""")
+        if gate['rest2'] or not gate['first']:
+            bad('moodGate 조건 이상(rest<3 차단 / rest>=3 허용): %s' % gate)
+        elif not gate['p21'] or gate['p23']:
+            bad('moodGate 확률 문턱이 22%% 가 아님: %s' % gate)
+        else:
+            ok('moodGate — rest 2는 발동 안 함 · rand 0.21은 발동 · 0.23은 안 함 (22% 문턱)')
+        # 상한 — 상한을 0으로 두면 어떤 조건에서도 발동하지 않는다
+        p.evaluate("()=>window.__mr4.setMoodPolicy({maxPerSession:0})")
+        cap0 = p.evaluate("()=>window.__mr4.moodGate(9,9,0.0)")
+        p.evaluate("()=>window.__mr4.setMoodPolicy({maxPerSession:2})")
+        if cap0:
+            bad('상한이 0인데 moodGate 가 통과함')
+        else:
+            ok('상한 — maxPerSession 0 이면 통과 0(세션 상한이 실제로 막는다)')
+        # 실제 라운드 4회 (확률 1로 강제) — 발동은 2회를 넘지 않고, 모두 rest>=3 · 라운드 간격>1
+        p.evaluate("()=>{ window.__mr4.resetMoodSession(); window.__mr4.setMoodPolicy({debugProb:1}); }")
+        seen_mood = []
+        for n in (1, 2, 3, 4):
+            p.evaluate("(n)=>{ window.__mr4.playRound(n); }", n)
+            p.wait_for_function("()=>window.__mr4.state.busy===false && window.__mr4.state.round>=%d" % n, timeout=90000)
+            p.wait_for_timeout(200)
+            st = p.evaluate("()=>window.__mr4.moodPolicy()")
+            if st['events'] > 2:
+                bad('%d라운드에서 발동이 %d회 — 세션 상한 2회를 넘음' % (n, st['events']))
+            mnow = p.evaluate("()=>window.__mr4.moods().find(x=>x.id==='pickle')")
+            if mnow['mood']:
+                seen_mood.append((n, mnow['mood'], mnow['vstate']))
+        pol2 = p.evaluate("()=>window.__mr4.moodPolicy()")
+        log = pol2['log']
+        badrest = [x for x in log if x['rest'] < 3]
+        badgap = [x for i, x in enumerate(log[1:], 1) if log[i]['round'] - log[i - 1]['round'] <= 1]
+        if pol2['events'] > 2:
+            bad('세션 발동 %d회 — 상한 2회 초과' % pol2['events'])
+        elif badrest:
+            bad('rest<3 인데 발동한 기록: %s' % badrest)
+        elif badgap:
+            bad('쿨다운 없이 연달아 발동: %s' % log)
+        else:
+            ok('4라운드(확률 1 강제) — 발동 %d회(상한 2 이내) · 모두 rest>=3 · 라운드 간격>1 · 기록 %s'
+               % (pol2['events'], [(x['round'], x['rest'], x['mood']) for x in log]))
+        # 발동한 뒤 쿨다운/상한이 게이트에서 실제로 막는지
+        if log:
+            last = log[-1]['round']
+            cool = p.evaluate("()=>window.__mr4.moodPolicy()")
+            g_next = p.evaluate("(r)=>window.__mr4.moodGate(r,9,0.0)", last + 1)
+            if g_next:
+                bad('발동한 라운드(%d) 바로 다음 라운드에 또 발동 가능(쿨다운 없음)' % last)
             else:
-                playing = (x['ph_p'] is False and x['ph_op'] == '1')
-            if not playing:
-                bad('자동 %s 상태인데 영상이 재생되지 않음: %s' % (k, x))
-            else:
-                ok('자동 전환 — %d라운드 만에 피클이 「%s」 상태로 (영상 재생 · t=%s)' % (rounds, x['vt'], x['sl_t']))
-        overlap = [x for x in auto if x['sp'] and x['mood']]
+                ok('쿨다운 — 라운드 %d 발동 뒤 라운드 %d 는 게이트에서 막힘(발동 %d회/2)'
+                   % (last, last + 1, cool['events']))
+        # 확률 1을 풀고 기본(22%)으로 되돌린다 — 실제 회의에서는 대부분 그냥 지나간다
+        p.evaluate("()=>window.__mr4.setMoodPolicy({debugProb:null})")
+        pol3 = p.evaluate("()=>window.__mr4.moodPolicy()")
+        if pol3['debugProb'] is not None:
+            bad('확률 강제가 풀리지 않음: %s' % pol3['debugProb'])
+        else:
+            ok('확률 강제 해제 — 기본 22% 로 복귀')
+        # 자동 발동이 '발언 중'과 겹치지 않는다(발동한 순간에도 speaking 이면 안 된다)
+        overlap = [x for x in seen_mood if x[2] == '발언 중']
         if overlap:
-            bad('발언 중에 자동 상태가 켜진 샘플 %d개' % len(overlap))
+            bad('자동 상태가 발언 중에 켜짐: %s' % overlap)
         else:
-            ok('자동 전환 %d샘플 — 발언 중과 조는/딴짓 상태가 겹친 샘플 0' % len(auto))
+            ok('자동 상태는 발언 중이 아닐 때만 켜짐(관측 %d회)' % len(seen_mood))
 
         # ══════════ ⑦ 글로 보기 — 영상은 멈춘다 ══════════
         p.click('#viewTextBtn'); p.wait_for_timeout(500)
@@ -421,24 +497,37 @@ def main():
         vstage = p.evaluate("""()=>{const s=document.querySelector('.tile[data-id=\"pickle\"] .vstage');
             return s ? getComputedStyle(s).display : 'none';}""")
         # 글로 보기에서는 .vstage 가 숨겨지고, 영상은 전부 pause 상태여야 한다(opacity 는 화상 모드 CSS 전용이라 보지 않는다)
-        if not t2['sleep']['paused'] or not t2['phon']['paused'] or not t2['speak']['paused']:
-            bad('글로 보기인데 상태 영상이 재생됨: %s' % t2)
+        if not t2['sleep']['paused'] or not t2['phon']['paused'] or not t2['speak']['paused'] \
+                or not t2['listen']['paused']:
+            bad('글로 보기인데 상태 영상이 재생됨(듣는 중 영상 포함): %s' % t2)
         elif t2['state'] != '😴 조는 중' or vstage != 'none':
             bad('글로 보기 카드 배지/화면 상태가 %r · vstage %s' % (t2['state'], vstage))
         else:
-            ok('글로 보기 — 카드 배지 「😴 조는 중」만 바뀌고 영상은 정지(vstage none)')
+            ok('글로 보기 — 카드 배지 「😴 조는 중」만 바뀌고 영상은 정지(vstage none · listening 포함 정지)')
         p.evaluate("()=>window.__mr4.setTileMood('pickle','')")
 
         # ══════════ ⑧ 단일 파일 ══════════
         single = Path('/workspace/downloads/darkjin_meeting_room_v4.html')
         kb = single.stat().st_size / 1024
-        if kb > 3000:
-            bad('단일 파일 %.0fKB — 2.93MB 를 넘음' % kb)
+        if kb > 3400:
+            bad('단일 파일 %.0fKB — 3.32MB 를 넘음' % kb)
         sp = ctx.new_page(); sp.add_init_script(MOCK)
         sp.on('pageerror', lambda e: errs.append('single pageerror:' + str(e)))
         sp.goto('file://' + str(single)); sp.wait_for_timeout(800)
         sp.evaluate("()=>window.__mr4.enterRoom('yt-growth')"); sp.wait_for_timeout(500)
-        sp.click('#viewVideoBtn'); sp.wait_for_timeout(900)
+        sp.click('#viewVideoBtn'); sp.wait_for_timeout(1400)
+        # v4.7 — 기본 겹(listening)도 인라인되어 있어야 한다
+        try:
+            sp.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
+                return m && m.listen && !m.listen.paused && m.listen.t>0.15 && m.listen.rs>=2;}""", timeout=9000)
+            sl = sp.evaluate("()=>window.__mr4.moods().find(x=>x.id==='pickle')")
+            if not (sl['listen']['src'] or '').startswith('data:video/mp4'):
+                bad('단일 파일 listening 영상이 인라인되지 않음: %s' % (sl['listen']['src'] or '')[:40])
+            else:
+                ok('단일 파일 — 인라인 listening 영상이 기본으로 재생(readyState %d · t=%.2fs · loop=%s)'
+                   % (sl['listen']['rs'], sl['listen']['t'], sl['listen']['loop']))
+        except Exception:
+            bad('단일 파일에서 listening 영상이 재생되지 않음')
         sp.evaluate("()=>window.__mr4.setTileMood('pickle','sleepy')")
         try:
             sp.wait_for_function("""()=>{const m=window.__mr4.moods().find(x=>x.id==='pickle');
@@ -478,7 +567,7 @@ def main():
         for f in fails:
             print(' - ' + f)
         sys.exit(1)
-    print("ALL PASS (v4.6.3)")
+    print("ALL PASS (v4.7)")
 
 
 main()
